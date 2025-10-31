@@ -1,0 +1,92 @@
+<% if @period.present? %>
+  <% content_for :title, "#{@period.label} #{@location} 給与一覧" %>
+<% else %>
+  <% content_for :title, "給与一覧" %>
+<% end %>
+<% content_for :section_label, "給与グリッド" %>
+
+<div class="d-flex flex-wrap gap-3 align-items-end mb-4 payroll-controls">
+  <div>
+    <h2 class="h5 mb-1">表示条件</h2>
+    <div class="text-muted small">Excel のレイアウトをそのまま再現します。</div>
+  </div>
+
+  <%= form_with url: admin_payrolls_path, method: :get, local: true, class: "d-flex flex-wrap gap-2 align-items-end" do |f| %>
+    <div>
+      <%= f.label :period_id, "対象月", class: "form-label small mb-1" %>
+      <%= f.select :period_id, options_from_collection_for_select(@periods, :id, :label, @period&.id), { include_blank: "最新月" }, class: "form-select form-select-sm" %>
+    </div>
+    <div>
+      <%= f.label :location, "拠点", class: "form-label small mb-1" %>
+      <%= f.select :location, options_for_select(@locations.presence || [[@location, @location]], @location), { include_blank: false }, class: "form-select form-select-sm" %>
+    </div>
+    <div>
+      <%= f.submit "適用", class: "btn btn-primary btn-sm" %>
+    </div>
+  <% end %>
+  <div class="ms-auto d-flex align-items-end gap-2">
+    <% if @period.present? %>
+      <%= button_to "データ削除", admin_payrolls_path(period_id: @period.id, location: @location),
+                    method: :delete,
+                    class: "btn btn-outline-danger btn-sm",
+                    form: { data: { turbo_confirm: "#{@period.label} #{@location} のデータを削除します。よろしいですか？" } } %>
+    <% end %>
+    <button type="button" class="btn btn-outline-secondary btn-sm" id="payroll-fullscreen-toggle">
+      <i class="bi bi-arrows-fullscreen"></i>
+      フルスクリーン
+    </button>
+  </div>
+</div>
+
+<% if @period.nil? %>
+  <div class="alert alert-info">まだ給与データが取り込まれていません。</div>
+<% else %>
+  <div class="table-responsive payroll-grid">
+    <table class="table table-bordered table-sm align-middle text-end">
+      <thead class="table-light">
+        <tr>
+          <th class="text-start">項目名</th>
+          <% @employees.each do |employee| %>
+            <th class="text-center payroll-header">
+              <div class="payroll-header-code">
+                <%= link_to employee.employee_code, admin_employee_path(employee), class: "text-decoration-none" %>
+              </div>
+              <div class="payroll-header-name">
+                <%= link_to employee_header_name(employee), admin_employee_path(employee), class: "text-decoration-none" %>
+              </div>
+            </th>
+          <% end %>
+        </tr>
+      </thead>
+      <tbody>
+        <% last_section = nil %>
+        <% @items.each do |item| %>
+          <% current_section = item.above_basic? ? :monetary : :metric %>
+          <% row_classes = ["payroll-row", current_section == :monetary ? "payroll-row-money" : "payroll-row-metric"] %>
+          <% row_classes << "payroll-row-basic" if item.name.include?("基本給") %>
+          <% row_classes << "payroll-row-total" if item.name.include?("支給合計") || item.name.include?("差引支給合計") %>
+          <% row_classes << "payroll-row-divider" if last_section && current_section != last_section %>
+          <% last_section = current_section %>
+          <tr class="<%= row_classes.join(' ') %>">
+            <th class="text-start"><%= item.name %></th>
+            <% @employees.each do |employee| %>
+              <% cell = @cell_map[[item.id, employee.id]] %>
+              <td><%= payroll_value(cell) %></td>
+            <% end %>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+<% end %>
+
+<%= javascript_tag do %>
+  document.addEventListener("turbo:load", function() {
+    var toggle = document.getElementById("payroll-fullscreen-toggle");
+    if (!toggle) return;
+    toggle.addEventListener("click", function() {
+      document.body.classList.toggle("payroll-fullscreen");
+      document.dispatchEvent(new Event("resize"));
+    });
+  });
+<% end %>

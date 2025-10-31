@@ -1,0 +1,74 @@
+<% content_for :title, "ナレッジ" %>
+<% content_for :section_label, "学習と共有" %>
+
+<div class="row g-4">
+  <div class="col-lg-8">
+    <div class="card card-lift shadow-sm">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h2 class="h5 mb-0">人気のドキュメント</h2>
+          <button class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-upload"></i> 新規アップロード
+          </button>
+        </div>
+        <div class="list-group list-group-flush">
+          <% [
+            ["冬季繁忙期に向けた運行ノウハウ", "配車本部", "更新: 3日前", "PDF"],
+            ["新人ドライバー向け安全運転チェックリスト", "教育担当", "更新: 5日前", "Docs"],
+            ["緊急対応マニュアル（道路封鎖時）", "危機管理室", "更新: 10日前", "Slide"]
+          ].each do |title, owner, updated_at, kind| %>
+            <a href="#" class="list-group-item list-group-item-action border-0 px-0 py-3 d-flex align-items-center justify-content-between">
+              <div>
+                <div class="fw-semibold"><%= title %></div>
+                <div class="text-muted small"><%= owner %> ・ <%= updated_at %></div>
+              </div>
+              <span class="badge rounded-pill text-bg-secondary"><%= kind %></span>
+            </a>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card card-lift shadow-sm">
+      <div class="card-body">
+        <h2 class="h6 text-muted text-uppercase mb-3">検索ヘルプ</h2>
+        <div class="small text-muted">
+          ノウハウは「カテゴリ」「タグ」「拠点」で検索できます。<br>
+          例: <code>#冷凍車</code> <code>#事故対応</code> <code>#新人研修</code>
+        </div>
+        <div class="mt-3">
+          <label class="form-label small text-muted">クイック検索</label>
+          <div class="input-group input-group-sm">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input type="search" class="form-control" placeholder="例: 配車 トラブルシュート">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card card-lift shadow-sm mt-4">
+  <div class="card-body">
+    <h2 class="h5 mb-3">タグ別アクセス数（先週）</h2>
+    <div class="row small text-muted">
+      <div class="col-md-4 mb-3">
+        <div class="fw-semibold text-dark mb-1">#冷凍車メンテ</div>
+        <div>アクセス 128 / 共有 16</div>
+      </div>
+      <div class="col-md-4 mb-3">
+        <div class="fw-semibold text-dark mb-1">#新人研修</div>
+        <div>アクセス 96 / 共有 12</div>
+      </div>
+      <div class="col-md-4 mb-3">
+        <div class="fw-semibold text-dark mb-1">#関東圏渋滞情報</div>
+        <div>アクセス 74 / 更新 3</div>
+      </div>
+    </div>
+    <div class="bg-body-secondary rounded-4 p-5 text-center text-muted mt-4">
+      <i class="bi bi-collection fs-1 d-block mb-3 text-secondary"></i>
+      ダッシュボード連携予定：アクセス分析や視聴完了率を可視化します。
+    </div>
+  </div>
+</div>

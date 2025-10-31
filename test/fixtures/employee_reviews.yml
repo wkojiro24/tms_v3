@@ -1,0 +1,19 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  employee: one
+  reviewed_on: 2025-10-31
+  review_cycle: MyString
+  score: 9.99
+  grade: MyString
+  summary: MyText
+  notes: MyText
+
+two:
+  employee: two
+  reviewed_on: 2025-10-31
+  review_cycle: MyString
+  score: 9.99
+  grade: MyString
+  summary: MyText
+  notes: MyText

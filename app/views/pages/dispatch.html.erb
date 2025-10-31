@@ -1,0 +1,88 @@
+<% content_for :title, "配車管理" %>
+<% content_for :section_label, "オペレーション" %>
+
+<div class="row g-4">
+  <div class="col-xxl-8">
+    <div class="card card-lift shadow-sm h-100">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h2 class="h5 mb-0">本日の運行一覧</h2>
+          <div class="d-flex align-items-center gap-2">
+            <button class="btn btn-outline-secondary btn-sm">
+              <i class="bi bi-calendar-week"></i> スケジュール表示
+            </button>
+            <button class="btn btn-primary btn-sm">
+              <i class="bi bi-plus-circle"></i> 便を追加
+            </button>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="table align-middle mb-0">
+            <thead class="table-light small">
+              <tr>
+                <th>便名</th>
+                <th>積込 / 納品</th>
+                <th>車両 / ドライバー</th>
+                <th>状態</th>
+                <th>アラート</th>
+              </tr>
+            </thead>
+            <tbody class="small">
+              <tr>
+                <td class="fw-semibold">千葉第2便</td>
+                <td>松戸 08:00 → 大田 10:30</td>
+                <td>冷凍 #12 / 佐藤</td>
+                <td><span class="badge rounded-pill text-bg-warning">遅延 45分</span></td>
+                <td><i class="bi bi-geo-alt text-danger"></i> 首都高渋滞</td>
+              </tr>
+              <tr>
+                <td class="fw-semibold">湘南エリア共同配送</td>
+                <td>厚木 09:30 → 鎌倉 14:00</td>
+                <td>ウイング #03 / 山田</td>
+                <td><span class="badge rounded-pill text-bg-success">進行中</span></td>
+                <td><i class="bi bi-check2-circle text-success"></i> 正常</td>
+              </tr>
+              <tr>
+                <td class="fw-semibold">北関東エクスプレス</td>
+                <td>宇都宮 05:30 → 川崎 11:30</td>
+                <td>大型 #18 / 陳</td>
+                <td><span class="badge rounded-pill text-bg-info">積込完了</span></td>
+                <td><i class="bi bi-snow text-info"></i> 冷凍温度要確認</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-xxl-4">
+    <div class="card card-lift shadow-sm h-100">
+      <div class="card-body">
+        <h2 class="h6 text-muted text-uppercase mb-3">直近の対応事項</h2>
+        <ul class="list-unstyled small text-muted mb-0">
+          <li class="mb-3 d-flex gap-3">
+            <i class="bi bi-exclamation-triangle text-warning fs-5"></i>
+            <div>
+              <div class="fw-semibold text-dark">緊急依頼（横浜→名古屋）</div>
+              収益管理の承認待ち。予備車両 #07 を確保済み。
+            </div>
+          </li>
+          <li class="mb-3 d-flex gap-3">
+            <i class="bi bi-fuel-pump text-info fs-5"></i>
+            <div>
+              <div class="fw-semibold text-dark">燃料カード利用制限</div>
+              限度額更新後のテスト運用を本日18時までに実施。
+            </div>
+          </li>
+          <li class="d-flex gap-3">
+            <i class="bi bi-clipboard-check text-success fs-5"></i>
+            <div>
+              <div class="fw-semibold text-dark">明日の積込確認</div>
+              ドライバー42名の配車表を11時までに共有予定。
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>

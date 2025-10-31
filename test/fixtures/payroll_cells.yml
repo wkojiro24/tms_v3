@@ -1,0 +1,17 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  period: one
+  employee: one
+  item: one
+  payroll_batch: one
+  raw: MyString
+  amount: 9.99
+
+two:
+  period: two
+  employee: two
+  item: two
+  payroll_batch: two
+  raw: MyString
+  amount: 9.99

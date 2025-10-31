@@ -1,0 +1,48 @@
+<% content_for :title, "給与データ取り込み" %>
+<% content_for :section_label, "データインポート" %>
+
+<div class="row">
+  <div class="col-lg-6">
+    <div class="card card-lift shadow-sm mb-4">
+      <div class="card-body">
+        <h2 class="h5 mb-3">給与ファイルアップロード</h2>
+        <%= form_with url: admin_imports_path, scope: :import, method: :post, local: true, html: { multipart: true } do |f| %>
+          <div class="mb-3">
+            <%= f.label :target_month, "対象月 (YYYY-MM)", class: "form-label" %>
+            <%= f.text_field :target_month, class: "form-control", placeholder: "2025-08" %>
+          </div>
+
+          <div class="mb-3">
+            <%= f.label :location, "拠点/部署", class: "form-label" %>
+            <%= f.text_field :location, class: "form-control", placeholder: "小名浜" %>
+            <div class="form-text">ファイル名から自動判別できない場合に使用されます。</div>
+          </div>
+
+          <div class="mb-3">
+            <%= f.label :files, "Excel / CSV ファイル", class: "form-label" %>
+            <%= f.file_field :files, multiple: true, class: "form-control" %>
+            <div class="form-text">同じ月の複数拠点を一度にアップロードできます。</div>
+          </div>
+
+          <%= f.submit "取り込む", class: "btn btn-primary" %>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card card-lift shadow-sm">
+      <div class="card-body">
+        <h2 class="h6 text-muted text-uppercase mb-3">直近の期間</h2>
+        <ul class="list-group list-group-flush">
+          <% @periods.each do |period| %>
+            <li class="list-group-item d-flex justify-content-between align-items-center">
+              <span><%= period.label %></span>
+              <span class="badge text-bg-secondary"><%= period.created_at&.strftime("%Y-%m-%d") %></span>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>

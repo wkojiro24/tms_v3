@@ -1,0 +1,95 @@
+<% content_for :title, "管理者" %>
+<% content_for :section_label, "システム設定" %>
+
+<div class="row g-4">
+  <div class="col-lg-4">
+    <div class="card card-lift shadow-sm h-100">
+      <div class="card-body">
+        <h2 class="h6 text-muted text-uppercase mb-3">操作ログ</h2>
+        <ul class="list-unstyled small text-muted mb-0">
+          <li class="mb-2">
+            <span class="fw-semibold text-dark">10:42</span> 配車ルールを更新（管理者: 鈴木）
+          </li>
+          <li class="mb-2">
+            <span class="fw-semibold text-dark">09:55</span> 新規ユーザーを招待（営業所長 権限）
+          </li>
+          <li>
+            <span class="fw-semibold text-dark">09:10</span> APIトークンを再発行（外部BI連携）
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-8">
+    <div class="card card-lift shadow-sm h-100">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h2 class="h5 mb-0">ユーザー権限</h2>
+          <button class="btn btn-primary btn-sm">ユーザーを追加</button>
+        </div>
+        <div class="table-responsive">
+          <table class="table align-middle mb-0">
+            <thead class="table-light small">
+              <tr>
+                <th>氏名</th>
+                <th>所属</th>
+                <th>権限</th>
+                <th>最終ログイン</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody class="small">
+              <tr>
+                <td>鈴木 智也</td>
+                <td>情報システム部</td>
+                <td><span class="badge rounded-pill text-bg-danger">システム管理者</span></td>
+                <td>今日 09:58</td>
+                <td><button class="btn btn-sm btn-outline-secondary">詳細</button></td>
+              </tr>
+              <tr>
+                <td>山本 彩</td>
+                <td>配車本部</td>
+                <td><span class="badge rounded-pill text-bg-primary">配車管理者</span></td>
+                <td>今日 08:22</td>
+                <td><button class="btn btn-sm btn-outline-secondary">詳細</button></td>
+              </tr>
+              <tr>
+                <td>中田 亮</td>
+                <td>人事部</td>
+                <td><span class="badge rounded-pill text-bg-info">人事管理者</span></td>
+                <td>昨日 19:04</td>
+                <td><button class="btn btn-sm btn-outline-secondary">詳細</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card card-lift shadow-sm mt-4">
+  <div class="card-body">
+    <h2 class="h6 text-muted text-uppercase mb-3">システム設定</h2>
+    <div class="row g-3 small text-muted">
+      <div class="col-md-4">
+        <div class="border rounded-4 p-3 h-100">
+          <div class="fw-semibold text-dark mb-2">通知設定</div>
+          Slack連携・メール配信の設定を管理。週次レポートは毎週月曜9時に送信。
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="border rounded-4 p-3 h-100">
+          <div class="fw-semibold text-dark mb-2">API管理</div>
+          BIツール連携用トークンを一覧。発行後は自動で通知されます。
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="border rounded-4 p-3 h-100">
+          <div class="fw-semibold text-dark mb-2">監査ログ</div>
+          90日分の操作履歴を保持。CSVダウンロードに対応（要管理者権限）。
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

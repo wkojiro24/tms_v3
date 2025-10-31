@@ -1,0 +1,110 @@
+<% content_for :title, "人事情報" %>
+<% content_for :section_label, "メンバー" %>
+
+<div class="row g-4">
+  <div class="col-xl-4">
+    <div class="card card-lift shadow-sm h-100">
+      <div class="card-body">
+        <h2 class="h6 text-muted text-uppercase mb-3">メンバー概要</h2>
+        <ul class="list-unstyled small text-muted mb-0">
+          <li class="mb-2"><span class="fw-semibold text-dark">従業員数</span> 142名（ドライバー 98 / 本社 44）</li>
+          <li class="mb-2"><span class="fw-semibold text-dark">今月入社</span> 4名（ドライバー 3 / 管理部門 1）</li>
+          <li><span class="fw-semibold text-dark">有給取得率</span> 62.4%（ドライバー 55.1%）</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="col-xl-8">
+    <div class="card card-lift shadow-sm h-100">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h2 class="h5 mb-0">配置状況</h2>
+          <button class="btn btn-outline-secondary btn-sm">CSVを出力</button>
+        </div>
+        <div class="table-responsive">
+          <table class="table align-middle mb-0">
+            <thead class="table-light small">
+              <tr>
+                <th>氏名</th>
+                <th>所属</th>
+                <th>役割</th>
+                <th>勤続</th>
+                <th>状況</th>
+              </tr>
+            </thead>
+            <tbody class="small">
+              <tr>
+                <td>佐藤 太郎</td>
+                <td>配車本部</td>
+                <td>センター長</td>
+                <td>8年目</td>
+                <td><span class="badge rounded-pill text-bg-success">在籍</span></td>
+              </tr>
+              <tr>
+                <td>王 小蘭</td>
+                <td>千葉第2営業所</td>
+                <td>ドライバー</td>
+                <td>3年目</td>
+                <td><span class="badge rounded-pill text-bg-info">育成枠</span></td>
+              </tr>
+              <tr>
+                <td>中村 翔</td>
+                <td>情報システム部</td>
+                <td>システム管理者</td>
+                <td>2年目</td>
+                <td><span class="badge rounded-pill text-bg-warning">休暇中</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4 mt-1">
+  <div class="col-lg-6">
+    <div class="card card-lift shadow-sm h-100">
+      <div class="card-body">
+        <h2 class="h5 mb-3">アクションアイテム</h2>
+        <ul class="list-unstyled small text-muted mb-0">
+          <li class="mb-3 d-flex gap-3">
+            <i class="bi bi-award text-primary fs-4"></i>
+            <div>
+              <div class="fw-semibold text-dark">ドライバー評価面談</div>
+              11月第1週：評価シートを10月内に提出（担当: 各営業所長）
+            </div>
+          </li>
+          <li class="d-flex gap-3">
+            <i class="bi bi-mortarboard text-success fs-4"></i>
+            <div>
+              <div class="fw-semibold text-dark">技能研修のアップデート</div>
+              新たな冷蔵/冷凍車の共同研修を11月14日に開催予定。
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card card-lift shadow-sm h-100">
+      <div class="card-body">
+        <h2 class="h5 mb-3">労務アラート</h2>
+        <div class="alert alert-warning d-flex align-items-center gap-3" role="alert">
+          <i class="bi bi-clock-history fs-4"></i>
+          <div>
+            <div class="fw-semibold">時間外労働の超過見込み</div>
+            5名が月60時間の上限に接近。今週のシフト調整が必要です。
+          </div>
+        </div>
+        <div class="alert alert-info d-flex align-items-center gap-3 mb-0" role="alert">
+          <i class="bi bi-heart-pulse fs-4"></i>
+          <div>
+            <div class="fw-semibold">健康診断 2次判定フォロー</div>
+            受診率 92%。未受診の4名へ個別連絡を実施してください。
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

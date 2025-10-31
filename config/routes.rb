@@ -1,0 +1,34 @@
+Rails.application.routes.draw do
+  devise_for :users
+  root "dashboard#index"
+
+  get "manifest" => "rails/pwa#manifest", as: :pwa_manifest
+  get "service-worker" => "rails/pwa#service_worker", as: :pwa_service_worker
+
+  get "dashboard", to: "dashboard#index"
+
+  scope controller: :pages do
+    get "announcements"
+    get "revenue"
+    get "dispatch", to: "pages#dispatch_board"
+    get "fleet"
+    get "hr"
+    get "knowledge"
+    get "workflow"
+    get "faq"
+  end
+
+  get "/imports", to: redirect("/admin/imports/new")
+
+  namespace :admin do
+    root to: "dashboard#index"
+    resources :imports, only: [:new, :create]
+    resources :payrolls, only: [:index] do
+      delete :destroy, on: :collection
+    end
+    resources :employees, only: [:index, :show] do
+      get :payroll, on: :member
+      get :history, on: :member
+    end
+  end
+end

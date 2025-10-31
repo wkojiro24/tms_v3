@@ -1,0 +1,60 @@
+<% content_for :title, "#{@employee.full_name || @employee.employee_code} - 給与推移" %>
+<% content_for :section_label, "給与タイムライン" %>
+
+<div class="d-flex gap-2 mb-4">
+  <%= link_to "詳細へ戻る", admin_employee_path(@employee), class: "btn btn-outline-secondary btn-sm" %>
+</div>
+
+<div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+  <h2 class="h6 mb-0 text-muted">直近12ヶ月（左が最新）</h2>
+  <%= form_with url: payroll_admin_employee_path(@employee), method: :get, local: true, class: "d-flex gap-2 align-items-end" do |f| %>
+    <div>
+      <%= f.label :period, "基準月", class: "form-label small mb-1" %>
+      <% period_options = @period_options.map { |p| [p.label, "#{p.year}-#{format('%02d', p.month)}"] } %>
+      <%= f.select :period,
+                   options_for_select(period_options, @period_param),
+                   { include_blank: "最新月" },
+                   class: "form-select form-select-sm" %>
+    </div>
+    <div>
+      <%= f.submit "表示", class: "btn btn-primary btn-sm" %>
+    </div>
+  <% end %>
+</div>
+
+<% if @month_entries.any? && @items.any? %>
+  <div class="payroll-grid">
+    <table class="table table-bordered table-sm align-middle text-end mb-0 payroll-employee-grid">
+    <thead>
+      <tr class="table-light">
+        <th rowspan="2" class="text-start align-middle">項目名</th>
+        <% @month_entries.each do |entry| %>
+          <th class="text-center"><%= entry[:period].label %></th>
+        <% end %>
+      </tr>
+      <tr class="table-light">
+        <% @month_entries.each do |entry| %>
+          <th class="text-center text-muted"><%= entry[:location].presence || "—" %></th>
+        <% end %>
+      </tr>
+    </thead>
+    <tbody>
+      <% @items.each do |item| %>
+        <% current_section = item.above_basic? ? :monetary : :metric %>
+        <% row_classes = ["payroll-row", current_section == :monetary ? "payroll-row-money" : "payroll-row-metric"] %>
+        <% row_classes << "payroll-row-basic" if item.name.include?("基本給") %>
+        <% row_classes << "payroll-row-total" if item.name.include?("支給合計") || item.name.include?("差引支給合計") %>
+        <tr class="<%= row_classes.join(' ') %>">
+          <th class="text-start"><%= item.name %></th>
+          <% @month_entries.each do |entry| %>
+            <% cell = entry[:cell_map][item.id] %>
+            <td><%= payroll_value(cell) %></td>
+          <% end %>
+        </tr>
+      <% end %>
+    </tbody>
+    </table>
+  </div>
+<% else %>
+  <div class="alert alert-info">給与データが見つかりません。</div>
+<% end %>

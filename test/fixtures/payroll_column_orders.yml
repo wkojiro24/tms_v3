@@ -1,0 +1,11 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  period: one
+  employee: one
+  column_index: 1
+
+two:
+  period: two
+  employee: two
+  column_index: 1

@@ -1,0 +1,51 @@
+<% content_for :title, "社員一覧" %>
+<% content_for :section_label, "マスタ管理" %>
+
+<div class="card card-lift shadow-sm mb-4">
+  <div class="card-body">
+    <%= form_with url: admin_employees_path, method: :get, local: true, class: "row g-3 align-items-end" do |f| %>
+      <div class="col-md-6">
+        <%= f.label :q, "氏名 / 社員コード", class: "form-label" %>
+        <%= f.text_field :q, value: @query, class: "form-control", placeholder: "例: 松本、1087" %>
+      </div>
+      <div class="col-md-3">
+        <%= f.label :status, "ステータス", class: "form-label" %>
+        <%= f.select :status, options_for_select([["全て", nil], ["在籍", "active"], ["休職", "on_leave"], ["退職", "retired"]], @status), {}, class: "form-select" %>
+      </div>
+      <div class="col-md-3 d-grid">
+        <%= f.submit "検索", class: "btn btn-primary" %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<div class="card card-lift shadow-sm">
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>社員コード</th>
+          <th>氏名</th>
+          <th>所属</th>
+          <th>役職</th>
+          <th>ステータス</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @employees.each do |employee| %>
+          <tr>
+            <td class="fw-semibold"><%= employee.employee_code %></td>
+            <td><%= employee.full_name || [employee.last_name, employee.first_name].compact.join(" ") %></td>
+            <td><%= employee.assignments.current.first&.department %></td>
+            <td><%= employee.positions.current.first&.title %></td>
+            <td><%= employee.current_status %></td>
+            <td class="text-end">
+              <%= link_to "詳細", admin_employee_path(employee), class: "btn btn-sm btn-outline-primary" %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>

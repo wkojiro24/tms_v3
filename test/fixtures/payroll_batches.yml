@@ -1,0 +1,23 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  period: one
+  location: MyString
+  title: MyString
+  original_filename: MyString
+  status: MyString
+  uploaded_by: one
+  total_rows: 1
+  total_cells: 1
+  notes: MyText
+
+two:
+  period: two
+  location: MyString
+  title: MyString
+  original_filename: MyString
+  status: MyString
+  uploaded_by: two
+  total_rows: 1
+  total_cells: 1
+  notes: MyText

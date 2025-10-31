@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <title><%= content_for(:title) || "TMS Portal" %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+
+    <%= yield :head %>
+
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" href="/icon.png" type="image/png">
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/icon.png">
+    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+  </head>
+
+  <body class="bg-body-tertiary">
+    <div class="d-flex min-vh-100">
+      <aside class="portal-sidebar d-flex flex-column p-4">
+        <div class="d-flex align-items-center gap-3 mb-4">
+          <span class="portal-logo d-inline-flex align-items-center justify-content-center">
+            <i class="bi bi-truck-front"></i>
+          </span>
+          <div>
+            <div class="fw-semibold text-white">TMS Portal</div>
+            <div class="text-white-50 small">物流DXダッシュボード</div>
+          </div>
+        </div>
+
+        <nav class="nav flex-column gap-1 portal-nav">
+          <%= link_to dashboard_path, class: "nav-link portal-nav-link #{'active' if current_page?(dashboard_path) || current_page?(root_path)}" do %>
+            <i class="bi bi-speedometer2"></i>
+            <span>ダッシュボード</span>
+          <% end %>
+
+          <div class="portal-divider my-3"></div>
+          <div class="portal-section-label text-white-50">お知らせ</div>
+          <%= link_to announcements_path, class: "nav-link portal-nav-link #{'active' if current_page?(announcements_path)}" do %>
+            <i class="bi bi-megaphone"></i>
+            <span>お知らせ</span>
+          <% end %>
+
+          <div class="portal-divider my-3"></div>
+          <div class="portal-section-label text-white-50">オペレーション</div>
+          <%= link_to revenue_path, class: "nav-link portal-nav-link #{'active' if current_page?(revenue_path)}" do %>
+            <i class="bi bi-currency-yen"></i>
+            <span>収益管理</span>
+          <% end %>
+          <%= link_to dispatch_path, class: "nav-link portal-nav-link #{'active' if current_page?(dispatch_path)}" do %>
+            <i class="bi bi-diagram-3"></i>
+            <span>配車管理</span>
+          <% end %>
+          <%= link_to fleet_path, class: "nav-link portal-nav-link #{'active' if current_page?(fleet_path)}" do %>
+            <i class="bi bi-truck"></i>
+            <span>車両管理</span>
+          <% end %>
+          <%= link_to hr_path, class: "nav-link portal-nav-link #{'active' if current_page?(hr_path)}" do %>
+            <i class="bi bi-people"></i>
+            <span>人事情報</span>
+          <% end %>
+
+          <div class="portal-divider my-3"></div>
+          <div class="portal-section-label text-white-50">ナレッジ</div>
+          <%= link_to knowledge_path, class: "nav-link portal-nav-link #{'active' if current_page?(knowledge_path)}" do %>
+            <i class="bi bi-lightbulb"></i>
+            <span>ナレッジ</span>
+          <% end %>
+          <%= link_to workflow_path, class: "nav-link portal-nav-link #{'active' if current_page?(workflow_path)}" do %>
+            <i class="bi bi-kanban"></i>
+            <span>ワークフロー</span>
+          <% end %>
+          <%= link_to faq_path, class: "nav-link portal-nav-link #{'active' if current_page?(faq_path)}" do %>
+            <i class="bi bi-question-circle"></i>
+            <span>FAQ</span>
+          <% end %>
+
+          <% if current_user&.admin_role? %>
+            <div class="portal-divider my-3"></div>
+            <div class="portal-section-label text-white-50">権限</div>
+            <%= link_to admin_root_path, class: "nav-link portal-nav-link #{'active' if request.path.starts_with?('/admin')}" do %>
+              <i class="bi bi-shield-lock"></i>
+              <span>管理者</span>
+            <% end %>
+            <%= link_to new_admin_import_path, class: "nav-link portal-nav-link #{'active' if request.path == '/admin/imports/new'}" do %>
+              <i class="bi bi-upload"></i>
+              <span>給与インポート</span>
+            <% end %>
+            <%= link_to admin_payrolls_path, class: "nav-link portal-nav-link #{'active' if request.path == '/admin/payrolls'}" do %>
+              <i class="bi bi-table"></i>
+              <span>給与グリッド</span>
+            <% end %>
+          <% end %>
+        </nav>
+
+        <div class="mt-auto pt-4">
+          <div class="card bg-transparent border-0 text-white-50 small">
+            <div class="card-body px-0">
+              <div class="d-flex align-items-center gap-3">
+                <div class="avatar-sm">
+                  <i class="bi bi-person-circle"></i>
+                </div>
+                <div>
+                  <div class="text-white">配車本部</div>
+                  <div>最終ログイン: <%= l(Time.current, format: :short) %></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <main class="flex-grow-1">
+        <header class="portal-header d-flex align-items-center justify-content-between px-4 py-3 border-bottom">
+          <div>
+            <div class="small text-muted text-uppercase"><%= yield(:section_label) %></div>
+            <h1 class="h4 mb-0 fw-semibold"><%= content_for(:title) || "TMS Portal" %></h1>
+          </div>
+          <div class="d-flex align-items-center gap-3">
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="sidebar-toggle" title="サイドバーの表示切替">
+              <i class="bi bi-layout-sidebar-inset"></i>
+            </button>
+            <div class="input-group input-group-sm portal-search">
+              <span class="input-group-text bg-white border-end-0"><i class="bi bi-search"></i></span>
+              <input type="search" class="form-control border-start-0" placeholder="ポータル内検索...">
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <% if user_signed_in? %>
+                <span class="text-muted small me-2">
+                  <i class="bi bi-person-circle"></i>
+                  <%= current_user.email %>
+                  (<%= current_user.admin_role? ? "管理者" : "スタッフ" %>)
+                </span>
+              <% end %>
+              <button class="btn btn-outline-primary btn-sm d-flex align-items-center gap-2">
+                <i class="bi bi-bell"></i>
+                通知
+              </button>
+              <% if user_signed_in? %>
+                <%= button_to destroy_user_session_path, method: :delete, class: "btn btn-secondary btn-sm" do %>
+                  <i class="bi bi-box-arrow-right"></i>
+                  ログアウト
+                <% end %>
+              <% else %>
+                <%= link_to new_user_session_path, class: "btn btn-primary btn-sm" do %>
+                  <i class="bi bi-person-check"></i>
+                  ログイン
+                <% end %>
+              <% end %>
+            </div>
+          </div>
+        </header>
+        <div class="portal-content px-4 py-4">
+          <% flash.each do |type, message| %>
+            <% next if message.blank? %>
+            <div class="alert alert-<%= type == "alert" ? "danger" : "success" %> alert-dismissible fade show" role="alert">
+              <%= message %>
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+          <% end %>
+          <%= yield %>
+        </div>
+      </main>
+    </div>
+    <%= javascript_tag do %>
+      document.addEventListener("turbo:load", function() {
+        var sidebarToggle = document.getElementById("sidebar-toggle");
+        if (sidebarToggle) {
+          sidebarToggle.addEventListener("click", function() {
+            document.body.classList.toggle("sidebar-collapsed");
+          });
+        }
+      });
+    <% end %>
+  </body>
+</html>

@@ -1,0 +1,113 @@
+<% content_for :title, @employee.full_name || @employee.employee_code %>
+<% content_for :section_label, "社員詳細" %>
+
+<div class="d-flex gap-2 mb-4">
+  <%= link_to "一覧に戻る", admin_employees_path, class: "btn btn-outline-secondary btn-sm" %>
+  <%= link_to "給与推移", payroll_admin_employee_path(@employee), class: "btn btn-outline-primary btn-sm" %>
+  <%= link_to "履歴", history_admin_employee_path(@employee), class: "btn btn-outline-primary btn-sm" %>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-6">
+    <div class="card card-lift shadow-sm h-100">
+      <div class="card-body">
+        <h2 class="h5 mb-3">基本情報</h2>
+        <dl class="row gy-2">
+          <dt class="col-sm-4">社員コード</dt>
+          <dd class="col-sm-8"><%= @employee.employee_code %></dd>
+          <dt class="col-sm-4">氏名</dt>
+          <dd class="col-sm-8"><%= @employee.full_name || [@employee.last_name, @employee.first_name].compact.join(" ") %></dd>
+          <dt class="col-sm-4">生年月日</dt>
+          <dd class="col-sm-8"><%= @employee.date_of_birth&.strftime("%Y年%m月%d日") %></dd>
+          <dt class="col-sm-4">入社日</dt>
+          <dd class="col-sm-8"><%= @employee.hire_date&.strftime("%Y年%m月%d日") %></dd>
+          <dt class="col-sm-4">メール</dt>
+          <dd class="col-sm-8"><%= @employee.email %></dd>
+          <dt class="col-sm-4">電話</dt>
+          <dd class="col-sm-8"><%= @employee.phone %></dd>
+          <dt class="col-sm-4">メモ</dt>
+          <dd class="col-sm-8"><%= simple_format(@employee.notes) %></dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card card-lift shadow-sm h-100">
+      <div class="card-body">
+        <h2 class="h5 mb-3">現在の状態</h2>
+        <ul class="list-unstyled mb-0 small text-muted">
+          <li><strong>所属:</strong> <%= @current_assignment&.department %></li>
+          <li><strong>役職:</strong> <%= @current_position&.title %></li>
+          <li><strong>ステータス:</strong> <%= @current_status&.status || @employee.current_status %></li>
+        </ul>
+        <hr>
+        <h3 class="h6">直近の異動</h3>
+        <ul class="list-group list-group-flush small">
+          <% @recent_assignments.each do |assignment| %>
+            <li class="list-group-item d-flex justify-content-between">
+              <span><%= assignment.department %> / <%= assignment.position_title %></span>
+              <span><%= assignment.effective_from&.strftime("%Y-%m-%d") %></span>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4 mt-1">
+  <div class="col-lg-6">
+    <div class="card card-lift shadow-sm h-100">
+      <div class="card-body">
+        <h2 class="h5 mb-3">資格</h2>
+        <table class="table table-sm">
+          <thead>
+            <tr>
+              <th>名称</th>
+              <th>取得日</th>
+              <th>有効期限</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @qualifications.each do |qualification| %>
+              <tr>
+                <td><%= qualification.name %></td>
+                <td><%= qualification.acquired_on&.strftime("%Y-%m-%d") %></td>
+                <td><%= qualification.expires_on&.strftime("%Y-%m-%d") %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card card-lift shadow-sm h-100">
+      <div class="card-body">
+        <h2 class="h5 mb-3">直近の評価</h2>
+        <table class="table table-sm">
+          <thead>
+            <tr>
+              <th>日付</th>
+              <th>サイクル</th>
+              <th>評価</th>
+              <th>コメント</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @recent_reviews.each do |review| %>
+              <tr>
+                <td><%= review.reviewed_on&.strftime("%Y-%m-%d") %></td>
+                <td><%= review.review_cycle %></td>
+                <td><%= review.grade || review.score %></td>
+                <td><%= truncate(review.summary, length: 40) %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>

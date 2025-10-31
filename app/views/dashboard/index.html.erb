@@ -1,0 +1,157 @@
+<% content_for :title, "ダッシュボード" %>
+<% content_for :section_label, "運行状況サマリー" %>
+
+<div class="row g-4">
+  <div class="col-xl-3 col-md-6">
+    <div class="card card-lift shadow-sm h-100">
+      <div class="card-body">
+        <span class="badge-soft mb-3"><i class="bi bi-graph-up-arrow"></i> 当月予測</span>
+        <div class="stat-value text-primary">¥ 48,200,000</div>
+        <div class="text-muted small">前年比 <span class="text-success fw-semibold">+12.4%</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-xl-3 col-md-6">
+    <div class="card card-lift shadow-sm h-100">
+      <div class="card-body">
+        <span class="badge-soft mb-3"><i class="bi bi-speedometer2"></i> 稼働率</span>
+        <div class="stat-value text-info">86.2%</div>
+        <div class="text-muted small">車両65台中 56台稼働中</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-xl-3 col-md-6">
+    <div class="card card-lift shadow-sm h-100">
+      <div class="card-body">
+        <span class="badge-soft mb-3"><i class="bi bi-map"></i> 配送完了</span>
+        <div class="stat-value text-warning">218 件</div>
+        <div class="text-muted small">遅延 <span class="text-danger fw-semibold">3件</span> / 要確認 5件</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-xl-3 col-md-6">
+    <div class="card card-lift shadow-sm h-100">
+      <div class="card-body">
+        <span class="badge-soft mb-3"><i class="bi bi-emoji-smile"></i> クレーム</span>
+        <div class="stat-value text-success">0 件</div>
+        <div class="text-muted small">今月は顧客クレーム報告なし</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4 mt-1">
+  <div class="col-xxl-7">
+    <div class="card card-lift shadow-sm h-100">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <div>
+            <h2 class="h5 mb-0">日次売上トレンド</h2>
+            <div class="text-muted small">目標達成率 74% / 残り7営業日</div>
+          </div>
+          <span class="badge rounded-pill text-bg-primary">週次サマリー</span>
+        </div>
+        <div class="bg-body-secondary rounded-4 p-5 text-center text-muted">
+          <i class="bi bi-bar-chart fs-1 d-block mb-3 text-secondary"></i>
+          チャート領域（BIツール連携予定）
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-xxl-5">
+    <div class="card card-lift shadow-sm h-100">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h2 class="h5 mb-0">本日の配車アラート</h2>
+          <a href="<%= dispatch_path %>" class="btn btn-sm btn-outline-primary">詳細を見る</a>
+        </div>
+        <div class="list-group list-group-flush">
+          <div class="list-group-item border-0 px-0 d-flex align-items-start gap-3">
+            <span class="badge rounded-pill text-bg-danger mt-1">遅延</span>
+            <div>
+              <div class="fw-semibold">千葉第2便（松戸→大田）</div>
+              <div class="text-muted small">理由: 首都高渋滞 / ETA 45分遅延</div>
+            </div>
+          </div>
+          <div class="list-group-item border-0 px-0 d-flex align-items-start gap-3">
+            <span class="badge rounded-pill text-bg-warning mt-1">確認</span>
+            <div>
+              <div class="fw-semibold">冷凍車 #12（温度アラート）</div>
+              <div class="text-muted small">庫内温度 -15℃ → -5℃ / ドライバー連絡済み</div>
+            </div>
+          </div>
+          <div class="list-group-item border-0 px-0 d-flex align-items-start gap-3">
+            <span class="badge rounded-pill text-bg-info mt-1">予定</span>
+            <div>
+              <div class="fw-semibold">車検期限リスト</div>
+              <div class="text-muted small">今週7台・来週12台 / 整備部に連絡済み</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4 mt-1">
+  <div class="col-lg-6">
+    <div class="card card-lift shadow-sm h-100">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h2 class="h5 mb-0">未処理タスク</h2>
+          <a href="<%= workflow_path %>" class="btn btn-sm btn-outline-secondary">ワークフロー</a>
+        </div>
+        <div class="list-group list-group-flush">
+          <a href="<%= workflow_path %>" class="list-group-item list-group-item-action border-0 px-0">
+            <div class="d-flex align-items-center justify-content-between">
+              <div>
+                <div class="fw-semibold">新規顧客「北信運輸」契約稟議</div>
+                <div class="text-muted small">営業部 → 配車本部 承認待ち</div>
+              </div>
+              <span class="badge rounded-pill text-bg-primary">対応中</span>
+            </div>
+          </a>
+          <a href="<%= workflow_path %>" class="list-group-item list-group-item-action border-0 px-0">
+            <div class="d-flex align-items-center justify-content-between">
+              <div>
+                <div class="fw-semibold">契約ドライバー研修資料の更新</div>
+                <div class="text-muted small">教育担当: 佐藤 / 期限: 11月5日</div>
+              </div>
+              <span class="badge rounded-pill text-bg-warning">要対応</span>
+            </div>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card card-lift shadow-sm h-100">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h2 class="h5 mb-0">最新のお知らせ</h2>
+          <a href="<%= announcements_path %>" class="btn btn-sm btn-outline-secondary">一覧へ</a>
+        </div>
+        <div class="list-group list-group-flush">
+          <a href="<%= announcements_path %>" class="list-group-item list-group-item-action border-0 px-0">
+            <div>
+              <div class="fw-semibold">冬季繁忙期の増便計画について</div>
+              <div class="text-muted small">総務部 ・ 10月28日 10:30</div>
+            </div>
+          </a>
+          <a href="<%= announcements_path %>" class="list-group-item list-group-item-action border-0 px-0">
+            <div>
+              <div class="fw-semibold">ドライバー安全研修（11月度）のお知らせ</div>
+              <div class="text-muted small">人事部 ・ 10月26日 16:15</div>
+            </div>
+          </a>
+          <a href="<%= announcements_path %>" class="list-group-item list-group-item-action border-0 px-0">
+            <div>
+              <div class="fw-semibold">配車システムメンテナンス（11/2 0:00-2:00）</div>
+              <div class="text-muted small">情報システム部 ・ 10月25日 09:00</div>
+            </div>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
