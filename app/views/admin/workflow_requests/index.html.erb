@@ -1,0 +1,59 @@
+<% content_for :title, "承認タスク" %>
+<% content_for :section_label, "承認管理" %>
+
+<div class="row g-4">
+  <div class="col-lg-6">
+    <div class="card card-lift h-100">
+      <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
+        <span>自分の承認待ち</span>
+        <span class="badge bg-primary"><%= @pending_stages.size %></span>
+      </div>
+      <div class="card-body">
+        <% if @pending_stages.any? %>
+          <div class="list-group list-group-flush">
+            <% @pending_stages.each do |stage| %>
+              <%= link_to admin_workflow_request_path(stage.workflow_request), class: "list-group-item list-group-item-action d-flex justify-content-between align-items-start" do %>
+                <div>
+                  <div class="fw-semibold"><%= stage.workflow_request.title %></div>
+                  <div class="text-muted small">ステップ: <%= stage.name %> / 申請者: <%= stage.workflow_request.requester.display_name %></div>
+                </div>
+                <span class="badge bg-warning text-dark">対応待ち</span>
+              <% end %>
+            <% end %>
+          </div>
+        <% else %>
+          <div class="alert alert-success mb-0">現在対応する申請はありません。</div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card card-lift h-100">
+      <div class="card-header bg-white fw-semibold">最近の申請</div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-sm align-middle">
+            <thead>
+              <tr>
+                <th>申請日</th>
+                <th>件名</th>
+                <th>申請者</th>
+                <th>ステータス</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @recent_requests.each do |request| %>
+                <tr>
+                  <td><%= request.submitted_at ? l(request.submitted_at.to_date) : '-' %></td>
+                  <td><%= link_to request.title, admin_workflow_request_path(request) %></td>
+                  <td><%= request.requester.display_name %></td>
+                  <td><%= workflow_status_badge(request) %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

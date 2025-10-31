@@ -14,6 +14,10 @@ class Employee < ApplicationRecord
 
   scope :ordered_by_code, -> { order(:employee_code) }
 
+  def display_label
+    [employee_code, full_name.presence || [last_name, first_name].compact.join(" ")].compact.join(" ")
+  end
+
   private
 
   def populate_full_name

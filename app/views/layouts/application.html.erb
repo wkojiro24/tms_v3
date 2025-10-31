@@ -68,7 +68,7 @@
             <i class="bi bi-lightbulb"></i>
             <span>ナレッジ</span>
           <% end %>
-          <%= link_to workflow_path, class: "nav-link portal-nav-link #{'active' if current_page?(workflow_path)}" do %>
+          <%= link_to workflow_requests_path, class: "nav-link portal-nav-link #{'active' if request.path.starts_with?('/workflows')}" do %>
             <i class="bi bi-kanban"></i>
             <span>ワークフロー</span>
           <% end %>
@@ -91,6 +91,18 @@
             <%= link_to admin_payrolls_path, class: "nav-link portal-nav-link #{'active' if request.path == '/admin/payrolls'}" do %>
               <i class="bi bi-table"></i>
               <span>給与グリッド</span>
+            <% end %>
+            <%= link_to admin_workflow_requests_path, class: "nav-link portal-nav-link #{'active' if request.path.starts_with?('/admin/workflow_requests')}" do %>
+              <i class="bi bi-check2-square"></i>
+              <span>承認タスク</span>
+            <% end %>
+            <%= link_to admin_workflow_categories_path, class: "nav-link portal-nav-link #{'active' if request.path.starts_with?('/admin/workflow_categories')}" do %>
+              <i class="bi bi-diagram-3"></i>
+              <span>承認カテゴリ</span>
+            <% end %>
+            <%= link_to admin_users_path, class: "nav-link portal-nav-link #{'active' if request.path.starts_with?('/admin/users')}" do %>
+              <i class="bi bi-people-fill"></i>
+              <span>ユーザー管理</span>
             <% end %>
           <% end %>
         </nav>

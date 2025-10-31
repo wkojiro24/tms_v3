@@ -1,0 +1,36 @@
+<%= form_with model: [:admin, @workflow_category], local: true do |f| %>
+  <% if @workflow_category.errors.any? %>
+    <div class="alert alert-danger">
+      <strong>入力内容に誤りがあります。</strong>
+      <ul class="mb-0">
+        <% @workflow_category.errors.full_messages.each do |msg| %>
+          <li><%= msg %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="row g-3">
+    <div class="col-md-6">
+      <%= f.label :name, '名称', class: 'form-label' %>
+      <%= f.text_field :name, class: 'form-control', required: true %>
+    </div>
+    <div class="col-md-6">
+      <%= f.label :code, 'コード', class: 'form-label' %>
+      <%= f.text_field :code, class: 'form-control', required: true %>
+    </div>
+    <div class="col-12">
+      <%= f.label :description, '説明', class: 'form-label' %>
+      <%= f.text_area :description, rows: 3, class: 'form-control' %>
+    </div>
+    <div class="col-12 form-check">
+      <%= f.check_box :active, class: 'form-check-input', id: 'workflow_category_active' %>
+      <%= f.label :active, '有効にする', class: 'form-check-label', for: 'workflow_category_active' %>
+    </div>
+  </div>
+
+  <div class="d-flex justify-content-end gap-2 mt-4">
+    <%= link_to '戻る', admin_workflow_categories_path, class: 'btn btn-outline-secondary' %>
+    <%= f.submit '保存', class: 'btn btn-primary' %>
+  </div>
+<% end %>

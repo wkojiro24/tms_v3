@@ -279,6 +279,38 @@ body {
   line-height: 1.2;
 }
 
+.workflow-form-section {
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 18px;
+  padding: 1.75rem;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+  margin-bottom: 1.5rem;
+}
+
+.workflow-form-section h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: #0f172a;
+}
+
+.workflow-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem 1.5rem;
+}
+
+.workflow-form-grid .form-label {
+  font-weight: 600;
+  color: #111827;
+}
+
+.workflow-form-section-muted {
+  background: #f8fafc;
+  border-style: dashed;
+}
+
 body.payroll-fullscreen .portal-sidebar,
 body.payroll-fullscreen .portal-header {
   display: none;
@@ -292,6 +324,192 @@ body.payroll-fullscreen .payroll-grid {
   box-shadow: 0 12px 45px rgba(15, 23, 42, 0.12);
 }
 
+.workflow-paper-wrapper {
+  display: flex;
+  gap: 1.5rem;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.workflow-paper-steps {
+  width: 220px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  border-radius: 16px;
+  background: #f8fafc;
+  padding: 1.5rem 1rem;
+}
+
+.workflow-paper-steps h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.workflow-paper-steps ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.workflow-paper-steps li {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  border-left: 3px solid transparent;
+  padding-left: 0.75rem;
+}
+
+.workflow-paper-steps li.active {
+  border-color: #2563eb;
+}
+
+.workflow-paper-steps .step-number {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  color: #0f172a;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.workflow-paper-steps li.active .step-number {
+  background: #2563eb;
+  color: #fff;
+}
+
+.workflow-paper-steps .step-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.workflow-paper-form {
+  flex: 1;
+}
+
+.workflow-paper {
+  background: #fff;
+  border: 1px solid rgba(15, 23, 42, 0.15);
+  border-radius: 18px;
+  box-shadow: 0 10px 35px rgba(15, 23, 42, 0.12);
+  padding: 2rem;
+}
+
+.workflow-paper-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 2px solid #0f172a;
+  padding-bottom: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.workflow-paper-header h1 {
+  font-size: 1.6rem;
+  letter-spacing: 0.3em;
+}
+
+.workflow-paper-header .paper-label {
+  font-size: 0.85rem;
+  color: #475569;
+}
+
+.workflow-paper-header .paper-note {
+  font-size: 0.75rem;
+  color: #94a3b8;
+}
+
+.workflow-paper-header .paper-meta {
+  text-align: right;
+  font-size: 0.85rem;
+  color: #475569;
+}
+
+.workflow-paper-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.workflow-paper-table th,
+.workflow-paper-table td {
+  border: 1px solid rgba(15, 23, 42, 0.35);
+  padding: 0.6rem;
+  vertical-align: middle;
+  font-size: 0.9rem;
+}
+
+.workflow-paper-table th {
+  background: #f1f5f9;
+  width: 160px;
+  font-weight: 600;
+}
+
+.workflow-paper-table .section-divider th {
+  background: #e2e8f0;
+  text-align: left;
+  font-size: 0.95rem;
+}
+
+.workflow-template-name {
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.workflow-template-hint {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.workflow-paper-attachments .form-text {
+  font-size: 0.8rem;
+}
+
+.workflow-paper-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-top: 2rem;
+}
+
+.workflow-paper-signature {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.signature-label {
+  font-size: 0.8rem;
+  text-align: center;
+  color: #475569;
+}
+
+.signature-box {
+  width: 60px;
+  height: 60px;
+  border: 1px solid rgba(15, 23, 42, 0.6);
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  font-weight: 600;
+  color: #475569;
+}
+
+@media (max-width: 992px) {
+  .workflow-paper-wrapper {
+    flex-direction: column;
+  }
+
+  .workflow-paper-steps {
+    width: 100%;
+    order: 2;
+  }
+}
 @media (max-width: 992px) {
   .portal-sidebar {
     display: none;

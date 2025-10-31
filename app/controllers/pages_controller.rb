@@ -19,6 +19,7 @@ class PagesController < ApplicationController
   end
 
   def workflow
+    redirect_to workflow_requests_path
   end
 
   def faq

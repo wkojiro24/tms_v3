@@ -10,4 +10,9 @@ class User < ApplicationRecord
   }, _suffix: true
 
   validates :role, presence: true
+
+  def display_name
+    full_name = respond_to?(:full_name) ? self.full_name : nil
+    full_name.present? ? full_name : email
+  end
 end

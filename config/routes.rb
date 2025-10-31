@@ -14,11 +14,13 @@ Rails.application.routes.draw do
     get "fleet"
     get "hr"
     get "knowledge"
-    get "workflow"
-    get "faq"
+  get "workflow"
+  get "faq"
   end
 
   get "/imports", to: redirect("/admin/imports/new")
+
+  resources :workflow_requests, path: "workflows", only: [:index, :new, :create, :show]
 
   namespace :admin do
     root to: "dashboard#index"
@@ -29,6 +31,15 @@ Rails.application.routes.draw do
     resources :employees, only: [:index, :show] do
       get :payroll, on: :member
       get :history, on: :member
+    end
+    resources :workflow_requests, only: [:index, :show] do
+      post :decide, on: :member
+      post :comment, on: :member
+    end
+    resources :users, only: [:index, :new, :create, :edit, :update]
+    resources :workflow_categories do
+      resources :workflow_stage_templates, only: [:create, :update, :destroy]
+      resources :workflow_category_notifications, only: [:create, :destroy]
     end
   end
 end

@@ -1,24 +1,62 @@
-# README
+# TMS Portal
 
-This README would normally document whatever steps are necessary to get the
-application up and running.
+社内ポータル（ダッシュボード、給与管理、承認ワークフローなど）をまとめた Ruby on Rails アプリケーションです。
 
-Things you may want to cover:
+## 主な機能
 
-* Ruby version
+- **ダッシュボード**：日常業務向けのメニューと KPI モジュール。
+- **給与インポート／グリッド表示**：Excel レイアウトを再現する給与ビューと履歴閲覧。
+- **承認ワークフロー**：
+  - カテゴリ単位で承認ステップを定義（車両修理・備品購入など）。
+  - 申請者はカテゴリ、金額、添付資料（相見積もり等）を登録。
+  - 承認者はブラウザ上で添付プレビュー（PDF / 画像）を確認しながら承認・保留・差戻し・却下を実行。
+  - 最終承認が完了すると関係ロールへ通知（現状はログ出力、後からメール等に差し替え可能）。
+- **管理者機能**：ユーザー追加・編集、承認カテゴリ／ステージ設定、申請の承認処理。
 
-* System dependencies
+## 開発環境
 
-* Configuration
+- Ruby 3.3.4
+- Rails 7.x
+- PostgreSQL
+- Node.js 18 以上
+- npm または Yarn
 
-* Database creation
+## セットアップ
 
-* Database initialization
+```sh
+# 依存ライブラリ
+bundle install
+npm install
 
-* How to run the test suite
+# データベース作成 & マイグレーション
+bin/rails db:create
+bin/rails db:migrate
 
-* Services (job queues, cache servers, search engines, etc.)
+# 初期データ（管理者・スタッフ・承認カテゴリ・サンプルユーザーなど）
+bin/rails db:seed
 
-* Deployment instructions
+# 開発サーバ
+bin/rails server
+```
 
-* ...
+起動後 `http://localhost:3000` にアクセスしてください。
+
+- 管理者: `admin@example.com` / `password`
+- スタッフ（申請者例）: `staff@example.com` / `password`
+- 追加で `approver@example.com`, `manager@example.com`, `maintenance@example.com`, `purchasing@example.com`, `accounting@example.com` も `password` で利用できます。
+
+## ワークフローの使い方
+
+1. 左メニュー「ワークフロー」から申請一覧を開き、新規申請を作成します。
+2. カテゴリを選択すると定義済みの承認ステップがコピーされます。
+3. 金額や取引先、必要日、相見積りなどの添付資料を入力・アップロードし申請。
+4. 担当承認者は「承認タスク」画面で内容と添付をプレビューし、承認／保留／差戻し／却下を実行します。
+5. 最終承認後は通知ロールに応じたログが出力され、経理など関係部署に共有できます（将来的にメール等へ拡張可能）。
+
+## テスト
+
+```sh
+bin/rails test
+```
+
+（システムテストは未整備のため、今後追加予定です。）

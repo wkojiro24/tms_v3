@@ -1,0 +1,46 @@
+<% content_for :title, "ワークフロー申請" %>
+<% content_for :section_label, "承認ワークフロー" %>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2 class="h5 mb-0">申請一覧</h2>
+  <%= link_to "新規申請", new_workflow_request_path, class: "btn btn-primary btn-sm" %>
+</div>
+
+<div class="card card-lift">
+  <div class="card-body">
+    <% if @workflow_requests.any? %>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle">
+          <thead>
+            <tr>
+              <th>申請日</th>
+              <th>件名</th>
+              <th>カテゴリ</th>
+              <th>金額</th>
+              <th>ステータス</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @workflow_requests.each do |request| %>
+              <tr>
+                <td><%= request.submitted_at ? l(request.submitted_at.to_date) : "-" %></td>
+                <td><%= link_to request.title, workflow_request_path(request) %></td>
+                <td><%= request.workflow_category.name %></td>
+                <td class="text-end"><%= request.amount.present? ? number_to_currency(request.amount, unit: request.currency) : "-" %></td>
+                <td><%= workflow_status_badge(request) %></td>
+                <td class="text-end">
+                  <%= link_to "詳細", workflow_request_path(request), class: "btn btn-outline-secondary btn-sm" %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <div class="alert alert-info mb-0">
+        まだ申請がありません。「新規申請」ボタンから作成できます。
+      </div>
+    <% end %>
+  </div>
+</div>

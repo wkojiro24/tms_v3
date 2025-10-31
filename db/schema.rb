@@ -10,9 +10,38 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2025_10_31_045022) do
+ActiveRecord::Schema[7.2].define(version: 2025_10_31_052010) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
+
+  create_table "active_storage_attachments", force: :cascade do |t|
+    t.string "name", null: false
+    t.string "record_type", null: false
+    t.bigint "record_id", null: false
+    t.bigint "blob_id", null: false
+    t.datetime "created_at", null: false
+    t.index ["blob_id"], name: "index_active_storage_attachments_on_blob_id"
+    t.index ["record_type", "record_id", "name", "blob_id"], name: "index_active_storage_attachments_uniqueness", unique: true
+  end
+
+  create_table "active_storage_blobs", force: :cascade do |t|
+    t.string "key", null: false
+    t.string "filename", null: false
+    t.string "content_type"
+    t.text "metadata"
+    t.string "service_name", null: false
+    t.bigint "byte_size", null: false
+    t.string "checksum"
+    t.datetime "created_at", null: false
+    t.index ["key"], name: "index_active_storage_blobs_on_key", unique: true
+  end
+
+  create_table "active_storage_variant_records", force: :cascade do |t|
+    t.bigint "blob_id", null: false
+    t.string "variation_digest", null: false
+    t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
+    t.index ["blob_id"], name: "index_active_storage_variant_records_on_blob_id"
+  end
 
   create_table "employee_assignments", force: :cascade do |t|
     t.bigint "employee_id", null: false
@@ -194,6 +223,104 @@ ActiveRecord::Schema[7.2].define(version: 2025_10_31_045022) do
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
   end
 
+  create_table "workflow_approvals", force: :cascade do |t|
+    t.bigint "workflow_stage_id", null: false
+    t.bigint "actor_id", null: false
+    t.string "action", null: false
+    t.text "comment"
+    t.datetime "acted_at", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["actor_id"], name: "index_workflow_approvals_on_actor_id"
+    t.index ["workflow_stage_id"], name: "index_workflow_approvals_on_stage_id"
+  end
+
+  create_table "workflow_categories", force: :cascade do |t|
+    t.string "name", null: false
+    t.string "code", null: false
+    t.text "description"
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["code"], name: "index_workflow_categories_on_code", unique: true
+  end
+
+  create_table "workflow_category_notifications", force: :cascade do |t|
+    t.bigint "workflow_category_id", null: false
+    t.string "role", null: false
+    t.string "description"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["workflow_category_id"], name: "index_category_notifications_on_category"
+  end
+
+  create_table "workflow_notes", force: :cascade do |t|
+    t.bigint "workflow_request_id", null: false
+    t.bigint "author_id", null: false
+    t.text "body", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["author_id"], name: "index_workflow_notes_on_author_id"
+    t.index ["workflow_request_id"], name: "index_workflow_notes_on_workflow_request_id"
+  end
+
+  create_table "workflow_requests", force: :cascade do |t|
+    t.bigint "workflow_category_id", null: false
+    t.bigint "requester_id", null: false
+    t.string "title", null: false
+    t.string "status", default: "draft", null: false
+    t.decimal "amount", precision: 15, scale: 2
+    t.string "currency", default: "JPY", null: false
+    t.string "vendor_name"
+    t.string "vehicle_identifier"
+    t.date "needed_on"
+    t.text "summary"
+    t.text "additional_information"
+    t.datetime "submitted_at"
+    t.datetime "finalized_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.bigint "requester_employee_id"
+    t.index ["requester_employee_id"], name: "index_workflow_requests_on_requester_employee_id"
+    t.index ["requester_id"], name: "index_workflow_requests_on_requester_id"
+    t.index ["status"], name: "index_workflow_requests_on_status"
+    t.index ["submitted_at"], name: "index_workflow_requests_on_submitted_at"
+    t.index ["workflow_category_id"], name: "index_workflow_requests_on_category_id"
+  end
+
+  create_table "workflow_stage_templates", force: :cascade do |t|
+    t.bigint "workflow_category_id", null: false
+    t.integer "position", default: 1, null: false
+    t.string "name", null: false
+    t.string "responsible_role"
+    t.bigint "responsible_user_id"
+    t.string "instructions"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["responsible_user_id"], name: "index_workflow_stage_templates_on_responsible_user_id"
+    t.index ["workflow_category_id", "position"], name: "index_stage_templates_on_category_and_position"
+    t.index ["workflow_category_id"], name: "index_stage_templates_on_category_id"
+  end
+
+  create_table "workflow_stages", force: :cascade do |t|
+    t.bigint "workflow_request_id", null: false
+    t.integer "position", default: 1, null: false
+    t.string "name", null: false
+    t.string "status", default: "pending", null: false
+    t.string "responsible_role"
+    t.bigint "responsible_user_id"
+    t.datetime "activated_at"
+    t.datetime "completed_at"
+    t.text "last_comment"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["responsible_user_id"], name: "index_workflow_stages_on_responsible_user_id"
+    t.index ["status"], name: "index_workflow_stages_on_status"
+    t.index ["workflow_request_id", "position"], name: "index_workflow_stages_on_request_and_position"
+    t.index ["workflow_request_id"], name: "index_workflow_stages_on_request_id"
+  end
+
   add_foreign_key "employee_assignments", "employees"
   add_foreign_key "employee_positions", "employees"
   add_foreign_key "employee_qualifications", "employees"
@@ -209,4 +336,16 @@ ActiveRecord::Schema[7.2].define(version: 2025_10_31_045022) do
   add_foreign_key "payroll_cells", "periods"
   add_foreign_key "payroll_column_orders", "employees"
   add_foreign_key "payroll_column_orders", "periods"
+  add_foreign_key "workflow_approvals", "users", column: "actor_id"
+  add_foreign_key "workflow_approvals", "workflow_stages"
+  add_foreign_key "workflow_category_notifications", "workflow_categories"
+  add_foreign_key "workflow_notes", "users", column: "author_id"
+  add_foreign_key "workflow_notes", "workflow_requests"
+  add_foreign_key "workflow_requests", "employees", column: "requester_employee_id"
+  add_foreign_key "workflow_requests", "users", column: "requester_id"
+  add_foreign_key "workflow_requests", "workflow_categories"
+  add_foreign_key "workflow_stage_templates", "users", column: "responsible_user_id"
+  add_foreign_key "workflow_stage_templates", "workflow_categories"
+  add_foreign_key "workflow_stages", "users", column: "responsible_user_id"
+  add_foreign_key "workflow_stages", "workflow_requests"
 end

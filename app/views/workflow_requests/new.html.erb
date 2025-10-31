@@ -1,0 +1,300 @@
+<% content_for :title, "新規ワークフロー申請" %>
+<% content_for :section_label, "承認ワークフロー" %>
+
+<% if @categories.blank? %>
+  <div class="alert alert-warning">
+    承認カテゴリがまだ設定されていません。管理者にお問い合わせください。
+  </div>
+<% else %>
+  <div class="workflow-paper-wrapper">
+    <div class="workflow-paper-steps">
+      <h2>申請フロー</h2>
+      <ol>
+        <li class="active">
+          <span class="step-number">1</span>
+          <div>
+            <div class="step-title">申請</div>
+            <small>フォームに必要事項を記入します</small>
+          </div>
+        </li>
+        <li>
+          <span class="step-number">2</span>
+          <div>
+            <div class="step-title">承認待ち</div>
+            <small>所属長・管理部の確認</small>
+          </div>
+        </li>
+        <li>
+          <span class="step-number">3</span>
+          <div>
+            <div class="step-title">決裁待ち</div>
+            <small>最終決裁者が判断します</small>
+          </div>
+        </li>
+      </ol>
+    </div>
+
+    <%= form_with model: @workflow_request,
+                  url: workflow_requests_path,
+                  data: { controller: "workflow-form", "workflow-form-default-title-value": "申請書" },
+                  local: true,
+                  html: { multipart: true, class: "workflow-paper-form" } do |f| %>
+
+      <% if @workflow_request.errors.any? %>
+        <div class="alert alert-danger">入力内容を確認してください。</div>
+      <% end %>
+
+      <div class="workflow-paper">
+        <header class="workflow-paper-header">
+          <div>
+            <div class="paper-label">稟議番号</div>
+            <div class="paper-note">自動採番</div>
+          </div>
+          <h1>申請書</h1>
+          <div class="paper-meta">
+            <div>申請日：<%= l(Date.current) %></div>
+            <div>決裁区分：＿＿＿＿</div>
+          </div>
+        </header>
+
+        <table class="workflow-paper-table">
+          <tbody data-workflow-form-target="section" data-section-key="basic">
+            <tr data-workflow-form-target="field" data-field-name="category">
+              <th>カテゴリ</th>
+              <td colspan="3">
+                <%= f.select :workflow_category_id,
+                             options_for_select(@categories.map { |category| [category.name, category.id, { "data-template-code": category.code }] },
+                                                @workflow_request.workflow_category_id),
+                             { prompt: "選択してください" },
+                             class: "form-select form-select-sm", data: { "workflow-form-target": "categorySelect", action: "workflow-form#changeTemplate" } %>
+              </td>
+            </tr>
+            <tr>
+              <th>テンプレート</th>
+              <td colspan="3">
+                <div class="workflow-template-name" data-workflow-form-target="templateName">申請カテゴリを選択してください</div>
+                <div class="workflow-template-hint" data-workflow-form-target="summaryHint"></div>
+              </td>
+            </tr>
+            <tr data-workflow-form-target="field" data-field-name="requester_employee_id">
+              <th>申請者</th>
+              <td>
+                <%= f.collection_select :requester_employee_id,
+                                        @employees,
+                                        :id,
+                                        :display_label,
+                                        { include_blank: "選択してください" },
+                                        class: "form-select form-select-sm" %>
+              </td>
+              <th>担当者メール</th>
+              <td class="text-muted">（自動通知：登録済み）</td>
+            </tr>
+            <tr data-workflow-form-target="field" data-field-name="title">
+              <th>件名</th>
+              <td colspan="3"><%= f.text_field :title, class: "form-control", required: true, placeholder: "例）○○営業所 車両修理申請" %></td>
+            </tr>
+            <tr data-workflow-form-target="field" data-field-name="summary">
+              <th>背景 / 目的</th>
+              <td colspan="3"><%= f.text_area :summary, rows: 3, class: "form-control", data: { "workflow-form-target": "summaryInput" } %></td>
+            </tr>
+            <tr data-workflow-form-target="field" data-field-name="additional_information">
+              <th>補足事項</th>
+              <td colspan="3"><%= f.text_area :additional_information, rows: 3, class: "form-control" %></td>
+            </tr>
+          </tbody>
+
+          <tbody data-workflow-form-target="section" data-section-key="financial">
+            <tr class="section-divider">
+              <th colspan="4">金額・取引情報</th>
+            </tr>
+            <tr data-workflow-form-target="field" data-field-name="amount">
+              <th>概算金額 (税抜)</th>
+              <td><%= f.number_field :amount, class: "form-control", step: 0.01 %></td>
+              <th>通貨</th>
+              <td><%= f.select :currency, [["JPY", "JPY"], ["USD", "USD"], ["EUR", "EUR"]], {}, class: "form-select form-select-sm" %></td>
+            </tr>
+            <tr data-workflow-form-target="field" data-field-name="vendor_name">
+              <th>見積先 / 仕入先</th>
+              <td colspan="3"><%= f.text_field :vendor_name, class: "form-control" %></td>
+            </tr>
+            <tr data-workflow-form-target="field" data-field-name="needed_on">
+              <th>必要日</th>
+              <td colspan="3"><%= f.date_field :needed_on, class: "form-control" %></td>
+            </tr>
+          </tbody>
+
+          <tbody data-workflow-form-target="section" data-section-key="travel">
+            <tr class="section-divider">
+              <th colspan="4">出張情報</th>
+            </tr>
+            <tr data-workflow-form-target="field" data-field-name="metadata.travel_destination">
+              <th>訪問先</th>
+              <td colspan="3"><input type="text" class="form-control" name="workflow_request[metadata][travel_destination]" value="<%= metadata_input_value(@workflow_request, :travel_destination) %>"></td>
+            </tr>
+            <tr data-workflow-form-target="field" data-field-name="metadata.travel_purpose">
+              <th>目的</th>
+              <td colspan="3"><textarea class="form-control" rows="3" name="workflow_request[metadata][travel_purpose]"><%= metadata_input_value(@workflow_request, :travel_purpose) %></textarea></td>
+            </tr>
+            <tr>
+              <th>出発日</th>
+              <td><input type="date" class="form-control" name="workflow_request[metadata][travel_start_on]" value="<%= metadata_input_value(@workflow_request, :travel_start_on) %>"></td>
+              <th>帰着日</th>
+              <td><input type="date" class="form-control" name="workflow_request[metadata][travel_end_on]" value="<%= metadata_input_value(@workflow_request, :travel_end_on) %>"></td>
+            </tr>
+            <tr>
+              <th>同行者</th>
+              <td><input type="text" class="form-control" name="workflow_request[metadata][travel_members]" value="<%= metadata_input_value(@workflow_request, :travel_members) %>"></td>
+              <th>移動手段</th>
+              <td><input type="text" class="form-control" name="workflow_request[metadata][travel_transport]" value="<%= metadata_input_value(@workflow_request, :travel_transport) %>"></td>
+            </tr>
+          </tbody>
+
+          <tbody data-workflow-form-target="section" data-section-key="purchase">
+            <tr class="section-divider">
+              <th colspan="4">購買申請内容</th>
+            </tr>
+            <tr data-workflow-form-target="field" data-field-name="metadata.purchase_items">
+              <th>購入品目</th>
+              <td colspan="3"><textarea class="form-control" rows="3" name="workflow_request[metadata][purchase_items]"><%= metadata_input_value(@workflow_request, :purchase_items) %></textarea></td>
+            </tr>
+            <tr data-workflow-form-target="field" data-field-name="metadata.purchase_reason">
+              <th>購入理由</th>
+              <td colspan="3"><textarea class="form-control" rows="3" name="workflow_request[metadata][purchase_reason]"><%= metadata_input_value(@workflow_request, :purchase_reason) %></textarea></td>
+            </tr>
+            <tr>
+              <th>仕入先候補</th>
+              <td><input type="text" class="form-control" name="workflow_request[metadata][purchase_supplier]" value="<%= metadata_input_value(@workflow_request, :purchase_supplier) %>"></td>
+              <th>納品希望日</th>
+              <td><input type="date" class="form-control" name="workflow_request[metadata][purchase_expected_on]" value="<%= metadata_input_value(@workflow_request, :purchase_expected_on) %>"></td>
+            </tr>
+          </tbody>
+
+          <tbody data-workflow-form-target="section" data-section-key="repair">
+            <tr class="section-divider">
+              <th colspan="4">修理申請内容</th>
+            </tr>
+            <tr data-workflow-form-target="field" data-field-name="metadata.repair_vehicle">
+              <th>対象車両</th>
+              <td colspan="3"><input type="text" class="form-control" name="workflow_request[metadata][repair_vehicle]" value="<%= metadata_input_value(@workflow_request, :repair_vehicle).presence || @workflow_request.vehicle_identifier %>"></td>
+            </tr>
+            <tr data-workflow-form-target="field" data-field-name="metadata.repair_issue">
+              <th>故障内容</th>
+              <td colspan="3"><textarea class="form-control" rows="3" name="workflow_request[metadata][repair_issue]"><%= metadata_input_value(@workflow_request, :repair_issue) %></textarea></td>
+            </tr>
+            <tr>
+              <th>見積番号</th>
+              <td><input type="text" class="form-control" name="workflow_request[metadata][repair_estimate_number]" value="<%= metadata_input_value(@workflow_request, :repair_estimate_number) %>"></td>
+              <th>費用負担部署</th>
+              <td><input type="text" class="form-control" name="workflow_request[metadata][repair_cost_center]" value="<%= metadata_input_value(@workflow_request, :repair_cost_center) %>"></td>
+            </tr>
+          </tbody>
+
+          <tbody data-workflow-form-target="section" data-section-key="challenge">
+            <tr class="section-divider">
+              <th colspan="4">チャレンジ制度</th>
+            </tr>
+            <tr data-workflow-form-target="field" data-field-name="metadata.challenge_summary">
+              <th>取り組み内容</th>
+              <td colspan="3"><textarea class="form-control" rows="3" name="workflow_request[metadata][challenge_summary]"><%= metadata_input_value(@workflow_request, :challenge_summary) %></textarea></td>
+            </tr>
+            <tr data-workflow-form-target="field" data-field-name="metadata.challenge_benefit">
+              <th>期待効果</th>
+              <td colspan="3"><textarea class="form-control" rows="3" name="workflow_request[metadata][challenge_benefit]"><%= metadata_input_value(@workflow_request, :challenge_benefit) %></textarea></td>
+            </tr>
+            <tr>
+              <th>関係メンバー</th>
+              <td colspan="3"><input type="text" class="form-control" name="workflow_request[metadata][challenge_team]" value="<%= metadata_input_value(@workflow_request, :challenge_team) %>"></td>
+            </tr>
+          </tbody>
+
+          <tbody data-workflow-form-target="section" data-section-key="asset">
+            <tr class="section-divider">
+              <th colspan="4">資産移動 / 売却</th>
+            </tr>
+            <tr data-workflow-form-target="field" data-field-name="metadata.asset_item">
+              <th>資産・備品名</th>
+              <td colspan="3"><input type="text" class="form-control" name="workflow_request[metadata][asset_item]" value="<%= metadata_input_value(@workflow_request, :asset_item) %>"></td>
+            </tr>
+            <tr>
+              <th>現在の場所</th>
+              <td><input type="text" class="form-control" name="workflow_request[metadata][asset_current_location]" value="<%= metadata_input_value(@workflow_request, :asset_current_location) %>"></td>
+              <th>移動 / 売却先</th>
+              <td><input type="text" class="form-control" name="workflow_request[metadata][asset_new_location]" value="<%= metadata_input_value(@workflow_request, :asset_new_location) %>"></td>
+            </tr>
+            <tr data-workflow-form-target="field" data-field-name="metadata.asset_reason">
+              <th>移動 / 売却理由</th>
+              <td colspan="3"><textarea class="form-control" rows="3" name="workflow_request[metadata][asset_reason]"><%= metadata_input_value(@workflow_request, :asset_reason) %></textarea></td>
+            </tr>
+          </tbody>
+
+          <tbody data-workflow-form-target="section" data-section-key="incident">
+            <tr class="section-divider">
+              <th colspan="4">事故・インシデント報告</th>
+            </tr>
+            <tr>
+              <th>発生日時</th>
+              <td><input type="datetime-local" class="form-control" name="workflow_request[metadata][incident_datetime]" value="<%= metadata_input_value(@workflow_request, :incident_datetime) %>"></td>
+              <th>発生場所</th>
+              <td><input type="text" class="form-control" name="workflow_request[metadata][incident_location]" value="<%= metadata_input_value(@workflow_request, :incident_location) %>"></td>
+            </tr>
+            <tr data-workflow-form-target="field" data-field-name="metadata.incident_description">
+              <th>状況詳細</th>
+              <td colspan="3"><textarea class="form-control" rows="3" name="workflow_request[metadata][incident_description]"><%= metadata_input_value(@workflow_request, :incident_description) %></textarea></td>
+            </tr>
+            <tr data-workflow-form-target="field" data-field-name="metadata.incident_response">
+              <th>初動対応</th>
+              <td colspan="3"><textarea class="form-control" rows="3" name="workflow_request[metadata][incident_response]"><%= metadata_input_value(@workflow_request, :incident_response) %></textarea></td>
+            </tr>
+            <tr>
+              <th>想定損害 / 費用</th>
+              <td colspan="3"><input type="text" class="form-control" name="workflow_request[metadata][incident_cost_impact]" value="<%= metadata_input_value(@workflow_request, :incident_cost_impact) %>"></td>
+            </tr>
+          </tbody>
+
+          <tbody data-workflow-form-target="section" data-section-key="attachments">
+            <tr class="section-divider">
+              <th colspan="4">添付資料</th>
+            </tr>
+            <tr>
+              <td colspan="4">
+                <div data-controller="attachments" data-attachments-max-files-value="5" class="workflow-paper-attachments">
+                  <div data-attachments-target="inputs">
+                    <div class="input-group mb-2" data-attachments-element>
+                      <input type="file" name="workflow_request[documents][]" class="form-control" />
+                      <button type="button" class="btn btn-outline-danger" data-action="attachments#remove">削除</button>
+                    </div>
+                  </div>
+                  <template data-attachments-target="template">
+                    <div class="input-group mb-2" data-attachments-element>
+                      <input type="file" name="workflow_request[documents][]" class="form-control" />
+                      <button type="button" class="btn btn-outline-danger" data-action="attachments#remove">削除</button>
+                    </div>
+                  </template>
+                  <button type="button" class="btn btn-outline-secondary btn-sm" data-action="attachments#add" data-attachments-target="addButton">
+                    添付を追加
+                  </button>
+                  <div class="form-text">最大5件までアップロードできます（PDF・画像推奨）。</div>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <footer class="workflow-paper-footer">
+          <div class="workflow-paper-signature">
+            <div class="signature-label">申請者</div>
+            <div class="signature-box">印</div>
+            <div class="signature-label">承認者</div>
+            <div class="signature-box">印</div>
+            <div class="signature-label">決裁者</div>
+            <div class="signature-box">印</div>
+          </div>
+          <div class="text-end">
+            <%= link_to "一覧へ戻る", workflow_requests_path, class: "btn btn-outline-secondary" %>
+            <%= f.submit "申請を送信", class: "btn btn-primary" %>
+          </div>
+        </footer>
+      </div>
+    <% end %>
+  </div>
+<% end %>
