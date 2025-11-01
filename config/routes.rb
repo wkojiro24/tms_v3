@@ -31,10 +31,16 @@ Rails.application.routes.draw do
     resources :payrolls, only: [:index] do
       delete :destroy, on: :collection
     end
-    resources :employees, only: [:index, :show] do
+    resources :employees do
       get :payroll, on: :member
       get :history, on: :member
     end
+    resources :departments
+    resources :job_categories
+    resources :job_positions
+    resources :grade_levels
+    resources :evaluation_grades
+    resources :evaluation_cycles
     resources :workflow_requests, only: [:index, :show] do
       post :decide, on: :member
       post :comment, on: :member

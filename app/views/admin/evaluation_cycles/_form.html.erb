@@ -1,0 +1,39 @@
+<%= form_with model: [:admin, evaluation_cycle], local: true do |f| %>
+  <% if evaluation_cycle.errors.any? %>
+    <div class="alert alert-danger">
+      <ul class="mb-0">
+        <% evaluation_cycle.errors.full_messages.each do |message| %>
+          <li><%= message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="mb-3">
+    <%= f.label :code, "コード", class: "form-label" %>
+    <%= f.text_field :code, class: "form-control", required: true %>
+  </div>
+  <div class="mb-3">
+    <%= f.label :name, "名称", class: "form-label" %>
+    <%= f.text_field :name, class: "form-control", required: true %>
+  </div>
+  <div class="row">
+    <div class="col-md-6 mb-3">
+      <%= f.label :start_on, "開始日", class: "form-label" %>
+      <%= f.date_field :start_on, class: "form-control" %>
+    </div>
+    <div class="col-md-6 mb-3">
+      <%= f.label :end_on, "終了日", class: "form-label" %>
+      <%= f.date_field :end_on, class: "form-control" %>
+    </div>
+  </div>
+  <div class="mb-3">
+    <%= f.label :description, "説明", class: "form-label" %>
+    <%= f.text_area :description, rows: 3, class: "form-control" %>
+  </div>
+  <div class="form-check form-switch mb-3">
+    <%= f.check_box :active, class: "form-check-input" %>
+    <%= f.label :active, "有効", class: "form-check-label" %>
+  </div>
+  <%= f.submit(evaluation_cycle.persisted? ? "更新" : "登録", class: "btn btn-primary") %>
+<% end %>

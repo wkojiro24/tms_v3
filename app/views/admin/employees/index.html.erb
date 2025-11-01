@@ -1,6 +1,11 @@
 <% content_for :title, "社員一覧" %>
 <% content_for :section_label, "マスタ管理" %>
 
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2 class="h5 mb-0">従業員一覧</h2>
+  <%= link_to "従業員を追加", new_admin_employee_path, class: "btn btn-primary btn-sm" %>
+</div>
+
 <div class="card card-lift shadow-sm mb-4">
   <div class="card-body">
     <%= form_with url: admin_employees_path, method: :get, local: true, class: "row g-3 align-items-end" do |f| %>
@@ -28,6 +33,7 @@
           <th>氏名</th>
           <th>所属</th>
           <th>役職</th>
+          <th>等級</th>
           <th>ステータス</th>
           <th></th>
         </tr>
@@ -37,8 +43,9 @@
           <tr>
             <td class="fw-semibold"><%= employee.employee_code %></td>
             <td><%= employee.full_name || [employee.last_name, employee.first_name].compact.join(" ") %></td>
-            <td><%= employee.assignments.current.first&.department %></td>
-            <td><%= employee.positions.current.first&.title %></td>
+            <td><%= employee.department&.name || employee.assignments.current.first&.department %></td>
+            <td><%= employee.job_position&.name || employee.positions.current.first&.title %></td>
+            <td><%= employee.grade_level&.name %></td>
             <td><%= employee.current_status %></td>
             <td class="text-end">
               <%= link_to "詳細", admin_employee_path(employee), class: "btn btn-sm btn-outline-primary" %>

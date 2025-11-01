@@ -1,0 +1,10 @@
+<% content_for :title, "評価ランク編集" %>
+<% content_for :section_label, "マスタ管理" %>
+
+<div class="card card-lift">
+  <div class="card-body">
+    <h2 class="h5 mb-3">評価ランクを編集</h2>
+    <%= render "form", evaluation_grade: @evaluation_grade %>
+    <%= link_to "一覧へ戻る", admin_evaluation_grades_path, class: "btn btn-link mt-3" %>
+  </div>
+</div>

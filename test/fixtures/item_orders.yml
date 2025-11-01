@@ -1,11 +1,11 @@
 # Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
 
 one:
-  period: one
+  period: january_2024
   item: one
   row_index: 1
 
 two:
-  period: two
+  period: february_2024
   item: two
   row_index: 1

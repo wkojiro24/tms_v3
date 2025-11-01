@@ -1,23 +1,23 @@
 # Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
 
 one:
-  period: one
-  location: MyString
-  title: MyString
-  original_filename: MyString
-  status: MyString
-  uploaded_by: one
+  period: january_2024
+  location: HQ
+  title: January Payroll
+  original_filename: january.csv
+  status: completed
+  uploaded_by: admin
   total_rows: 1
   total_cells: 1
   notes: MyText
 
 two:
-  period: two
-  location: MyString
-  title: MyString
-  original_filename: MyString
-  status: MyString
-  uploaded_by: two
+  period: february_2024
+  location: HQ
+  title: February Payroll
+  original_filename: february.csv
+  status: pending
+  uploaded_by: admin
   total_rows: 1
   total_cells: 1
   notes: MyText

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2025_11_01_071000) do
+ActiveRecord::Schema[7.2].define(version: 2025_11_01_075000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -41,6 +41,18 @@ ActiveRecord::Schema[7.2].define(version: 2025_11_01_071000) do
     t.string "variation_digest", null: false
     t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
     t.index ["blob_id"], name: "index_active_storage_variant_records_on_blob_id"
+  end
+
+  create_table "departments", force: :cascade do |t|
+    t.bigint "tenant_id", null: false
+    t.string "code", null: false
+    t.string "name", null: false
+    t.text "description"
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "code"], name: "index_departments_on_tenant_id_and_code", unique: true
+    t.index ["tenant_id"], name: "index_departments_on_tenant_id"
   end
 
   create_table "employee_assignments", force: :cascade do |t|
@@ -102,8 +114,14 @@ ActiveRecord::Schema[7.2].define(version: 2025_11_01_071000) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.bigint "tenant_id", null: false
+    t.bigint "evaluation_cycle_id"
+    t.bigint "grade_level_id"
+    t.bigint "evaluation_grade_id"
     t.index ["employee_id", "reviewed_on"], name: "idx_employee_reviews_employee_reviewed_on"
     t.index ["employee_id"], name: "index_employee_reviews_on_employee_id"
+    t.index ["evaluation_cycle_id"], name: "index_employee_reviews_on_evaluation_cycle_id"
+    t.index ["evaluation_grade_id"], name: "index_employee_reviews_on_evaluation_grade_id"
+    t.index ["grade_level_id"], name: "index_employee_reviews_on_grade_level_id"
     t.index ["tenant_id"], name: "index_employee_reviews_on_tenant_id"
   end
 
@@ -139,9 +157,60 @@ ActiveRecord::Schema[7.2].define(version: 2025_11_01_071000) do
     t.datetime "updated_at", null: false
     t.bigint "tenant_id", null: false
     t.boolean "submit_enabled", default: false, null: false
+    t.bigint "department_id"
+    t.bigint "job_category_id"
+    t.bigint "job_position_id"
+    t.bigint "grade_level_id"
+    t.index ["department_id"], name: "index_employees_on_department_id"
+    t.index ["grade_level_id"], name: "index_employees_on_grade_level_id"
+    t.index ["job_category_id"], name: "index_employees_on_job_category_id"
+    t.index ["job_position_id"], name: "index_employees_on_job_position_id"
     t.index ["submit_enabled"], name: "index_employees_on_submit_enabled"
+    t.index ["tenant_id", "department_id"], name: "index_employees_on_tenant_id_and_department_id"
     t.index ["tenant_id", "employee_code"], name: "index_employees_on_tenant_and_employee_code", unique: true
+    t.index ["tenant_id", "grade_level_id"], name: "index_employees_on_tenant_id_and_grade_level_id"
+    t.index ["tenant_id", "job_category_id"], name: "index_employees_on_tenant_id_and_job_category_id"
+    t.index ["tenant_id", "job_position_id"], name: "index_employees_on_tenant_id_and_job_position_id"
     t.index ["tenant_id"], name: "index_employees_on_tenant_id"
+  end
+
+  create_table "evaluation_cycles", force: :cascade do |t|
+    t.bigint "tenant_id", null: false
+    t.string "code", null: false
+    t.string "name", null: false
+    t.text "description"
+    t.date "start_on"
+    t.date "end_on"
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "code"], name: "index_evaluation_cycles_on_tenant_id_and_code", unique: true
+    t.index ["tenant_id"], name: "index_evaluation_cycles_on_tenant_id"
+  end
+
+  create_table "evaluation_grades", force: :cascade do |t|
+    t.bigint "tenant_id", null: false
+    t.string "code", null: false
+    t.string "name", null: false
+    t.string "band"
+    t.boolean "active", default: true, null: false
+    t.integer "score"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "code"], name: "index_evaluation_grades_on_tenant_id_and_code", unique: true
+    t.index ["tenant_id"], name: "index_evaluation_grades_on_tenant_id"
+  end
+
+  create_table "grade_levels", force: :cascade do |t|
+    t.bigint "tenant_id", null: false
+    t.string "code", null: false
+    t.string "name", null: false
+    t.text "description"
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "code"], name: "index_grade_levels_on_tenant_id_and_code", unique: true
+    t.index ["tenant_id"], name: "index_grade_levels_on_tenant_id"
   end
 
   create_table "item_orders", force: :cascade do |t|
@@ -171,6 +240,31 @@ ActiveRecord::Schema[7.2].define(version: 2025_11_01_071000) do
     t.index ["name"], name: "index_items_on_name"
     t.index ["tenant_id", "name", "above_basic"], name: "index_items_on_tenant_name_above_basic", unique: true
     t.index ["tenant_id"], name: "index_items_on_tenant_id"
+  end
+
+  create_table "job_categories", force: :cascade do |t|
+    t.bigint "tenant_id", null: false
+    t.string "code", null: false
+    t.string "name", null: false
+    t.text "description"
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "code"], name: "index_job_categories_on_tenant_id_and_code", unique: true
+    t.index ["tenant_id"], name: "index_job_categories_on_tenant_id"
+  end
+
+  create_table "job_positions", force: :cascade do |t|
+    t.bigint "tenant_id", null: false
+    t.string "code", null: false
+    t.string "name", null: false
+    t.text "description"
+    t.boolean "active", default: true, null: false
+    t.integer "grade"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "code"], name: "index_job_positions_on_tenant_id_and_code", unique: true
+    t.index ["tenant_id"], name: "index_job_positions_on_tenant_id"
   end
 
   create_table "payroll_batches", force: :cascade do |t|
@@ -376,6 +470,7 @@ ActiveRecord::Schema[7.2].define(version: 2025_11_01_071000) do
     t.index ["workflow_request_id"], name: "index_workflow_stages_on_request_id"
   end
 
+  add_foreign_key "departments", "tenants"
   add_foreign_key "employee_assignments", "employees"
   add_foreign_key "employee_assignments", "tenants"
   add_foreign_key "employee_positions", "employees"
@@ -383,14 +478,26 @@ ActiveRecord::Schema[7.2].define(version: 2025_11_01_071000) do
   add_foreign_key "employee_qualifications", "employees"
   add_foreign_key "employee_qualifications", "tenants"
   add_foreign_key "employee_reviews", "employees"
+  add_foreign_key "employee_reviews", "evaluation_cycles"
+  add_foreign_key "employee_reviews", "evaluation_grades"
+  add_foreign_key "employee_reviews", "grade_levels"
   add_foreign_key "employee_reviews", "tenants"
   add_foreign_key "employee_statuses", "employees"
   add_foreign_key "employee_statuses", "tenants"
+  add_foreign_key "employees", "departments"
+  add_foreign_key "employees", "grade_levels"
+  add_foreign_key "employees", "job_categories"
+  add_foreign_key "employees", "job_positions"
   add_foreign_key "employees", "tenants"
+  add_foreign_key "evaluation_cycles", "tenants"
+  add_foreign_key "evaluation_grades", "tenants"
+  add_foreign_key "grade_levels", "tenants"
   add_foreign_key "item_orders", "items"
   add_foreign_key "item_orders", "periods"
   add_foreign_key "item_orders", "tenants"
   add_foreign_key "items", "tenants"
+  add_foreign_key "job_categories", "tenants"
+  add_foreign_key "job_positions", "tenants"
   add_foreign_key "payroll_batches", "periods"
   add_foreign_key "payroll_batches", "tenants"
   add_foreign_key "payroll_batches", "users", column: "uploaded_by_id"

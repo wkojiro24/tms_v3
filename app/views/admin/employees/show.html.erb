@@ -37,8 +37,10 @@
       <div class="card-body">
         <h2 class="h5 mb-3">現在の状態</h2>
         <ul class="list-unstyled mb-0 small text-muted">
-          <li><strong>所属:</strong> <%= @current_assignment&.department %></li>
-          <li><strong>役職:</strong> <%= @current_position&.title %></li>
+          <li><strong>所属:</strong> <%= @current_assignment&.department || @employee.department&.name %></li>
+          <li><strong>職種:</strong> <%= @employee.job_category&.name %></li>
+          <li><strong>役職:</strong> <%= @current_position&.title || @employee.job_position&.name %></li>
+          <li><strong>等級:</strong> <%= @employee.grade_level&.name %></li>
           <li><strong>ステータス:</strong> <%= @current_status&.status || @employee.current_status %></li>
         </ul>
         <hr>

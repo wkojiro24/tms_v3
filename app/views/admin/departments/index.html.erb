@@ -1,0 +1,46 @@
+<% content_for :title, "部署マスタ" %>
+<% content_for :section_label, "マスタ管理" %>
+
+<div class="row g-4">
+  <div class="col-lg-5">
+    <div class="card card-lift">
+      <div class="card-body">
+        <h2 class="h5 mb-3">新規登録</h2>
+        <%= render "form", department: @department %>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-7">
+    <div class="card card-lift">
+      <div class="card-body">
+        <h2 class="h5 mb-3">部署一覧</h2>
+        <table class="table table-sm align-middle">
+          <thead>
+            <tr>
+              <th>コード</th>
+              <th>名称</th>
+              <th>状態</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @departments.each do |dept| %>
+              <tr>
+                <td><%= dept.code %></td>
+                <td><%= dept.name %></td>
+                <td>
+                  <span class="badge <%= dept.active? ? 'bg-success' : 'bg-secondary' %>"><%= dept.active? ? "有効" : "無効" %></span>
+                </td>
+                <td class="text-end">
+                  <%= link_to "編集", edit_admin_department_path(dept), class: "btn btn-outline-primary btn-sm" %>
+                  <%= link_to "削除", admin_department_path(dept), method: :delete, data: { confirm: "削除しますか？" }, class: "btn btn-outline-danger btn-sm" %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>

@@ -110,6 +110,32 @@
               <i class="bi bi-people-fill"></i>
               <span>ユーザー管理</span>
             <% end %>
+            <div class="portal-divider my-3"></div>
+            <div class="portal-section-label text-white-50">マスタ</div>
+            <%= link_to admin_departments_path, class: "nav-link portal-nav-link #{'active' if request.path.starts_with?('/admin/departments')}" do %>
+              <i class="bi bi-buildings"></i>
+              <span>部署</span>
+            <% end %>
+            <%= link_to admin_job_categories_path, class: "nav-link portal-nav-link #{'active' if request.path.starts_with?('/admin/job_categories')}" do %>
+              <i class="bi bi-briefcase"></i>
+              <span>職種</span>
+            <% end %>
+            <%= link_to admin_job_positions_path, class: "nav-link portal-nav-link #{'active' if request.path.starts_with?('/admin/job_positions')}" do %>
+              <i class="bi bi-person-badge"></i>
+              <span>役職</span>
+            <% end %>
+            <%= link_to admin_grade_levels_path, class: "nav-link portal-nav-link #{'active' if request.path.starts_with?('/admin/grade_levels')}" do %>
+              <i class="bi bi-bar-chart-steps"></i>
+              <span>等級</span>
+            <% end %>
+            <%= link_to admin_evaluation_grades_path, class: "nav-link portal-nav-link #{'active' if request.path.starts_with?('/admin/evaluation_grades')}" do %>
+              <i class="bi bi-award"></i>
+              <span>評価ランク</span>
+            <% end %>
+            <%= link_to admin_evaluation_cycles_path, class: "nav-link portal-nav-link #{'active' if request.path.starts_with?('/admin/evaluation_cycles')}" do %>
+              <i class="bi bi-calendar4-range"></i>
+              <span>評価サイクル</span>
+            <% end %>
           <% end %>
         </nav>
 

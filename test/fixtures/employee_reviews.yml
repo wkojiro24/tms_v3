@@ -2,18 +2,24 @@
 
 one:
   employee: one
-  reviewed_on: 2025-10-31
-  review_cycle: MyString
-  score: 9.99
-  grade: MyString
-  summary: MyText
-  notes: MyText
+  reviewed_on: 2024-06-30
+  review_cycle: 2024上期
+  score: 4.5
+  grade: A
+  summary: 運転評価良好
+  notes: 事故なし
+  evaluation_cycle: cycle_2024_h1
+  evaluation_grade: s_grade
+  grade_level: driver_band
 
 two:
   employee: two
-  reviewed_on: 2025-10-31
-  review_cycle: MyString
-  score: 9.99
-  grade: MyString
-  summary: MyText
-  notes: MyText
+  reviewed_on: 2024-06-30
+  review_cycle: 2024上期
+  score: 3.0
+  grade: B
+  summary: 事務処理安定
+  notes: 来期課題あり
+  evaluation_cycle: cycle_2024_h1
+  evaluation_grade: a_grade
+  grade_level: office_band

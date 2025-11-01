@@ -3,6 +3,12 @@ class Tenant < ApplicationRecord
   has_many :employees, dependent: :destroy
   has_many :workflow_categories, dependent: :destroy
   has_many :workflow_requests, dependent: :destroy
+  has_many :departments, dependent: :destroy
+  has_many :job_categories, dependent: :destroy
+  has_many :job_positions, dependent: :destroy
+  has_many :grade_levels, dependent: :destroy
+  has_many :evaluation_grades, dependent: :destroy
+  has_many :evaluation_cycles, dependent: :destroy
 
   validates :name, presence: true
   validates :slug, presence: true, uniqueness: true

@@ -4,7 +4,9 @@ tenant = Tenant.find_or_create_by!(slug: "default") do |record|
 end
 
 ActsAsTenant.with_tenant(tenant) do
-  def ensure_employee(code, last_name:, first_name:, email: nil, submit_enabled: false)
+  def ensure_employee(code, last_name:, first_name:, email: nil, submit_enabled: false,
+                      department_code: nil, job_category_code: nil, job_position_code: nil,
+                      grade_level_code: nil)
     Employee.find_or_initialize_by(employee_code: code).tap do |emp|
       emp.last_name = last_name
       emp.first_name = first_name
@@ -13,6 +15,10 @@ ActsAsTenant.with_tenant(tenant) do
       emp.current_status ||= "active"
       emp.hire_date ||= Date.new(2015, 4, 1)
       emp.submit_enabled = submit_enabled
+      emp.department = Department.find_by(code: department_code) if department_code.present?
+      emp.job_category = JobCategory.find_by(code: job_category_code) if job_category_code.present?
+      emp.job_position = JobPosition.find_by(code: job_position_code) if job_position_code.present?
+      emp.grade_level = GradeLevel.find_by(code: grade_level_code) if grade_level_code.present?
       emp.save!
     end
   end
@@ -68,21 +74,108 @@ ActsAsTenant.with_tenant(tenant) do
     end
   end
 
+  # マスターデータ
+  departments = [
+    { code: "HQ", name: "本社", description: "管理部門" },
+    { code: "OPS", name: "運行部", description: "運行管理とドライバー" }
+  ]
+  departments.each do |attrs|
+    Department.find_or_create_by!(code: attrs[:code]) do |record|
+      record.name = attrs[:name]
+      record.description = attrs[:description]
+    end
+  end
+
+  job_categories = [
+    { code: "driver", name: "ドライバー" },
+    { code: "office", name: "事務" },
+    { code: "specialist", name: "専門職" }
+  ]
+  job_categories.each do |attrs|
+    JobCategory.find_or_create_by!(code: attrs[:code]) do |record|
+      record.name = attrs[:name]
+      record.description = attrs[:description]
+    end
+  end
+
+  job_positions = [
+    { code: "manager", name: "所長", grade: 3 },
+    { code: "driver", name: "ドライバー", grade: 1 },
+    { code: "office_lead", name: "主任", grade: 2 }
+  ]
+  job_positions.each do |attrs|
+    JobPosition.find_or_create_by!(code: attrs[:code]) do |record|
+      record.name = attrs[:name]
+      record.grade = attrs[:grade]
+      record.description = attrs[:description]
+    end
+  end
+
+  grade_levels = [
+    { code: "driver_band", name: "ドライバー等級" },
+    { code: "office_band", name: "事務等級" },
+    { code: "special_band", name: "専門職等級" }
+  ]
+  grade_levels.each do |attrs|
+    GradeLevel.find_or_create_by!(code: attrs[:code]) do |record|
+      record.name = attrs[:name]
+      record.description = attrs[:description]
+    end
+  end
+
+  evaluation_grades = [
+    { code: "S", name: "S", score: 5 },
+    { code: "3A", name: "3A", score: 4 },
+    { code: "2A", name: "2A", score: 3 },
+    { code: "A", name: "A", score: 2 },
+    { code: "B", name: "B", score: 1 }
+  ]
+  evaluation_grades.each do |attrs|
+    EvaluationGrade.find_or_create_by!(code: attrs[:code]) do |record|
+      record.name = attrs[:name]
+      record.score = attrs[:score]
+      record.band = attrs[:band]
+    end
+  end
+
+  evaluation_cycles = [
+    { code: "2024H1", name: "2024年 上期", start_on: Date.new(2024, 4, 1), end_on: Date.new(2024, 9, 30) },
+    { code: "2024H2", name: "2024年 下期", start_on: Date.new(2024, 10, 1), end_on: Date.new(2025, 3, 31) }
+  ]
+  evaluation_cycles.each do |attrs|
+    EvaluationCycle.find_or_create_by!(code: attrs[:code]) do |record|
+      record.name = attrs[:name]
+      record.start_on = attrs[:start_on]
+      record.end_on = attrs[:end_on]
+    end
+  end
+
   # サンプル従業員（Employment）
-  ensure_employee("1001", last_name: "山田", first_name: "太郎", email: "yamada@example.com", submit_enabled: true)
-  ensure_employee("1002", last_name: "佐藤", first_name: "花子", email: "sato@example.com", submit_enabled: true)
-  ensure_employee("1003", last_name: "高橋", first_name: "誠")
-  ensure_employee("2001", last_name: "田中", first_name: "裕介")
-  ensure_employee("2002", last_name: "鈴木", first_name: "美咲")
-  ensure_employee("3001", last_name: "中村", first_name: "健一")
+  ensure_employee("1001", last_name: "山田", first_name: "太郎", email: "yamada@example.com", submit_enabled: true,
+                  department_code: "OPS", job_category_code: "driver", job_position_code: "driver",
+                  grade_level_code: "driver_band")
+  ensure_employee("1002", last_name: "佐藤", first_name: "花子", email: "sato@example.com", submit_enabled: true,
+                  department_code: "OPS", job_category_code: "driver", job_position_code: "driver",
+                  grade_level_code: "driver_band")
+  ensure_employee("1003", last_name: "高橋", first_name: "誠",
+                  department_code: "OPS", job_category_code: "specialist", grade_level_code: "special_band")
+  ensure_employee("2001", last_name: "田中", first_name: "裕介",
+                  department_code: "HQ", job_category_code: "office", job_position_code: "office_lead",
+                  grade_level_code: "office_band")
+  ensure_employee("2002", last_name: "鈴木", first_name: "美咲",
+                  department_code: "HQ", job_category_code: "office", grade_level_code: "office_band")
+  ensure_employee("3001", last_name: "中村", first_name: "健一",
+                  department_code: "OPS", job_category_code: "driver", grade_level_code: "driver_band")
 
   # ログイン権限を持つ従業員（User）
   # 管理者用アカウント
-  ensure_employee("A100", last_name: "Default", first_name: "Admin", email: "admin@default.com", submit_enabled: true)
+  ensure_employee("A100", last_name: "Default", first_name: "Admin", email: "admin@default.com", submit_enabled: true,
+                  department_code: "HQ", job_category_code: "office", job_position_code: "manager")
   ensure_user(email: "admin@default.com", role: :admin, employee_code: "A100")
 
   # スタッフ例: wkojiro22 さん
-  ensure_employee("S100", last_name: "Wkojirou", first_name: "Staff", email: "wkojiro22@gmail.com", submit_enabled: true)
+  ensure_employee("S100", last_name: "Wkojirou", first_name: "Staff", email: "wkojiro22@gmail.com", submit_enabled: true,
+                  department_code: "OPS", job_category_code: "driver", grade_level_code: "driver_band")
   ensure_user(email: "wkojiro22@gmail.com", role: :staff, employee_code: "S100")
 
   # ワークフローカテゴリ & 承認ルート

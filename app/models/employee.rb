@@ -10,6 +10,11 @@ class Employee < ApplicationRecord
   has_many :payroll_cells, dependent: :destroy
   has_many :payroll_column_orders, dependent: :destroy
 
+  belongs_to :department, optional: true
+  belongs_to :job_category, optional: true
+  belongs_to :job_position, optional: true
+  belongs_to :grade_level, optional: true
+
   validates :employee_code, presence: true, uniqueness: { scope: :tenant_id }
   validates :current_status, presence: true
 

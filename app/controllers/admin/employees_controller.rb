@@ -2,7 +2,8 @@ module Admin
   class EmployeesController < BaseController
     helper Admin::PayrollsHelper
     before_action :authorize_admin!
-    before_action :set_employee, only: [:show, :payroll, :history]
+    before_action :set_employee, only: [:show, :edit, :update, :destroy, :payroll, :history]
+    before_action :set_master_collections, only: [:new, :create, :edit, :update]
 
     def index
       @query = params[:q]
@@ -23,6 +24,37 @@ module Admin
       @recent_positions = @employee.positions.order(effective_from: :desc).limit(10)
       @recent_reviews = @employee.reviews.order(reviewed_on: :desc).limit(5)
       @qualifications = @employee.qualifications.order(expires_on: :asc)
+    end
+
+    def new
+      @employee = Employee.new(hire_date: Date.today, current_status: "active", submit_enabled: false)
+    end
+
+    def create
+      @employee = current_tenant.employees.new(employee_params)
+      if @employee.save
+        redirect_to admin_employee_path(@employee), notice: "従業員を登録しました。"
+      else
+        flash.now[:alert] = "従業員を登録できませんでした。入力内容をご確認ください。"
+        render :new, status: :unprocessable_entity
+      end
+    end
+
+    def edit
+    end
+
+    def update
+      if @employee.update(employee_params)
+        redirect_to admin_employee_path(@employee), notice: "従業員情報を更新しました。"
+      else
+        flash.now[:alert] = "従業員情報を更新できませんでした。"
+        render :edit, status: :unprocessable_entity
+      end
+    end
+
+    def destroy
+      @employee.destroy
+      redirect_to admin_employees_path, notice: "従業員を削除しました。"
     end
 
     def payroll
@@ -55,6 +87,20 @@ module Admin
 
     def set_employee
       @employee = Employee.find(params[:id])
+    end
+
+    def set_master_collections
+      @departments = current_tenant.departments.active.ordered
+      @job_categories = current_tenant.job_categories.active.ordered
+      @job_positions = current_tenant.job_positions.active.ordered
+      @grade_levels = current_tenant.grade_levels.active.ordered
+    end
+
+    def employee_params
+      params.require(:employee).permit(:employee_code, :last_name, :first_name, :last_name_kana,
+                                       :first_name_kana, :full_name, :date_of_birth, :hire_date,
+                                       :email, :phone, :current_status, :notes, :submit_enabled,
+                                       :department_id, :job_category_id, :job_position_id, :grade_level_id)
     end
 
     def build_payroll_month_entries(periods)

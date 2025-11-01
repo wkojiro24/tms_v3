@@ -1,0 +1,13 @@
+s_grade:
+  tenant: default
+  code: S
+  name: S
+  score: 5
+  active: true
+
+a_grade:
+  tenant: default
+  code: A
+  name: A
+  score: 3
+  active: true

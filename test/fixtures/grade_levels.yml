@@ -1,0 +1,11 @@
+driver_band:
+  tenant: default
+  code: driver_band
+  name: ドライバー等級
+  active: true
+
+office_band:
+  tenant: default
+  code: office_band
+  name: 事務等級
+  active: true

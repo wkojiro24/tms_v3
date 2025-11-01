@@ -11,6 +11,10 @@ one:
   phone: 000-0000-0000
   current_status: active
   submit_enabled: true
+  department: default_ops
+  job_category: driver
+  job_position: driver
+  grade_level: driver_band
 
 two:
   tenant: default
@@ -23,6 +27,10 @@ two:
   phone: 000-0000-0001
   current_status: active
   submit_enabled: true
+  department: default_hq
+  job_category: office
+  job_position: manager
+  grade_level: office_band
 
 admin:
   tenant: default
@@ -35,3 +43,7 @@ admin:
   phone: 000-0000-0002
   current_status: active
   submit_enabled: true
+  department: default_hq
+  job_category: office
+  job_position: manager
+  grade_level: office_band

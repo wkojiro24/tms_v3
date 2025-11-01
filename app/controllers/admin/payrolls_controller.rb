@@ -3,8 +3,13 @@ module Admin
     before_action :authorize_admin!
 
     def index
-      @period = resolve_period
-      return unless @period
+      @periods = Period.ordered.limit(24)
+      if @periods.blank?
+        flash.now[:alert] = "対象期間がまだ登録されていません。"
+        return
+      end
+
+      @period = resolve_period || @periods.first
 
       @locations = PayrollBatch.where(period: @period).distinct.pluck(:location)
       @locations = PayrollCell.where(period: @period).distinct.pluck(:location) if @locations.empty?
@@ -22,8 +27,6 @@ module Admin
       @cell_map = @cells.each_with_object({}) do |cell, hash|
         hash[[cell.item_id, cell.employee_id]] = cell
       end
-
-      @periods = Period.ordered.limit(24)
     end
 
     def destroy
