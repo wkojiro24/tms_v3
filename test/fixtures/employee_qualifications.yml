@@ -1,6 +1,8 @@
 # Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
 
 one:
+  tenant: default
+  tenant_id: <%= ActiveRecord::FixtureSet.identify(:default) %>
   employee: one
   name: MyString
   issuer: MyString
@@ -10,6 +12,8 @@ one:
   notes: MyText
 
 two:
+  tenant: default
+  tenant_id: <%= ActiveRecord::FixtureSet.identify(:default) %>
   employee: two
   name: MyString
   issuer: MyString

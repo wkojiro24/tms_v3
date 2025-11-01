@@ -29,7 +29,7 @@ class AdminMasterManagementTest < ActionDispatch::IntegrationTest
     get new_admin_employee_path
     assert_response :success
 
-    assert_difference -> { Employee.count }, 1 do
+    assert_difference -> { Employee.unscoped.count }, 1 do
       post admin_employees_path, params: {
         employee: {
           employee_code: "EMP-999",

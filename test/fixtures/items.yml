@@ -1,6 +1,8 @@
 # Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
 
 one:
+  tenant: default
+  tenant_id: <%= ActiveRecord::FixtureSet.identify(:default) %>
   name: MyString
   category: MyString
   position: 1
@@ -8,8 +10,10 @@ one:
   above_basic: false
 
 two:
-  name: MyString
+  tenant: default
+  tenant_id: <%= ActiveRecord::FixtureSet.identify(:default) %>
+  name: AnotherString
   category: MyString
   position: 1
   row_index: 1
-  above_basic: false
+  above_basic: true

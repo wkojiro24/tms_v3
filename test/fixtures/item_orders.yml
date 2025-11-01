@@ -1,11 +1,15 @@
 # Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
 
 one:
+  tenant: default
+  tenant_id: <%= ActiveRecord::FixtureSet.identify(:default) %>
   period: january_2024
   item: one
   row_index: 1
 
 two:
+  tenant: default
+  tenant_id: <%= ActiveRecord::FixtureSet.identify(:default) %>
   period: february_2024
   item: two
   row_index: 1

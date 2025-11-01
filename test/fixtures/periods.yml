@@ -1,9 +1,13 @@
 # Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
 
 january_2024:
+  tenant: default
+  tenant_id: <%= ActiveRecord::FixtureSet.identify(:default) %>
   year: 2024
   month: 1
 
 february_2024:
+  tenant: default
+  tenant_id: <%= ActiveRecord::FixtureSet.identify(:default) %>
   year: 2024
   month: 2

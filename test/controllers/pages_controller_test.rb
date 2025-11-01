@@ -2,47 +2,47 @@ require "test_helper"
 
 class PagesControllerTest < ActionDispatch::IntegrationTest
   test "should get announcements" do
-    get pages_announcements_url
+    get announcements_path
     assert_response :success
   end
 
   test "should get revenue" do
-    get pages_revenue_url
+    get revenue_path
     assert_response :success
   end
 
   test "should get dispatch" do
-    get pages_dispatch_url
+    get dispatch_path
     assert_response :success
   end
 
   test "should get fleet" do
-    get pages_fleet_url
+    get fleet_path
     assert_response :success
   end
 
   test "should get hr" do
-    get pages_hr_url
+    get hr_path
     assert_response :success
   end
 
   test "should get knowledge" do
-    get pages_knowledge_url
+    get knowledge_path
     assert_response :success
   end
 
   test "should get workflow" do
-    get pages_workflow_url
-    assert_response :success
+    get workflow_path
+    assert_redirected_to workflow_requests_path
   end
 
   test "should get faq" do
-    get pages_faq_url
+    get faq_path
     assert_response :success
   end
 
   test "should get admin" do
-    get pages_admin_url
+    get admin_path
     assert_response :success
   end
 end

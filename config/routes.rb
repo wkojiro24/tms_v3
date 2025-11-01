@@ -17,8 +17,9 @@ Rails.application.routes.draw do
     get "fleet"
     get "hr"
     get "knowledge"
-  get "workflow"
-  get "faq"
+    get "workflow"
+    get "faq"
+    get "admin"
   end
 
   get "/imports", to: redirect("/admin/imports/new")
@@ -35,12 +36,12 @@ Rails.application.routes.draw do
       get :payroll, on: :member
       get :history, on: :member
     end
-    resources :departments
-    resources :job_categories
-    resources :job_positions
-    resources :grade_levels
-    resources :evaluation_grades
-    resources :evaluation_cycles
+    resources :departments, only: [:index, :create, :edit, :update, :destroy]
+    resources :job_categories, only: [:index, :create, :edit, :update, :destroy]
+    resources :job_positions, only: [:index, :create, :edit, :update, :destroy]
+    resources :grade_levels, only: [:index, :create, :edit, :update, :destroy]
+    resources :evaluation_grades, only: [:index, :create, :edit, :update, :destroy]
+    resources :evaluation_cycles, only: [:index, :create, :edit, :update, :destroy]
     resources :workflow_requests, only: [:index, :show] do
       post :decide, on: :member
       post :comment, on: :member

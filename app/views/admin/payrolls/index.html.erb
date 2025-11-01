@@ -21,6 +21,22 @@
       <%= f.select :location, options_for_select(@locations.presence || [[@location, @location]], @location), { include_blank: false }, class: "form-select form-select-sm" %>
     </div>
     <div>
+      <%= f.label :visible_count, "表示人数", class: "form-label small mb-1" %>
+      <%= f.select :visible_count,
+                   options_for_select(@visible_count_options.map { |count| ["#{count}人", count] }, @visible_count),
+                   {},
+                   class: "form-select form-select-sm" %>
+    </div>
+    <% if @window_options.size > 1 %>
+      <div>
+        <%= f.label :start, "表示区間", class: "form-label small mb-1" %>
+        <%= f.select :start,
+                     options_for_select(@window_options, @start_index),
+                     {},
+                     class: "form-select form-select-sm" %>
+      </div>
+    <% end %>
+    <div>
       <%= f.submit "適用", class: "btn btn-primary btn-sm" %>
     </div>
   <% end %>
@@ -37,6 +53,12 @@
     </button>
   </div>
 </div>
+
+<% if @total_employees.positive? %>
+  <div class="text-muted small mb-3">
+    表示範囲: <%= @total_employees.zero? ? "0" : "#{@start_index + 1}〜#{[@start_index + @visible_count, @total_employees].min}" %> / <%= @total_employees %> 人
+  </div>
+<% end %>
 
 <% if @period.nil? %>
   <div class="alert alert-info">まだ給与データが取り込まれていません。</div>

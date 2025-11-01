@@ -1,6 +1,8 @@
 # Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
 
 one:
+  tenant: default
+  tenant_id: <%= ActiveRecord::FixtureSet.identify(:default) %>
   employee: one
   reviewed_on: 2024-06-30
   review_cycle: 2024上期
@@ -13,6 +15,8 @@ one:
   grade_level: driver_band
 
 two:
+  tenant: default
+  tenant_id: <%= ActiveRecord::FixtureSet.identify(:default) %>
   employee: two
   reviewed_on: 2024-06-30
   review_cycle: 2024上期

@@ -18,7 +18,26 @@ module Admin
       @location = params[:location].presence || @locations.first
 
       @column_orders = PayrollColumnOrder.where(period: @period, location: @location).includes(:employee)
-      @employees = resolve_employees(@column_orders)
+      @all_employees = resolve_employees(@column_orders)
+      @total_employees = @all_employees.size
+
+      @visible_count = params[:visible_count].to_i
+      @visible_count = 13 unless @visible_count.positive?
+      @visible_count = @total_employees if @total_employees.positive? && @visible_count > @total_employees
+      @visible_count = @total_employees if @total_employees.positive? && @visible_count.zero?
+
+      @start_index = params[:start].to_i
+      @start_index = 0 if @start_index.negative?
+      if @total_employees.positive? && @visible_count.positive?
+        @start_index = (@start_index / @visible_count) * @visible_count
+        @start_index = 0 if @start_index >= @total_employees
+      else
+        @start_index = 0
+      end
+
+      @employees = @all_employees.slice(@start_index, @visible_count) || []
+      @visible_count_options = build_visible_count_options(@total_employees)
+      @window_options = build_window_options(@total_employees, @visible_count)
 
       @item_orders = ItemOrder.where(period: @period, location: @location).includes(:item)
       @items = resolve_items(@item_orders)
@@ -81,6 +100,32 @@ module Admin
                    .uniq
                    .sort_by(&:name)
       end
+    end
+
+    def build_window_options(total, window)
+      return [[display_range_label(1, total), 0]] if total.zero? || window.zero? || total <= window
+
+      options = []
+      start = 0
+      while start < total
+        finish = [start + window, total].min
+        options << [display_range_label(start + 1, finish), start]
+        start += window
+      end
+      options
+    end
+
+    def build_visible_count_options(total)
+      return [13] if total.zero?
+      return [total].uniq if total <= 13
+
+      base = [13, 26, 39, 52, total].uniq.sort
+      base.select { |count| count.positive? && count <= total }
+    end
+
+    def display_range_label(start, finish)
+      finish = start if finish < start
+      "#{start} - #{finish}"
     end
   end
 end

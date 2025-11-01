@@ -23,6 +23,6 @@ class AuthenticationFlowTest < ActionDispatch::IntegrationTest
     assert_response :success
 
     delete destroy_user_session_path
-    assert_redirected_to new_user_session_path
+    assert_redirected_to root_path
   end
 end

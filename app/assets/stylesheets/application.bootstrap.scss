@@ -200,11 +200,12 @@ body {
   border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 12px;
   overflow-x: auto;
-  overflow-y: hidden;
+  overflow-y: auto;
   background: #fff;
   display: inline-block;
   width: auto;
   max-width: 100%;
+  max-height: calc(100vh - 260px);
 }
 
 .payroll-grid table {
@@ -213,6 +214,7 @@ body {
   table-layout: fixed;
   border-collapse: separate;
   border-spacing: 0;
+  position: relative;
 }
 
 .payroll-grid th,
@@ -231,6 +233,32 @@ body {
   width: 140px;
   min-width: 140px;
   font-size: 0.78rem;
+  position: sticky;
+  left: 0;
+  z-index: 3;
+}
+
+.payroll-grid thead th {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+}
+
+.payroll-grid thead th:first-child {
+  left: 0;
+  z-index: 5;
+  background: #f1f5f9;
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.payroll-grid tbody th:first-child {
+  left: 0;
+  z-index: 3;
+}
+
+.payroll-grid tbody td {
+  background: #fff;
 }
 
 .payroll-row-divider th {
