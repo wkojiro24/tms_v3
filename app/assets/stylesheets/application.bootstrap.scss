@@ -200,12 +200,10 @@ body {
   border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 12px;
   overflow-x: auto;
-  overflow-y: auto;
+  overflow-y: hidden;
   background: #fff;
-  display: inline-block;
-  width: auto;
-  max-width: 100%;
-  max-height: calc(100vh - 260px);
+  display: block;
+  width: 100%;
 }
 
 .payroll-grid table {
@@ -265,24 +263,30 @@ body {
   border-top: 2px solid #1e293b;
 }
 
-.payroll-row-metric th {
+.payroll-row-metric th,
+.payroll-row-metric td {
   background: #f8fafc;
 }
 
-.payroll-row-money th {
-  background: #fff;
+.payroll-row-money th,
+.payroll-row-money td {
+  background: #fffef8;
 }
 
 .payroll-row-basic th,
 .payroll-row-basic td {
-  background: #fff8e6;
+  background: #fff4c2;
   font-weight: 600;
+  border-top: 1px solid rgba(234, 179, 8, 0.4);
+  border-bottom: 1px solid rgba(234, 179, 8, 0.4);
 }
 
 .payroll-row-total th,
 .payroll-row-total td {
-  background: #e0f2fe;
-  font-weight: 600;
+  background: #fde68a;
+  font-weight: 700;
+  border-top: 1px solid rgba(217, 119, 6, 0.45);
+  border-bottom: 1px solid rgba(217, 119, 6, 0.45);
 }
 
 .payroll-header {
