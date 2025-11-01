@@ -1,4 +1,6 @@
 class EmployeeStatus < ApplicationRecord
+  include TenantScoped
+
   belongs_to :employee
 
   enum status: {

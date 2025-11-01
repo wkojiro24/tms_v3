@@ -1,4 +1,6 @@
 class WorkflowStageTemplate < ApplicationRecord
+  include TenantScoped
+
   belongs_to :workflow_category
   belongs_to :responsible_user, class_name: "User", optional: true
 

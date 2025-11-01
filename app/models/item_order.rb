@@ -1,4 +1,6 @@
 class ItemOrder < ApplicationRecord
+  include TenantScoped
+
   belongs_to :period
   belongs_to :item
 

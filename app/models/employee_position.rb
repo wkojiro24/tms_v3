@@ -1,4 +1,6 @@
 class EmployeePosition < ApplicationRecord
+  include TenantScoped
+
   belongs_to :employee
 
   validates :title, presence: true

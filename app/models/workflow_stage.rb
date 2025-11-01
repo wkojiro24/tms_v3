@@ -1,4 +1,6 @@
 class WorkflowStage < ApplicationRecord
+  include TenantScoped
+
   belongs_to :workflow_request
   belongs_to :responsible_user, class_name: "User", optional: true
   has_many :approvals, class_name: "WorkflowApproval", dependent: :destroy

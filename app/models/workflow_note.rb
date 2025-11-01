@@ -1,4 +1,6 @@
 class WorkflowNote < ApplicationRecord
+  include TenantScoped
+
   belongs_to :workflow_request
   belongs_to :author, class_name: "User"
 

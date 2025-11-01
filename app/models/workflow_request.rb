@@ -1,4 +1,6 @@
 class WorkflowRequest < ApplicationRecord
+  include TenantScoped
+
   STATUSES = %w[draft pending approved rejected returned cancelled].freeze
 
   belongs_to :workflow_category
@@ -14,6 +16,7 @@ class WorkflowRequest < ApplicationRecord
   validates :title, presence: true
   validates :status, inclusion: { in: STATUSES }
   validates :currency, presence: true
+  validates :requester_employee, presence: true
 
   after_create :build_default_stages
   after_initialize :set_defaults, if: :new_record?

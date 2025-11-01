@@ -1,4 +1,6 @@
 class Period < ApplicationRecord
+  include TenantScoped
+
   has_many :item_orders, dependent: :destroy
   has_many :items, through: :item_orders
   has_many :payroll_cells, dependent: :destroy
@@ -7,7 +9,7 @@ class Period < ApplicationRecord
 
   validates :year, presence: true
   validates :month, presence: true, inclusion: { in: 1..12 }
-  validates :month, uniqueness: { scope: :year }
+  validates :month, uniqueness: { scope: [:tenant_id, :year] }
 
   scope :ordered, -> { order(year: :desc, month: :desc) }
 

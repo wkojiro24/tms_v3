@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2025_10_31_052010) do
+ActiveRecord::Schema[7.2].define(version: 2025_11_01_071000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -54,8 +54,10 @@ ActiveRecord::Schema[7.2].define(version: 2025_10_31_052010) do
     t.text "notes"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "tenant_id", null: false
     t.index ["employee_id", "effective_from"], name: "idx_employee_assignments_employee_from"
     t.index ["employee_id"], name: "index_employee_assignments_on_employee_id"
+    t.index ["tenant_id"], name: "index_employee_assignments_on_tenant_id"
   end
 
   create_table "employee_positions", force: :cascade do |t|
@@ -67,8 +69,10 @@ ActiveRecord::Schema[7.2].define(version: 2025_10_31_052010) do
     t.text "notes"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "tenant_id", null: false
     t.index ["employee_id", "effective_from"], name: "idx_employee_positions_employee_from"
     t.index ["employee_id"], name: "index_employee_positions_on_employee_id"
+    t.index ["tenant_id"], name: "index_employee_positions_on_tenant_id"
   end
 
   create_table "employee_qualifications", force: :cascade do |t|
@@ -81,8 +85,10 @@ ActiveRecord::Schema[7.2].define(version: 2025_10_31_052010) do
     t.text "notes"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "tenant_id", null: false
     t.index ["employee_id", "name"], name: "idx_employee_qualifications_employee_name"
     t.index ["employee_id"], name: "index_employee_qualifications_on_employee_id"
+    t.index ["tenant_id"], name: "index_employee_qualifications_on_tenant_id"
   end
 
   create_table "employee_reviews", force: :cascade do |t|
@@ -95,8 +101,10 @@ ActiveRecord::Schema[7.2].define(version: 2025_10_31_052010) do
     t.text "notes"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "tenant_id", null: false
     t.index ["employee_id", "reviewed_on"], name: "idx_employee_reviews_employee_reviewed_on"
     t.index ["employee_id"], name: "index_employee_reviews_on_employee_id"
+    t.index ["tenant_id"], name: "index_employee_reviews_on_tenant_id"
   end
 
   create_table "employee_statuses", force: :cascade do |t|
@@ -108,8 +116,10 @@ ActiveRecord::Schema[7.2].define(version: 2025_10_31_052010) do
     t.text "notes"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "tenant_id", null: false
     t.index ["employee_id", "effective_from"], name: "idx_employee_statuses_employee_from"
     t.index ["employee_id"], name: "index_employee_statuses_on_employee_id"
+    t.index ["tenant_id"], name: "index_employee_statuses_on_tenant_id"
   end
 
   create_table "employees", force: :cascade do |t|
@@ -127,7 +137,11 @@ ActiveRecord::Schema[7.2].define(version: 2025_10_31_052010) do
     t.text "notes"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["employee_code"], name: "index_employees_on_employee_code", unique: true
+    t.bigint "tenant_id", null: false
+    t.boolean "submit_enabled", default: false, null: false
+    t.index ["submit_enabled"], name: "index_employees_on_submit_enabled"
+    t.index ["tenant_id", "employee_code"], name: "index_employees_on_tenant_and_employee_code", unique: true
+    t.index ["tenant_id"], name: "index_employees_on_tenant_id"
   end
 
   create_table "item_orders", force: :cascade do |t|
@@ -137,10 +151,12 @@ ActiveRecord::Schema[7.2].define(version: 2025_10_31_052010) do
     t.integer "row_index", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "tenant_id", null: false
     t.index ["item_id"], name: "index_item_orders_on_item_id"
     t.index ["period_id", "location", "item_id"], name: "idx_item_orders_period_location_item", unique: true
     t.index ["period_id", "location", "row_index"], name: "idx_item_orders_period_location_row", unique: true
     t.index ["period_id"], name: "index_item_orders_on_period_id"
+    t.index ["tenant_id"], name: "index_item_orders_on_tenant_id"
   end
 
   create_table "items", force: :cascade do |t|
@@ -151,8 +167,10 @@ ActiveRecord::Schema[7.2].define(version: 2025_10_31_052010) do
     t.boolean "above_basic", default: false, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["name", "above_basic"], name: "index_items_on_name_and_above_basic", unique: true
+    t.bigint "tenant_id", null: false
     t.index ["name"], name: "index_items_on_name"
+    t.index ["tenant_id", "name", "above_basic"], name: "index_items_on_tenant_name_above_basic", unique: true
+    t.index ["tenant_id"], name: "index_items_on_tenant_id"
   end
 
   create_table "payroll_batches", force: :cascade do |t|
@@ -167,8 +185,10 @@ ActiveRecord::Schema[7.2].define(version: 2025_10_31_052010) do
     t.text "notes"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "tenant_id", null: false
     t.index ["period_id", "location"], name: "idx_payroll_batches_period_location"
     t.index ["period_id"], name: "index_payroll_batches_on_period_id"
+    t.index ["tenant_id"], name: "index_payroll_batches_on_tenant_id"
     t.index ["uploaded_by_id"], name: "index_payroll_batches_on_uploaded_by_id"
   end
 
@@ -182,11 +202,13 @@ ActiveRecord::Schema[7.2].define(version: 2025_10_31_052010) do
     t.decimal "amount", precision: 15, scale: 2
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "tenant_id", null: false
     t.index ["employee_id"], name: "index_payroll_cells_on_employee_id"
     t.index ["item_id"], name: "index_payroll_cells_on_item_id"
     t.index ["payroll_batch_id"], name: "index_payroll_cells_on_payroll_batch_id"
     t.index ["period_id", "location", "employee_id", "item_id"], name: "idx_payroll_cells_unique", unique: true
     t.index ["period_id"], name: "index_payroll_cells_on_period_id"
+    t.index ["tenant_id"], name: "index_payroll_cells_on_tenant_id"
   end
 
   create_table "payroll_column_orders", force: :cascade do |t|
@@ -196,10 +218,12 @@ ActiveRecord::Schema[7.2].define(version: 2025_10_31_052010) do
     t.integer "column_index", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "tenant_id", null: false
     t.index ["employee_id"], name: "index_payroll_column_orders_on_employee_id"
     t.index ["period_id", "location", "column_index"], name: "idx_payroll_column_orders_period_col", unique: true
     t.index ["period_id", "location", "employee_id"], name: "idx_payroll_column_orders_unique", unique: true
     t.index ["period_id"], name: "index_payroll_column_orders_on_period_id"
+    t.index ["tenant_id"], name: "index_payroll_column_orders_on_tenant_id"
   end
 
   create_table "periods", force: :cascade do |t|
@@ -207,7 +231,20 @@ ActiveRecord::Schema[7.2].define(version: 2025_10_31_052010) do
     t.integer "month", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["year", "month"], name: "index_periods_on_year_and_month", unique: true
+    t.bigint "tenant_id", null: false
+    t.index ["tenant_id", "year", "month"], name: "index_periods_on_tenant_year_month", unique: true
+    t.index ["tenant_id"], name: "index_periods_on_tenant_id"
+  end
+
+  create_table "tenants", force: :cascade do |t|
+    t.string "name", null: false
+    t.string "slug", null: false
+    t.string "time_zone"
+    t.jsonb "settings", default: {}, null: false
+    t.datetime "deleted_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["slug"], name: "index_tenants_on_slug", unique: true
   end
 
   create_table "users", force: :cascade do |t|
@@ -219,8 +256,12 @@ ActiveRecord::Schema[7.2].define(version: 2025_10_31_052010) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "role", default: "staff", null: false
-    t.index ["email"], name: "index_users_on_email", unique: true
+    t.bigint "tenant_id", null: false
+    t.bigint "employment_id", null: false
+    t.index ["employment_id"], name: "index_users_on_employment_id", unique: true, where: "(employment_id IS NOT NULL)"
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
+    t.index ["tenant_id", "email"], name: "index_users_on_tenant_and_email", unique: true
+    t.index ["tenant_id"], name: "index_users_on_tenant_id"
   end
 
   create_table "workflow_approvals", force: :cascade do |t|
@@ -231,7 +272,9 @@ ActiveRecord::Schema[7.2].define(version: 2025_10_31_052010) do
     t.datetime "acted_at", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "tenant_id", null: false
     t.index ["actor_id"], name: "index_workflow_approvals_on_actor_id"
+    t.index ["tenant_id"], name: "index_workflow_approvals_on_tenant_id"
     t.index ["workflow_stage_id"], name: "index_workflow_approvals_on_stage_id"
   end
 
@@ -242,7 +285,9 @@ ActiveRecord::Schema[7.2].define(version: 2025_10_31_052010) do
     t.boolean "active", default: true, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["code"], name: "index_workflow_categories_on_code", unique: true
+    t.bigint "tenant_id", null: false
+    t.index ["tenant_id", "code"], name: "index_workflow_categories_on_tenant_and_code", unique: true
+    t.index ["tenant_id"], name: "index_workflow_categories_on_tenant_id"
   end
 
   create_table "workflow_category_notifications", force: :cascade do |t|
@@ -251,6 +296,8 @@ ActiveRecord::Schema[7.2].define(version: 2025_10_31_052010) do
     t.string "description"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "tenant_id", null: false
+    t.index ["tenant_id"], name: "index_workflow_category_notifications_on_tenant_id"
     t.index ["workflow_category_id"], name: "index_category_notifications_on_category"
   end
 
@@ -260,7 +307,9 @@ ActiveRecord::Schema[7.2].define(version: 2025_10_31_052010) do
     t.text "body", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "tenant_id", null: false
     t.index ["author_id"], name: "index_workflow_notes_on_author_id"
+    t.index ["tenant_id"], name: "index_workflow_notes_on_tenant_id"
     t.index ["workflow_request_id"], name: "index_workflow_notes_on_workflow_request_id"
   end
 
@@ -282,10 +331,12 @@ ActiveRecord::Schema[7.2].define(version: 2025_10_31_052010) do
     t.datetime "updated_at", null: false
     t.jsonb "metadata", default: {}, null: false
     t.bigint "requester_employee_id"
+    t.bigint "tenant_id", null: false
     t.index ["requester_employee_id"], name: "index_workflow_requests_on_requester_employee_id"
     t.index ["requester_id"], name: "index_workflow_requests_on_requester_id"
     t.index ["status"], name: "index_workflow_requests_on_status"
     t.index ["submitted_at"], name: "index_workflow_requests_on_submitted_at"
+    t.index ["tenant_id"], name: "index_workflow_requests_on_tenant_id"
     t.index ["workflow_category_id"], name: "index_workflow_requests_on_category_id"
   end
 
@@ -298,7 +349,9 @@ ActiveRecord::Schema[7.2].define(version: 2025_10_31_052010) do
     t.string "instructions"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "tenant_id", null: false
     t.index ["responsible_user_id"], name: "index_workflow_stage_templates_on_responsible_user_id"
+    t.index ["tenant_id"], name: "index_workflow_stage_templates_on_tenant_id"
     t.index ["workflow_category_id", "position"], name: "index_stage_templates_on_category_and_position"
     t.index ["workflow_category_id"], name: "index_stage_templates_on_category_id"
   end
@@ -315,37 +368,60 @@ ActiveRecord::Schema[7.2].define(version: 2025_10_31_052010) do
     t.text "last_comment"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "tenant_id", null: false
     t.index ["responsible_user_id"], name: "index_workflow_stages_on_responsible_user_id"
     t.index ["status"], name: "index_workflow_stages_on_status"
+    t.index ["tenant_id"], name: "index_workflow_stages_on_tenant_id"
     t.index ["workflow_request_id", "position"], name: "index_workflow_stages_on_request_and_position"
     t.index ["workflow_request_id"], name: "index_workflow_stages_on_request_id"
   end
 
   add_foreign_key "employee_assignments", "employees"
+  add_foreign_key "employee_assignments", "tenants"
   add_foreign_key "employee_positions", "employees"
+  add_foreign_key "employee_positions", "tenants"
   add_foreign_key "employee_qualifications", "employees"
+  add_foreign_key "employee_qualifications", "tenants"
   add_foreign_key "employee_reviews", "employees"
+  add_foreign_key "employee_reviews", "tenants"
   add_foreign_key "employee_statuses", "employees"
+  add_foreign_key "employee_statuses", "tenants"
+  add_foreign_key "employees", "tenants"
   add_foreign_key "item_orders", "items"
   add_foreign_key "item_orders", "periods"
+  add_foreign_key "item_orders", "tenants"
+  add_foreign_key "items", "tenants"
   add_foreign_key "payroll_batches", "periods"
+  add_foreign_key "payroll_batches", "tenants"
   add_foreign_key "payroll_batches", "users", column: "uploaded_by_id"
   add_foreign_key "payroll_cells", "employees"
   add_foreign_key "payroll_cells", "items"
   add_foreign_key "payroll_cells", "payroll_batches"
   add_foreign_key "payroll_cells", "periods"
+  add_foreign_key "payroll_cells", "tenants"
   add_foreign_key "payroll_column_orders", "employees"
   add_foreign_key "payroll_column_orders", "periods"
+  add_foreign_key "payroll_column_orders", "tenants"
+  add_foreign_key "periods", "tenants"
+  add_foreign_key "users", "employees", column: "employment_id"
+  add_foreign_key "users", "tenants"
+  add_foreign_key "workflow_approvals", "tenants"
   add_foreign_key "workflow_approvals", "users", column: "actor_id"
   add_foreign_key "workflow_approvals", "workflow_stages"
+  add_foreign_key "workflow_categories", "tenants"
+  add_foreign_key "workflow_category_notifications", "tenants"
   add_foreign_key "workflow_category_notifications", "workflow_categories"
+  add_foreign_key "workflow_notes", "tenants"
   add_foreign_key "workflow_notes", "users", column: "author_id"
   add_foreign_key "workflow_notes", "workflow_requests"
   add_foreign_key "workflow_requests", "employees", column: "requester_employee_id"
+  add_foreign_key "workflow_requests", "tenants"
   add_foreign_key "workflow_requests", "users", column: "requester_id"
   add_foreign_key "workflow_requests", "workflow_categories"
+  add_foreign_key "workflow_stage_templates", "tenants"
   add_foreign_key "workflow_stage_templates", "users", column: "responsible_user_id"
   add_foreign_key "workflow_stage_templates", "workflow_categories"
+  add_foreign_key "workflow_stages", "tenants"
   add_foreign_key "workflow_stages", "users", column: "responsible_user_id"
   add_foreign_key "workflow_stages", "workflow_requests"
 end

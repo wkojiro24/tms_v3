@@ -1,4 +1,6 @@
 class PayrollCell < ApplicationRecord
+  include TenantScoped
+
   belongs_to :period
   belongs_to :employee
   belongs_to :item

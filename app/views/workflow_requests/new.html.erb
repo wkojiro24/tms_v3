@@ -79,12 +79,10 @@
             <tr data-workflow-form-target="field" data-field-name="requester_employee_id">
               <th>申請者</th>
               <td>
-                <%= f.collection_select :requester_employee_id,
-                                        @employees,
-                                        :id,
-                                        :display_label,
-                                        { include_blank: "選択してください" },
-                                        class: "form-select form-select-sm" %>
+                <div class="form-control-plaintext">
+                  <%= current_user.employment&.display_label || current_user.display_name %>
+                </div>
+                <%= f.hidden_field :requester_employee_id, value: current_user.employment&.id %>
               </td>
               <th>担当者メール</th>
               <td class="text-muted">（自動通知：登録済み）</td>

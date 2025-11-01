@@ -1,4 +1,6 @@
 class PayrollColumnOrder < ApplicationRecord
+  include TenantScoped
+
   belongs_to :period
   belongs_to :employee
 

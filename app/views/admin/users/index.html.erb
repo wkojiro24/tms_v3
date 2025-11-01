@@ -14,6 +14,7 @@
           <tr>
             <th>メールアドレス</th>
             <th>ロール</th>
+            <th>従業員</th>
             <th>作成日</th>
             <th>最終更新</th>
             <th></th>
@@ -24,6 +25,7 @@
             <tr>
               <td><%= user.email %></td>
               <td><span class="badge <%= user.admin_role? ? 'bg-success' : 'bg-secondary' %>"><%= user.role %></span></td>
+              <td><%= user.employment&.display_label || "未割当" %></td>
               <td><%= l(user.created_at, format: :short) %></td>
               <td><%= l(user.updated_at, format: :short) %></td>
               <td class="text-end">

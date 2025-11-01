@@ -1,9 +1,12 @@
 class Item < ApplicationRecord
+  include TenantScoped
+
   has_many :item_orders, dependent: :destroy
   has_many :periods, through: :item_orders
   has_many :payroll_cells, dependent: :destroy
 
   validates :name, presence: true
+  validates :name, uniqueness: { scope: [:tenant_id, :above_basic] }
 
   scope :alphabetical, -> { order(:name) }
 

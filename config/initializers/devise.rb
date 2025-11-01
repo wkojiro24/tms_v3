@@ -268,6 +268,19 @@ Devise.setup do |config|
   # The default HTTP method used to sign out a resource. Default is :delete.
   config.sign_out_via = :delete
 
+  config.warden do |manager|
+    manager.serialize_into_session do |user|
+      [user.tenant_id, user.id]
+    end
+
+    manager.serialize_from_session do |keys|
+      tenant_id, user_id = keys
+
+      tenant = ActsAsTenant.without_tenant { Tenant.unscoped.find_by(id: tenant_id) }
+      tenant ? ActsAsTenant.with_tenant(tenant) { User.unscoped.find_by(id: user_id) } : nil
+    end
+  end
+
   # ==> OmniAuth
   # Add a new OmniAuth provider. Check the wiki for more information on setting
   # up on your models and hooks.

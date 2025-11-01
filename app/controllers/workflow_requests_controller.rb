@@ -2,6 +2,7 @@ class WorkflowRequestsController < ApplicationController
   helper WorkflowRequestsHelper
   before_action :authenticate_user!
   before_action :set_workflow_request, only: [:show]
+  before_action :ensure_submission_permission, only: [:new, :create]
 
   def index
     @workflow_requests = current_user.admin_role? ? WorkflowRequest.recent.includes(:workflow_category) : WorkflowRequest.for_requester(current_user).recent.includes(:workflow_category)
@@ -9,14 +10,17 @@ class WorkflowRequestsController < ApplicationController
   end
 
   def new
-    @workflow_request = WorkflowRequest.new
+    @workflow_request = WorkflowRequest.new(requester: current_user, requester_employee: current_user.employment)
     @categories = WorkflowCategory.active.includes(:stage_templates).order(:name)
-    @employees = Employee.ordered_by_code
     authorize! :create, @workflow_request
   end
 
   def create
-    @workflow_request = WorkflowRequest.new(workflow_request_params.merge(requester: current_user))
+    attributes = workflow_request_params.merge(
+      requester: current_user,
+      requester_employee: current_user.employment
+    )
+    @workflow_request = WorkflowRequest.new(attributes)
     authorize! :create, @workflow_request
 
     if @workflow_request.save
@@ -24,7 +28,6 @@ class WorkflowRequestsController < ApplicationController
       redirect_to workflow_request_path(@workflow_request), notice: "申請を受け付けました。承認フローを開始します。"
     else
       @categories = WorkflowCategory.active.includes(:stage_templates).order(:name)
-      @employees = Employee.ordered_by_code
       flash.now[:alert] = "申請を作成できませんでした。入力内容をご確認ください。"
       render :new, status: :unprocessable_entity
     end
@@ -54,9 +57,15 @@ class WorkflowRequestsController < ApplicationController
       :vehicle_identifier,
       :needed_on,
       :additional_information,
-      :requester_employee_id,
       metadata: metadata_keys,
       documents: []
     )
+  end
+
+  def ensure_submission_permission
+    employment = current_user&.employment
+    unless employment&.submit_enabled?
+      redirect_to workflow_requests_path, alert: "申請権限がありません。管理者にお問い合わせください。"
+    end
   end
 end

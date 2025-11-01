@@ -1,29 +1,37 @@
 # Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
 
 one:
-  employee_code: MyString
-  last_name: MyString
-  first_name: MyString
-  last_name_kana: MyString
-  first_name_kana: MyString
-  full_name: MyString
-  date_of_birth: 2025-10-31
-  hire_date: 2025-10-31
-  email: MyString
-  phone: MyString
-  current_status: MyString
-  notes: MyText
+  tenant: default
+  employee_code: EMP-001
+  last_name: 山田
+  first_name: 太郎
+  full_name: 山田 太郎
+  hire_date: 2020-04-01
+  email: yamada@example.com
+  phone: 000-0000-0000
+  current_status: active
+  submit_enabled: true
 
 two:
-  employee_code: MyString
-  last_name: MyString
-  first_name: MyString
-  last_name_kana: MyString
-  first_name_kana: MyString
-  full_name: MyString
-  date_of_birth: 2025-10-31
-  hire_date: 2025-10-31
-  email: MyString
-  phone: MyString
-  current_status: MyString
-  notes: MyText
+  tenant: default
+  employee_code: EMP-002
+  last_name: 佐藤
+  first_name: 花子
+  full_name: 佐藤 花子
+  hire_date: 2021-04-01
+  email: sato@example.com
+  phone: 000-0000-0001
+  current_status: active
+  submit_enabled: true
+
+admin:
+  tenant: default
+  employee_code: ADMIN-001
+  last_name: 管理
+  first_name: 者
+  full_name: 管理 者
+  hire_date: 2020-01-15
+  email: admin@default.test
+  phone: 000-0000-0002
+  current_status: active
+  submit_enabled: true

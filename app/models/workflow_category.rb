@@ -1,10 +1,12 @@
 class WorkflowCategory < ApplicationRecord
+  include TenantScoped
+
   has_many :stage_templates, -> { order(:position) }, class_name: "WorkflowStageTemplate", dependent: :destroy, inverse_of: :workflow_category
   has_many :notifications, class_name: "WorkflowCategoryNotification", dependent: :destroy, inverse_of: :workflow_category
   has_many :workflow_requests, dependent: :restrict_with_exception
 
   validates :name, :code, presence: true
-  validates :code, uniqueness: true
+  validates :code, uniqueness: { scope: :tenant_id }
 
   scope :active, -> { where(active: true) }
 

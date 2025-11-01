@@ -1,4 +1,6 @@
 class EmployeeReview < ApplicationRecord
+  include TenantScoped
+
   belongs_to :employee
 
   validates :reviewed_on, presence: true

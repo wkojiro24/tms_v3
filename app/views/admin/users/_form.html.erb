@@ -13,6 +13,10 @@
   <% password_required = !@user.persisted? %>
 
   <div class="row g-3">
+    <div class="col-12">
+      <label class="form-label">所属テナント</label>
+      <p class="form-control-plaintext"><%= current_tenant&.name || "未設定" %></p>
+    </div>
     <div class="col-md-6">
       <%= f.label :email, "メールアドレス", class: "form-label" %>
       <%= f.email_field :email, class: "form-control", required: true %>
@@ -20,6 +24,60 @@
     <div class="col-md-6">
       <%= f.label :role, "ロール", class: "form-label" %>
       <%= f.select :role, User.roles.keys.map { |r| [r.humanize, r] }, {}, class: "form-select" %>
+    </div>
+    <div class="col-md-6">
+      <%= f.label :employment_id, "従業員", class: "form-label" %>
+      <%= f.collection_select :employment_id,
+                              @available_employments,
+                              :id,
+                              :display_label,
+                              { include_blank: "選択してください" },
+                              class: "form-select",
+                              required: false,
+                              disabled: @available_employments.empty? %>
+      <% if @available_employments.empty? %>
+        <div class="form-text text-danger">紐づけ可能な従業員が見つかりません。下のフォームから新規登録してください。</div>
+      <% else %>
+        <div class="form-text">既存従業員に紐づける場合はこちらから選択してください。</div>
+      <% end %>
+    </div>
+    <div class="col-12">
+      <div class="card border-secondary-subtle mt-2">
+        <div class="card-body">
+          <h6 class="card-title mb-3">新規従業員を登録する場合</h6>
+          <p class="text-muted small mb-3">
+            既存の従業員が存在しない場合や新規採用者の場合は、下記に従業員情報を入力してください。
+          </p>
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label for="user_new_employment_employee_code" class="form-label">従業員コード</label>
+              <%= text_field_tag "user[new_employment][employee_code]",
+                                 params.dig(:user, :new_employment, :employee_code) || @user.employment&.employee_code || "",
+                                 class: "form-control",
+                                 placeholder: "例) EMP-1001" %>
+            </div>
+            <div class="col-md-4">
+              <label for="user_new_employment_last_name" class="form-label">姓</label>
+              <%= text_field_tag "user[new_employment][last_name]",
+                                 params.dig(:user, :new_employment, :last_name) || @user.employment&.last_name || "",
+                                 class: "form-control" %>
+            </div>
+            <div class="col-md-4">
+              <label for="user_new_employment_first_name" class="form-label">名</label>
+              <%= text_field_tag "user[new_employment][first_name]",
+                                 params.dig(:user, :new_employment, :first_name) || @user.employment&.first_name || "",
+                                 class: "form-control" %>
+            </div>
+            <div class="col-md-6">
+              <label for="user_new_employment_email" class="form-label">従業員メール (任意)</label>
+              <%= email_field_tag "user[new_employment][email]",
+                                  params.dig(:user, :new_employment, :email) || @user.employment&.email || "",
+                                  class: "form-control",
+                                  placeholder: "必要に応じて入力" %>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
     <div class="col-md-6">
       <%= f.label :password, "パスワード", class: "form-label" %>

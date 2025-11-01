@@ -9,10 +9,16 @@ class Ability
     can :read, :dashboard
     can :read, :portal
 
-    can :create, WorkflowRequest
+    if user.can_submit_workflow_requests?
+      can :create, WorkflowRequest
+      can :submit, WorkflowRequest, requester_id: user.id
+    else
+      cannot :create, WorkflowRequest
+      cannot :submit, WorkflowRequest
+    end
+
     can :read, WorkflowRequest, requester_id: user.id
     can :update, WorkflowRequest, requester_id: user.id, status: %w[draft returned]
-    can :submit, WorkflowRequest, requester_id: user.id
 
     can :read, WorkflowStage do |stage|
       stage.workflow_request.requester_id == user.id

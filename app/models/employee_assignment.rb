@@ -1,4 +1,6 @@
 class EmployeeAssignment < ApplicationRecord
+  include TenantScoped
+
   belongs_to :employee
 
   validates :effective_from, presence: true

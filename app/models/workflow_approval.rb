@@ -1,4 +1,6 @@
 class WorkflowApproval < ApplicationRecord
+  include TenantScoped
+
   ACTIONS = %w[approved rejected returned held].freeze
 
   belongs_to :workflow_stage

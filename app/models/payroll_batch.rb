@@ -1,4 +1,6 @@
 class PayrollBatch < ApplicationRecord
+  include TenantScoped
+
   belongs_to :period
   belongs_to :uploaded_by, class_name: "User"
 
