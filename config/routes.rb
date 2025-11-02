@@ -25,6 +25,7 @@ Rails.application.routes.draw do
   get "/imports", to: redirect("/admin/imports/new")
 
   resources :workflow_requests, path: "workflows", only: [:index, :new, :create, :show]
+  resources :journal_entries, only: [:index]
 
   namespace :admin do
     root to: "dashboard#index"

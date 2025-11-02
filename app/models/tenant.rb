@@ -9,6 +9,14 @@ class Tenant < ApplicationRecord
   has_many :grade_levels, dependent: :destroy
   has_many :evaluation_grades, dependent: :destroy
   has_many :evaluation_cycles, dependent: :destroy
+  has_many :import_batches, dependent: :destroy
+  has_many :journal_entries, dependent: :destroy
+  has_many :journal_lines, through: :journal_entries
+  has_many :pl_tree_nodes, dependent: :destroy
+  has_many :pl_mappings, dependent: :destroy
+  has_many :classification_rules, dependent: :destroy
+  has_many :snapshots, dependent: :destroy
+  has_many :vehicle_aliases, dependent: :destroy
 
   validates :name, presence: true
   validates :slug, presence: true, uniqueness: true

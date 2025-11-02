@@ -1,0 +1,195 @@
+<% content_for :title, "仕訳明細" %>
+<% content_for :section_label, "Accounting" %>
+
+<% if @years.blank? %>
+  <div class="empty-state">
+    <i class="bi bi-inbox-fill"></i>
+    <p>仕訳データがまだありません。</p>
+  </div>
+<% else %>
+  <div class="journal-page">
+    <header class="journal-page__header">
+      <div>
+        <h1 class="journal-page__title">仕訳明細</h1>
+        <p class="journal-page__subtitle"><%= @fiscal_year_label %></p>
+      </div>
+      <div class="journal-page__switcher">
+        <%= link_to "前月", journal_entries_path(@prev_params), class: "journal-page__switcher-btn journal-page__switcher-btn--prev", data: { turbo_frame: "journal_entries_frame" } %>
+        <span class="journal-page__current"><%= @period_start.strftime("%Y年%-m月") %></span>
+        <%= link_to "翌月", journal_entries_path(@next_params), class: "journal-page__switcher-btn journal-page__switcher-btn--next", data: { turbo_frame: "journal_entries_frame" } %>
+      </div>
+    </header>
+
+    <%= turbo_frame_tag "journal_entries_frame" do %>
+      <section class="journal-filter-panel">
+        <%= form_with url: journal_entries_path, method: :get, class: "journal-filter", data: { turbo_frame: "journal_entries_frame" } do %>
+          <div class="journal-filter__field">
+            <label for="year" class="journal-filter__label">年度</label>
+            <%= select_tag :year,
+                options_for_select(@years.map { |year| ["#{year}年度", year] }, @selected_year),
+                class: "form-select" %>
+          </div>
+          <div class="journal-filter__field journal-filter__field--grow">
+            <label for="query" class="journal-filter__label">キーワード</label>
+            <%= text_field_tag :query,
+                @query,
+                placeholder: "摘要 / 勘定科目 / 補助科目 / 相手先 / メモを検索",
+                class: "form-control" %>
+          </div>
+          <div class="journal-filter__field journal-filter__field--small">
+            <label for="limit" class="journal-filter__label">最大件数</label>
+            <%= number_field_tag :limit, @limit, in: 50..5000, step: 50, class: "form-control" %>
+          </div>
+          <%= hidden_field_tag :month, @selected_month %>
+          <div class="journal-filter__actions">
+            <%= submit_tag "検索", class: "btn btn-primary" %>
+          </div>
+        <% end %>
+      </section>
+
+      <nav class="journal-tabs" aria-label="対象月">
+        <% @month_tabs.each do |tab| %>
+          <% classes = ["journal-tabs__link"] %>
+          <% classes << "is-active" if tab[:active] %>
+          <% classes << "is-empty" unless tab[:has_data] %>
+          <%= link_to tab[:label], tab[:path], class: classes, data: { turbo: true, turbo_frame: "journal_entries_frame" } %>
+        <% end %>
+      </nav>
+
+      <section class="journal-summary">
+        <div>
+          <span class="journal-summary__label">表示期間</span>
+          <strong><%= l(@period_start) %>〜<%= l(@period_end) %></strong>
+        </div>
+        <ul class="journal-summary__metrics">
+          <li>
+            <span>伝票</span>
+            <strong><%= @entries.size %></strong>
+            <% if @limited %>
+              <span class="journal-summary__note">/ <%= @available_entry_count %></span>
+            <% end %>
+            件
+          </li>
+          <li><span>明細</span><strong><%= @entries.sum { |entry| entry.journal_lines.size } %></strong>行</li>
+          <li><span>上限</span><strong><%= @limit %></strong>件</li>
+        </ul>
+        <% if @limited %>
+          <div class="journal-summary__caption">最大件数に達したため、伝票を <%= @limit %> 件まで表示しています。</div>
+        <% end %>
+        <% if @query.present? %>
+          <div class="journal-summary__tag">
+            <i class="bi bi-search"></i>
+            "<%= @query %>"
+          </div>
+        <% end %>
+      </section>
+
+      <% if @entries.blank? %>
+        <div class="empty-state empty-state--compact">
+          <i class="bi bi-file-earmark-text"></i>
+          <p>該当する仕訳はありませんでした。</p>
+        </div>
+      <% else %>
+        <div class="journal-table-wrapper">
+          <table class="journal-table">
+          <thead>
+            <tr>
+              <th rowspan="2" class="journal-table__head journal-table__head--date">日付</th>
+              <th rowspan="2" class="journal-table__head journal-table__head--slip">伝票No.</th>
+              <th rowspan="2" class="journal-table__head journal-table__head--type">タイプ</th>
+              <th colspan="5" class="journal-table__head journal-table__head--group journal-table__head--debit">借方</th>
+              <th colspan="5" class="journal-table__head journal-table__head--group journal-table__head--credit">貸方</th>
+              <th rowspan="2" class="journal-table__head journal-table__head--memo">摘要</th>
+              <th rowspan="2" class="journal-table__head journal-table__head--journal">仕訳番号</th>
+            </tr>
+            <tr>
+              <th class="journal-table__head journal-table__head--account">勘定科目</th>
+              <th class="journal-table__head journal-table__head--sub">補助科目 / 相手先</th>
+              <th class="journal-table__head journal-table__head--dept">部門</th>
+              <th class="journal-table__head journal-table__head--tax">税区分</th>
+              <th class="journal-table__head journal-table__head--amount">金額</th>
+              <th class="journal-table__head journal-table__head--account">勘定科目</th>
+              <th class="journal-table__head journal-table__head--sub">補助科目 / 相手先</th>
+              <th class="journal-table__head journal-table__head--dept">部門</th>
+              <th class="journal-table__head journal-table__head--tax">税区分</th>
+              <th class="journal-table__head journal-table__head--amount">金額</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @entry_rows.each do |entry_block| %>
+              <% entry = entry_block[:entry] %>
+              <% rows = entry_block[:rows] %>
+              <% summary_text = (entry.summary.presence || Array(entry.metadata["notes"]).uniq.compact.first).presence %>
+              <% rows.each_with_index do |row, index| %>
+                <% debit = row[:debit] %>
+                <% credit = row[:credit] %>
+                <% line_no = debit&.metadata&.dig("line_no") || credit&.metadata&.dig("line_no") || entry.metadata["line_numbers"]&.first %>
+                <tr class="journal-table__row">
+                  <% if index.zero? %>
+                    <td rowspan="<%= rows.size %>" class="journal-table__cell journal-table__cell--date">
+                      <%= entry.entry_date.strftime("%m/%d") %>
+                    </td>
+                    <td rowspan="<%= rows.size %>" class="journal-table__cell journal-table__cell--slip">
+                      <%= entry.slip_no.presence || "なし" %>
+                    </td>
+                    <td rowspan="<%= rows.size %>" class="journal-table__cell journal-table__cell--type">
+                      <%= entry.document_type.presence || "-" %>
+                    </td>
+                  <% end %>
+
+                  <td class="journal-table__cell journal-table__cell--account">
+                    <%= debit&.account_name %>
+                  </td>
+                  <td class="journal-table__cell journal-table__cell--sub">
+                    <% if debit.present? %>
+                      <div><%= debit.sub_account_name.presence || "-" %></div>
+                      <% if debit.vendor_name.present? %>
+                        <div class="journal-table__vendor"><%= debit.vendor_name %></div>
+                      <% end %>
+                    <% end %>
+                  </td>
+                  <td class="journal-table__cell journal-table__cell--dept"><%= debit&.dept_name.presence || "-" %></td>
+                  <td class="journal-table__cell journal-table__cell--tax"><%= (debit&.tax_category || debit&.metadata&.dig("tax_category")).presence || "-" %></td>
+                  <td class="journal-table__cell journal-table__cell--amount">
+                    <%= debit.present? ? number_with_delimiter(debit.amount) : "" %>
+                  </td>
+
+                  <td class="journal-table__cell journal-table__cell--account">
+                    <%= credit&.account_name %>
+                  </td>
+                  <td class="journal-table__cell journal-table__cell--sub">
+                    <% if credit.present? %>
+                      <div><%= credit.sub_account_name.presence || "-" %></div>
+                      <% if credit.vendor_name.present? %>
+                        <div class="journal-table__vendor"><%= credit.vendor_name %></div>
+                      <% end %>
+                    <% end %>
+                  </td>
+                  <td class="journal-table__cell journal-table__cell--dept"><%= credit&.dept_name.presence || "-" %></td>
+                  <td class="journal-table__cell journal-table__cell--tax"><%= (credit&.tax_category || credit&.metadata&.dig("tax_category")).presence || "-" %></td>
+                  <td class="journal-table__cell journal-table__cell--amount">
+                    <%= credit.present? ? number_with_delimiter(credit.amount) : "" %>
+                  </td>
+
+                  <% if index.zero? %>
+                    <td rowspan="<%= rows.size %>" class="journal-table__cell journal-table__cell--memo">
+                      <% if summary_text.present? %>
+                        <%= tag.span("※", class: "journal-table__memo", data: { bs_toggle: "tooltip", bs_custom_class: "journal-tooltip", bs_placement: "top", bs_container: "body", bs_title: summary_text }) %>
+                      <% else %>
+                        <span class="journal-table__memo journal-table__memo--empty">-</span>
+                      <% end %>
+                    </td>
+                  <% end %>
+                  <td class="journal-table__cell journal-table__cell--journal">
+                    <%= line_no.presence || "-" %>
+                  </td>
+                </tr>
+              <% end %>
+            <% end %>
+          </tbody>
+        </table>
+        </div>
+      <% end %>
+    <% end %>
+  </div>
+<% end %>

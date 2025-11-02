@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2025_11_01_075000) do
+ActiveRecord::Schema[7.2].define(version: 2025_11_03_080000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -41,6 +41,21 @@ ActiveRecord::Schema[7.2].define(version: 2025_11_01_075000) do
     t.string "variation_digest", null: false
     t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
     t.index ["blob_id"], name: "index_active_storage_variant_records_on_blob_id"
+  end
+
+  create_table "classification_rules", force: :cascade do |t|
+    t.bigint "tenant_id", null: false
+    t.string "name", null: false
+    t.integer "priority", default: 100, null: false
+    t.string "nature", null: false
+    t.decimal "split_ratio", precision: 5, scale: 2
+    t.jsonb "conditions", default: {}, null: false
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "nature"], name: "index_classification_rules_on_tenant_id_and_nature"
+    t.index ["tenant_id", "priority"], name: "index_classification_rules_on_tenant_id_and_priority"
+    t.index ["tenant_id"], name: "index_classification_rules_on_tenant_id"
   end
 
   create_table "departments", force: :cascade do |t|
@@ -213,6 +228,18 @@ ActiveRecord::Schema[7.2].define(version: 2025_11_01_075000) do
     t.index ["tenant_id"], name: "index_grade_levels_on_tenant_id"
   end
 
+  create_table "import_batches", force: :cascade do |t|
+    t.bigint "tenant_id", null: false
+    t.string "source_file_name", null: false
+    t.string "source_digest"
+    t.datetime "imported_at", null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "source_digest"], name: "index_import_batches_on_tenant_id_and_source_digest", unique: true
+    t.index ["tenant_id"], name: "index_import_batches_on_tenant_id"
+  end
+
   create_table "item_orders", force: :cascade do |t|
     t.bigint "period_id", null: false
     t.string "location"
@@ -265,6 +292,48 @@ ActiveRecord::Schema[7.2].define(version: 2025_11_01_075000) do
     t.datetime "updated_at", null: false
     t.index ["tenant_id", "code"], name: "index_job_positions_on_tenant_id_and_code", unique: true
     t.index ["tenant_id"], name: "index_job_positions_on_tenant_id"
+  end
+
+  create_table "journal_entries", force: :cascade do |t|
+    t.bigint "tenant_id", null: false
+    t.bigint "import_batch_id", null: false
+    t.date "entry_date", null: false
+    t.string "slip_no"
+    t.string "document_type"
+    t.string "source_sheet_name"
+    t.integer "source_start_row"
+    t.integer "source_end_row"
+    t.string "summary"
+    t.jsonb "metadata", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["import_batch_id"], name: "index_journal_entries_on_import_batch_id"
+    t.index ["tenant_id", "entry_date"], name: "index_journal_entries_on_tenant_id_and_entry_date"
+    t.index ["tenant_id", "slip_no"], name: "index_journal_entries_on_tenant_id_and_slip_no"
+    t.index ["tenant_id"], name: "index_journal_entries_on_tenant_id"
+  end
+
+  create_table "journal_lines", force: :cascade do |t|
+    t.bigint "journal_entry_id", null: false
+    t.string "side", null: false
+    t.string "account_code"
+    t.string "account_name", null: false
+    t.string "sub_account_name"
+    t.string "dept_code"
+    t.string "dept_name"
+    t.string "vendor_name"
+    t.bigint "amount", null: false
+    t.decimal "tax_amount", precision: 15, scale: 2
+    t.string "tax_category"
+    t.string "tax_calculation"
+    t.string "memo"
+    t.integer "source_row_number"
+    t.jsonb "metadata", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["journal_entry_id", "account_name"], name: "index_journal_lines_on_journal_entry_id_and_account_name"
+    t.index ["journal_entry_id", "side"], name: "index_journal_lines_on_journal_entry_id_and_side"
+    t.index ["journal_entry_id"], name: "index_journal_lines_on_journal_entry_id"
   end
 
   create_table "payroll_batches", force: :cascade do |t|
@@ -330,6 +399,64 @@ ActiveRecord::Schema[7.2].define(version: 2025_11_01_075000) do
     t.index ["tenant_id"], name: "index_periods_on_tenant_id"
   end
 
+  create_table "pl_mappings", force: :cascade do |t|
+    t.bigint "tenant_id", null: false
+    t.bigint "pl_tree_node_id", null: false
+    t.integer "priority", default: 100, null: false
+    t.string "mapping_scope", default: "company", null: false
+    t.string "account_code"
+    t.string "account_name"
+    t.string "vendor_name"
+    t.string "memo_keyword"
+    t.string "dept_code"
+    t.string "vehicle_id"
+    t.boolean "active", default: true, null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["pl_tree_node_id"], name: "index_pl_mappings_on_pl_tree_node_id"
+    t.index ["tenant_id", "account_code"], name: "index_pl_mappings_on_tenant_id_and_account_code"
+    t.index ["tenant_id", "priority"], name: "index_pl_mappings_on_tenant_id_and_priority"
+    t.index ["tenant_id", "vendor_name"], name: "index_pl_mappings_on_tenant_id_and_vendor_name"
+    t.index ["tenant_id"], name: "index_pl_mappings_on_tenant_id"
+  end
+
+  create_table "pl_tree_nodes", force: :cascade do |t|
+    t.bigint "tenant_id", null: false
+    t.string "code", null: false
+    t.string "name", null: false
+    t.bigint "parent_id"
+    t.integer "display_order", default: 0, null: false
+    t.integer "depth", default: 0, null: false
+    t.string "node_type", default: "normal", null: false
+    t.text "expression"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "code"], name: "index_pl_tree_nodes_on_tenant_id_and_code", unique: true
+    t.index ["tenant_id", "parent_id", "display_order"], name: "index_pl_tree_nodes_on_tenant_and_parent_and_order"
+    t.index ["tenant_id"], name: "index_pl_tree_nodes_on_tenant_id"
+  end
+
+  create_table "snapshots", force: :cascade do |t|
+    t.bigint "tenant_id", null: false
+    t.bigint "pl_tree_node_id", null: false
+    t.date "period_month", null: false
+    t.string "scope_type", null: false
+    t.string "scope_key", default: "company", null: false
+    t.bigint "actual_amount", default: 0, null: false
+    t.bigint "managed_amount", default: 0, null: false
+    t.bigint "fixed_amount", default: 0, null: false
+    t.bigint "variable_amount", default: 0, null: false
+    t.bigint "unknown_amount", default: 0, null: false
+    t.datetime "generated_at", null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["pl_tree_node_id"], name: "index_snapshots_on_pl_tree_node_id"
+    t.index ["tenant_id", "period_month", "scope_type", "scope_key", "pl_tree_node_id"], name: "index_snapshots_on_scope_and_node", unique: true
+    t.index ["tenant_id"], name: "index_snapshots_on_tenant_id"
+  end
+
   create_table "tenants", force: :cascade do |t|
     t.string "name", null: false
     t.string "slug", null: false
@@ -356,6 +483,20 @@ ActiveRecord::Schema[7.2].define(version: 2025_11_01_075000) do
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
     t.index ["tenant_id", "email"], name: "index_users_on_tenant_and_email", unique: true
     t.index ["tenant_id"], name: "index_users_on_tenant_id"
+  end
+
+  create_table "vehicle_aliases", force: :cascade do |t|
+    t.bigint "tenant_id", null: false
+    t.string "pattern", null: false
+    t.string "pattern_type", default: "exact", null: false
+    t.string "vehicle_id", null: false
+    t.boolean "active", default: true, null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "pattern"], name: "index_vehicle_aliases_on_tenant_id_and_pattern", unique: true
+    t.index ["tenant_id", "vehicle_id"], name: "index_vehicle_aliases_on_tenant_id_and_vehicle_id"
+    t.index ["tenant_id"], name: "index_vehicle_aliases_on_tenant_id"
   end
 
   create_table "workflow_approvals", force: :cascade do |t|
@@ -470,6 +611,7 @@ ActiveRecord::Schema[7.2].define(version: 2025_11_01_075000) do
     t.index ["workflow_request_id"], name: "index_workflow_stages_on_request_id"
   end
 
+  add_foreign_key "classification_rules", "tenants"
   add_foreign_key "departments", "tenants"
   add_foreign_key "employee_assignments", "employees"
   add_foreign_key "employee_assignments", "tenants"
@@ -492,12 +634,16 @@ ActiveRecord::Schema[7.2].define(version: 2025_11_01_075000) do
   add_foreign_key "evaluation_cycles", "tenants"
   add_foreign_key "evaluation_grades", "tenants"
   add_foreign_key "grade_levels", "tenants"
+  add_foreign_key "import_batches", "tenants"
   add_foreign_key "item_orders", "items"
   add_foreign_key "item_orders", "periods"
   add_foreign_key "item_orders", "tenants"
   add_foreign_key "items", "tenants"
   add_foreign_key "job_categories", "tenants"
   add_foreign_key "job_positions", "tenants"
+  add_foreign_key "journal_entries", "import_batches"
+  add_foreign_key "journal_entries", "tenants"
+  add_foreign_key "journal_lines", "journal_entries"
   add_foreign_key "payroll_batches", "periods"
   add_foreign_key "payroll_batches", "tenants"
   add_foreign_key "payroll_batches", "users", column: "uploaded_by_id"
@@ -510,8 +656,15 @@ ActiveRecord::Schema[7.2].define(version: 2025_11_01_075000) do
   add_foreign_key "payroll_column_orders", "periods"
   add_foreign_key "payroll_column_orders", "tenants"
   add_foreign_key "periods", "tenants"
+  add_foreign_key "pl_mappings", "pl_tree_nodes"
+  add_foreign_key "pl_mappings", "tenants"
+  add_foreign_key "pl_tree_nodes", "pl_tree_nodes", column: "parent_id"
+  add_foreign_key "pl_tree_nodes", "tenants"
+  add_foreign_key "snapshots", "pl_tree_nodes"
+  add_foreign_key "snapshots", "tenants"
   add_foreign_key "users", "employees", column: "employment_id"
   add_foreign_key "users", "tenants"
+  add_foreign_key "vehicle_aliases", "tenants"
   add_foreign_key "workflow_approvals", "tenants"
   add_foreign_key "workflow_approvals", "users", column: "actor_id"
   add_foreign_key "workflow_approvals", "workflow_stages"

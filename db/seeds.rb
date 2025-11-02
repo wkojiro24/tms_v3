@@ -244,5 +244,106 @@ ActsAsTenant.with_tenant(tenant) do
     notifications: [{ role: "accounting", description: "損害保険・費用計上の確認" }]
   )
 
+  def ensure_pl_node(code:, name:, parent_code: nil, display_order: 0, node_type: "normal", expression: nil)
+    parent = parent_code.present? ? PlTreeNode.find_by!(code: parent_code) : nil
+    PlTreeNode.find_or_initialize_by(code: code).tap do |node|
+      node.parent = parent
+      node.name = name
+      node.display_order = display_order
+      node.depth = parent ? parent.depth + 1 : 0
+      node.node_type = node_type
+      node.expression = expression
+      node.save!
+    end
+  end
+
+  pl_nodes = [
+    { code: "sales", name: "売上", display_order: 10 },
+    { code: "sales_revenue", name: "売上高", parent_code: "sales", display_order: 10 },
+    { code: "cost_of_sales", name: "原価", display_order: 20 },
+    { code: "fuel_cost", name: "燃料費", parent_code: "cost_of_sales", display_order: 10 },
+    { code: "repair_cost", name: "修繕費", parent_code: "cost_of_sales", display_order: 20 },
+    { code: "tire_cost", name: "タイヤ費", parent_code: "cost_of_sales", display_order: 30 },
+    { code: "toll_cost", name: "通行料（ETC等）", parent_code: "cost_of_sales", display_order: 40 },
+    { code: "supplies_cost", name: "消耗品費", parent_code: "cost_of_sales", display_order: 50 },
+    { code: "outsourcing_cost", name: "外注費", parent_code: "cost_of_sales", display_order: 60 },
+    { code: "labor_cost", name: "労務費（可変）", parent_code: "cost_of_sales", display_order: 70 },
+    { code: "cost_unclassified", name: "未分類（原価）", parent_code: "cost_of_sales", display_order: 999 },
+    { code: "branch_admin", name: "営業所管理費", display_order: 30 },
+    { code: "operation_admin", name: "運行管理費", parent_code: "branch_admin", display_order: 10 },
+    { code: "office_cost", name: "事務費", parent_code: "branch_admin", display_order: 20 },
+    { code: "utilities_cost", name: "水道光熱費", parent_code: "branch_admin", display_order: 30 },
+    { code: "communication_cost", name: "通信費", parent_code: "branch_admin", display_order: 40 },
+    { code: "branch_unclassified", name: "未分類（営業所）", parent_code: "branch_admin", display_order: 999 },
+    { code: "hq_cost", name: "本社費", display_order: 40 },
+    { code: "executive_pay", name: "役員報酬", parent_code: "hq_cost", display_order: 10 },
+    { code: "hq_rent", name: "本社家賃", parent_code: "hq_cost", display_order: 20 },
+    { code: "core_system", name: "基幹システム/デジタコ基本", parent_code: "hq_cost", display_order: 30 },
+    { code: "insurance_cost", name: "保険料（包括）", parent_code: "hq_cost", display_order: 40 },
+    { code: "tax_cost", name: "税金（本社計上分）", parent_code: "hq_cost", display_order: 50 },
+    { code: "parking_cost", name: "駐車場代", parent_code: "hq_cost", display_order: 60 },
+    { code: "hq_unclassified", name: "未分類（本社）", parent_code: "hq_cost", display_order: 999 },
+    { code: "operating_income", name: "営業利益", display_order: 90, node_type: "calculated", expression: "sales - cost_of_sales - branch_admin - hq_cost" }
+  ]
+  pl_nodes.each { |attrs| ensure_pl_node(**attrs) }
+
+  mapping_definitions = [
+    { pl_code: "sales_revenue", priority: 10, account_name: "売上" },
+    { pl_code: "fuel_cost", priority: 10, account_name: "燃料費" },
+    { pl_code: "repair_cost", priority: 10, account_name: "修繕費" },
+    { pl_code: "tire_cost", priority: 10, account_name: "タイヤ" },
+    { pl_code: "toll_cost", priority: 10, account_name: "通行料" },
+    { pl_code: "supplies_cost", priority: 10, account_name: "消耗品" },
+    { pl_code: "outsourcing_cost", priority: 20, account_name: "外注費" },
+    { pl_code: "labor_cost", priority: 30, account_name: "労務費" },
+    { pl_code: "operation_admin", priority: 10, account_name: "運行管理費" },
+    { pl_code: "office_cost", priority: 10, account_name: "事務費" },
+    { pl_code: "utilities_cost", priority: 10, account_name: "水道光熱費" },
+    { pl_code: "communication_cost", priority: 10, account_name: "通信費" },
+    { pl_code: "executive_pay", priority: 10, account_name: "役員報酬" },
+    { pl_code: "hq_rent", priority: 10, account_name: "家賃" },
+    { pl_code: "core_system", priority: 10, account_name: "基幹システム" },
+    { pl_code: "insurance_cost", priority: 10, account_name: "保険料" },
+    { pl_code: "tax_cost", priority: 10, account_name: "税金" },
+    { pl_code: "parking_cost", priority: 10, account_name: "駐車場" }
+  ]
+  mapping_definitions.each do |definition|
+    node = PlTreeNode.find_by!(code: definition[:pl_code])
+    attributes = definition.except(:pl_code)
+    mapping = PlMapping.find_or_initialize_by(
+      pl_tree_node: node,
+      mapping_scope: attributes[:mapping_scope] || "company",
+      account_name: attributes[:account_name]
+    )
+    mapping.priority = attributes[:priority]
+    mapping.vendor_name = attributes[:vendor_name] if attributes[:vendor_name]
+    mapping.memo_keyword = attributes[:memo_keyword] if attributes[:memo_keyword]
+    mapping.active = true
+    mapping.save!
+  end
+
+  classification_definitions = [
+    { name: "固定費:保険料", priority: 10, nature: "fixed", conditions: { account_name: ["保険"] } },
+    { name: "固定費:家賃・駐車場", priority: 20, nature: "fixed", conditions: { account_name: %w[家賃 駐車場 リース] } },
+    { name: "固定費:システム", priority: 30, nature: "fixed", conditions: { memo_keyword: ["デジタコ", "基幹"] } },
+    { name: "変動費:燃料", priority: 10, nature: "variable", conditions: { account_name: ["燃料費"] } },
+    { name: "変動費:ETC", priority: 20, nature: "variable", conditions: { account_name: ["通行料"] } },
+    { name: "変動費:整備", priority: 30, nature: "variable", conditions: { account_name: ["修繕費", "タイヤ"] } },
+    { name: "変動費:消耗品", priority: 40, nature: "variable", conditions: { account_name: ["消耗品"] } }
+  ]
+  classification_definitions.each do |definition|
+    rule = ClassificationRule.find_or_initialize_by(name: definition[:name])
+    rule.priority = definition[:priority]
+    rule.nature = definition[:nature]
+    rule.conditions = definition[:conditions]
+    rule.active = true
+    rule.save!
+  end
+
+  VehicleAlias.find_or_create_by!(pattern: "川崎100え1825") do |alias_record|
+    alias_record.pattern_type = "exact"
+    alias_record.vehicle_id = "KAW-1825"
+  end
+
   puts "Seeded default tenant, users, employees, and workflow categories" if Rails.env.development?
 end
