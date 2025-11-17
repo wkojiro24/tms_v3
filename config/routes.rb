@@ -26,6 +26,8 @@ Rails.application.routes.draw do
 
   resources :workflow_requests, path: "workflows", only: [:index, :new, :create, :show]
   resources :journal_entries, only: [:index]
+  resources :vehicles, only: [:index, :show]
+  resources :vehicle_financials, only: [:index, :show]
 
   namespace :admin do
     root to: "dashboard#index"

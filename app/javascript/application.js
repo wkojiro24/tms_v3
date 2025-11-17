@@ -10,6 +10,8 @@ document.addEventListener("turbo:load", () => {
   applySidebarState()
   initSidebarSections()
   recalcSidebarSectionHeights()
+  initAutoSubmitControls()
+  initVehicleFinancialsFullscreen()
 
   document.querySelectorAll("[data-toggle-sidebar]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -93,3 +95,60 @@ function initTooltips () {
 }
 
 window.addEventListener("resize", recalcSidebarSectionHeights)
+
+function initAutoSubmitControls () {
+  document.querySelectorAll(".js-auto-submit").forEach((el) => {
+    if (el.dataset.autoSubmitBound === "true") return
+    el.addEventListener("change", () => {
+      const form = el.closest("form")
+      if (form) form.requestSubmit()
+    })
+    el.dataset.autoSubmitBound = "true"
+  })
+}
+
+function initVehicleFinancialsFullscreen () {
+  const button = document.querySelector(".js-vehicle-financials-fullscreen")
+  if (!button || button.dataset.fullscreenBound === "true") return
+
+  const targetSelector = button.dataset.fullscreenTarget || ".vehicle-financials-container"
+  const target = document.querySelector(targetSelector)
+  if (!target) return
+
+  const isFullscreen = () => {
+    return document.fullscreenElement === target || document.webkitFullscreenElement === target
+  }
+
+  const updateLabel = () => {
+    button.textContent = isFullscreen() ? "フルスクリーン解除" : "フルスクリーン"
+  }
+
+  const requestFullscreen = () => {
+    if (target.requestFullscreen) {
+      target.requestFullscreen()
+    } else if (target.webkitRequestFullscreen) {
+      target.webkitRequestFullscreen()
+    }
+  }
+
+  const exitFullscreen = () => {
+    if (document.exitFullscreen) {
+      document.exitFullscreen()
+    } else if (document.webkitExitFullscreen) {
+      document.webkitExitFullscreen()
+    }
+  }
+
+  button.addEventListener("click", () => {
+    if (isFullscreen()) {
+      exitFullscreen()
+    } else {
+      requestFullscreen()
+    }
+  })
+
+  document.addEventListener("fullscreenchange", updateLabel)
+  document.addEventListener("webkitfullscreenchange", updateLabel)
+  updateLabel()
+  button.dataset.fullscreenBound = "true"
+}

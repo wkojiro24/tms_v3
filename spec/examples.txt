@@ -1,0 +1,7 @@
+example_id                                              | status | run_time        |
+------------------------------------------------------- | ------ | --------------- |
+./spec/services/vehicle_financial_importer_spec.rb[1:1] | passed | 0.12041 seconds |
+./spec/services/vehicle_financial_importer_spec.rb[2:1] | passed | 0.00283 seconds |
+./spec/services/vehicle_financial_importer_spec.rb[2:2] | passed | 0.00695 seconds |
+./spec/services/vehicle_financial_importer_spec.rb[2:3] | passed | 0.00285 seconds |
+./spec/services/vehicle_financial_importer_spec.rb[2:4] | passed | 0.00235 seconds |

@@ -340,6 +340,14 @@ ActsAsTenant.with_tenant(tenant) do
     rule.save!
   end
 
+  vehicles_csv = Rails.root.join("data/journals/車両台帳一覧表.csv")
+  if File.exist?(vehicles_csv)
+    puts "[seed] Importing vehicles from #{vehicles_csv}"
+    VehicleImporter.new(vehicles_csv).import!
+  else
+    puts "[seed] Vehicle CSV not found at #{vehicles_csv}"
+  end
+
   VehicleAlias.find_or_create_by!(pattern: "川崎100え1825") do |alias_record|
     alias_record.pattern_type = "exact"
     alias_record.vehicle_id = "KAW-1825"

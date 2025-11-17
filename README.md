@@ -55,8 +55,25 @@ bin/rails server
 
 ## テスト
 
+RSpec を導入しています。
+
 ```sh
-bin/rails test
+bin/rails db:test:prepare
+bundle exec rspec
 ```
 
-（システムテストは未整備のため、今後追加予定です。）
+## 車両データ管理
+
+- `data/journals/車両台帳一覧表.csv` … 車両一覧のシードデータ（`bin/rails db:seed` 内で取り込み）。
+- `data/vehicle_financials/<期>/<原価計算YYMM>.xls[x|m]` … 月次の車両別収支 Excel。旧形式の `.xls` ファイルを読むために `roo-xls` を追加しているので、`bundle install` を忘れずに実行してください。
+
+月次収支を読み込みたい場合は、以下の Rake タスクを実行してください。
+
+```sh
+bin/rails "vehicles:import_financials[data/vehicle_financials/原価計算2508.xlsm]"
+
+# ディレクトリ配下の全 Excel を一括で取り込む場合
+bin/rails "vehicles:import_financials_batch[data/vehicle_financials]"
+```
+
+同月・同ファイル名の既存データは削除された上で再取り込みされます。除外したい車番（9999, 8888 など）はサービス側で設定できます。

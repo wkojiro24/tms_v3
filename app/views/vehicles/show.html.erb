@@ -1,0 +1,122 @@
+<% content_for :title, @vehicle.display_name.presence || "車両詳細" %>
+<% content_for :section_label, "車両" %>
+
+<div class="d-flex flex-wrap align-items-center justify-content-between mb-4">
+  <div>
+    <p class="text-muted text-uppercase small mb-1">登録番号</p>
+    <h1 class="h4 mb-0 fw-semibold"><%= @vehicle.registration_number %></h1>
+    <p class="mb-0 text-muted"><%= @vehicle.depot_name %> / 呼称: <%= @vehicle.call_sign %></p>
+  </div>
+  <div class="d-flex gap-2">
+    <%= link_to "車両別収支", "#financials", class: "btn btn-outline-primary" %>
+    <%= link_to "車両管理", "#maintenance", class: "btn btn-primary" %>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-12 col-xl-7">
+    <div class="card shadow-sm">
+      <div class="card-header bg-white fw-semibold">基本情報</div>
+      <div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-sm-4 text-muted small">初度登録</dt>
+          <dd class="col-sm-8"><%= l(@vehicle.first_registration_on, format: :long) if @vehicle.first_registration_on.present? %> <span class="text-muted small"><%= @vehicle.age_text %></span></dd>
+          <dt class="col-sm-4 text-muted small">型式 / 車名</dt>
+          <dd class="col-sm-8"><%= [@vehicle.model_code, @vehicle.manufacturer_name].compact.join(" / ") %></dd>
+          <dt class="col-sm-4 text-muted small">車台番号</dt>
+          <dd class="col-sm-8"><%= @vehicle.chassis_number %></dd>
+          <dt class="col-sm-4 text-muted small">種別</dt>
+          <dd class="col-sm-8"><%= @vehicle.vehicle_category %></dd>
+          <dt class="col-sm-4 text-muted small">最大積載量</dt>
+          <dd class="col-sm-8"><%= number_with_delimiter(@vehicle.max_load_kg) if @vehicle.max_load_kg.present? %> kg</dd>
+          <dt class="col-sm-4 text-muted small">車両総重量</dt>
+          <dd class="col-sm-8"><%= number_with_delimiter(@vehicle.gross_weight_kg) if @vehicle.gross_weight_kg.present? %> kg</dd>
+          <dt class="col-sm-4 text-muted small">シャーシ</dt>
+          <dd class="col-sm-8"><%= @vehicle.chassis_base %></dd>
+          <dt class="col-sm-4 text-muted small">荷主 / 輸送品</dt>
+          <dd class="col-sm-8"><%= [@vehicle.shipper_name, @vehicle.cargo_name].compact.join(" / ") %></dd>
+          <dt class="col-sm-4 text-muted small">タンク材質</dt>
+          <dd class="col-sm-8"><%= [@vehicle.tank_material, @vehicle.usage_category].compact.join(" / ") %></dd>
+          <dt class="col-sm-4 text-muted small">タンク製造年月</dt>
+          <dd class="col-sm-8"><%= l(@vehicle.tank_made_on, format: :long) if @vehicle.tank_made_on.present? %> <span class="text-muted small"><%= @vehicle.tank_age_text %></span></dd>
+          <dt class="col-sm-4 text-muted small">その他</dt>
+          <dd class="col-sm-8"><%= simple_format(@vehicle.notes) if @vehicle.notes.present? %></dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-xl-5">
+    <div class="card shadow-sm mb-3" id="financials">
+      <div class="card-header bg-white fw-semibold">車両別収支</div>
+      <div class="card-body">
+        <% totals = @financial_summary.totals %>
+        <% profit = @financial_summary.profit %>
+        <% revenue_per_km = @financial_summary.revenue_per_km %>
+        <div class="row g-3 mb-3">
+          <div class="col-6">
+            <div class="text-muted small">累計売上</div>
+            <p class="h5 mb-0 fw-semibold"><%= number_to_currency(totals[:revenue], unit: "¥", precision: 0) %></p>
+          </div>
+          <div class="col-6">
+            <div class="text-muted small">累計修繕費</div>
+            <p class="h5 mb-0 fw-semibold text-danger"><%= number_to_currency(totals[:repair], unit: "¥", precision: 0) %></p>
+          </div>
+          <div class="col-6">
+            <div class="text-muted small">減価償却 + リース</div>
+            <p class="h6 mb-0 fw-semibold text-danger"><%= number_to_currency(totals[:depreciation] + totals[:lease], unit: "¥", precision: 0) %></p>
+          </div>
+          <div class="col-6">
+            <div class="text-muted small">累計利益（概算）</div>
+            <p class="h6 mb-0 fw-semibold <%= profit.negative? ? 'text-danger' : 'text-success' %>"><%= number_to_currency(profit, unit: "¥", precision: 0) %></p>
+          </div>
+        </div>
+        <div class="bg-light rounded p-3 mb-3">
+          <div class="text-muted small">走行距離あたり売上</div>
+          <p class="h6 mb-0 fw-semibold"><%= number_to_currency(revenue_per_km, unit: "¥", precision: 0) %> / km</p>
+        </div>
+        <% monthly_rows = @financial_summary.monthly_breakdown %>
+        <% if monthly_rows.any? %>
+          <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>月</th>
+                  <th>売上</th>
+                  <th>減価償却</th>
+                  <th>リース</th>
+                  <th>修繕</th>
+                  <th>利益</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% monthly_rows.each do |row| %>
+                  <tr>
+                    <td><%= row[:month].strftime("%Y年%m月") %></td>
+                    <td><%= number_to_currency(row[:revenue], unit: "¥", precision: 0) %></td>
+                    <td><%= number_to_currency(row[:depreciation], unit: "¥", precision: 0) %></td>
+                    <td><%= number_to_currency(row[:lease], unit: "¥", precision: 0) %></td>
+                    <td><%= number_to_currency(row[:repair], unit: "¥", precision: 0) %></td>
+                    <td class="<%= row[:profit].negative? ? 'text-danger' : 'text-success' %>"><%= number_to_currency(row[:profit], unit: "¥", precision: 0) %></td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        <% else %>
+          <p class="text-muted mb-0 small">収支データがまだ取り込まれていません。</p>
+        <% end %>
+      </div>
+    </div>
+    <div class="card shadow-sm" id="maintenance">
+      <div class="card-header bg-white fw-semibold">車両管理・履歴（準備中）</div>
+      <div class="card-body">
+        <p class="text-muted small mb-2">ヘッド／タンクの組替やメンテナンス履歴をここに記録していく計画です。</p>
+        <ul class="list-unstyled mb-0 text-muted small">
+          <li>・組替イベント</li>
+          <li>・修理／点検履歴</li>
+          <li>・タンク仕様変更</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>

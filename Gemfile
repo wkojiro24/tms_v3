@@ -36,6 +36,7 @@ gem "bootsnap", require: false
 gem "devise"
 gem "cancancan"
 gem "roo"
+gem "roo-xls"
 gem "acts_as_tenant"
 
 # Use Active Storage variants [https://guides.rubyonrails.org/active_storage_overview.html#transforming-images]
@@ -50,6 +51,9 @@ group :development, :test do
 
   # Omakase Ruby styling [https://github.com/rails/rubocop-rails-omakase/]
   gem "rubocop-rails-omakase", require: false
+
+  gem "rspec-rails"
+  gem "factory_bot_rails"
 end
 
 group :development do

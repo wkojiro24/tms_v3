@@ -1,5 +1,6 @@
 @import "bootstrap/scss/bootstrap";
 @import "bootstrap-icons/font/bootstrap-icons";
+@import "vehicle_financials";
 
 :root {
   --app-bg: #f5f7fb;
@@ -196,6 +197,94 @@ a:hover {
   background: rgba(49, 120, 246, 0.12);
   color: var(--app-accent-strong);
   box-shadow: inset 0 0 0 1px rgba(49, 120, 246, 0.2);
+}
+
+.vehicle-grid {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.5rem;
+  color: #1f2937;
+  border-top: 1px solid #d4d6de;
+}
+
+.vehicle-grid.font-scale-75 {
+  font-size: 0.62rem;
+}
+
+.vehicle-grid.font-scale-65 {
+  font-size: 0.56rem;
+}
+
+.vehicle-grid.font-scale-55 {
+  font-size: 0.48rem;
+}
+
+.vehicle-grid th,
+.vehicle-grid td {
+  padding: 0.35rem 0.5rem;
+  border-bottom: 1px solid #dfe3eb;
+  white-space: nowrap;
+}
+
+.vehicle-grid thead th {
+  background: #f5f7fb;
+  font-weight: 600;
+  text-align: center;
+}
+
+.vehicle-grid__col-header {
+  color: #1f2937;
+}
+
+.vehicle-grid__col-link {
+  color: inherit;
+  text-decoration: none;
+  display: inline-block;
+  padding: 0.1rem 0.2rem;
+}
+
+.vehicle-grid__col-link.is-active {
+  color: #2563eb;
+  font-weight: 700;
+}
+
+.vehicle-grid__row--vehicle th,
+.vehicle-grid__row--vehicle td {
+  background: #eff4fb;
+  font-weight: 600;
+  text-align: center;
+  border-bottom-color: #d4d8e3;
+}
+
+.vehicle-grid__row--section th {
+  background: #f8fafc;
+  font-weight: 600;
+}
+
+.vehicle-grid__row--subtotal th,
+.vehicle-grid__row--subtotal td {
+  background: #f3f4f6;
+  font-weight: 600;
+}
+
+.vehicle-grid__row--grand th,
+.vehicle-grid__row--grand td {
+  background: #eef2ff;
+  font-weight: 700;
+}
+
+.vehicle-grid__row--divider th,
+.vehicle-grid__row--divider td {
+  border-bottom: 2px solid #a1a5b5;
+}
+
+.vehicle-grid td,
+.vehicle-grid th:not(:first-child) {
+  text-align: right;
+}
+
+.vehicle-grid th:first-child {
+  text-align: left;
 }
 
 .app-sidebar__divider {

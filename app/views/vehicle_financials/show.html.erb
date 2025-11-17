@@ -1,0 +1,78 @@
+<% content_for :title, "車両収支詳細" %>
+<% content_for :section_label, "車両" %>
+
+<div class="vehicle-financials-container container-fluid px-4 py-3">
+  <% content_for :page_header do %>
+    <div class="vehicle-financials-header mb-2">
+      <p class="text-muted small mb-0">車番 <%= @vehicle_code %> の直近13カ月推移</p>
+    </div>
+  <% end %>
+
+  <section class="vehicle-financials-timeline" data-selected-vehicle="<%= @vehicle_code %>">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <div>
+        <h2 class="h6 mb-1">車両別推移: <%= @vehicle_code %></h2>
+        <p class="text-muted small mb-0">直近13カ月の推移です。別の車番タブを選ぶと切り替わります。</p>
+      </div>
+      <div class="btn-group btn-group-sm" role="group">
+        <% if @timeline.current_page.to_i > 1 %>
+          <%= link_to "前へ", vehicle_financial_path(@vehicle_code, history_page: @timeline.current_page.to_i - 1), class: "btn btn-outline-secondary" %>
+        <% end %>
+        <% if @timeline.total_pages > @timeline.current_page.to_i %>
+          <%= link_to "次へ", vehicle_financial_path(@vehicle_code, history_page: @timeline.current_page.to_i + 1), class: "btn btn-outline-secondary" %>
+        <% end %>
+      </div>
+    </div>
+
+    <% if @vehicle_tabs.present? %>
+      <div class="vehicle-financials-tabs-wrapper mb-3">
+        <ul class="vehicle-financials-tabs">
+          <% @vehicle_tabs.each do |code| %>
+            <% tab_classes = ["vehicle-financials-tab"]
+               tab_classes << "is-active" if code == @vehicle_code %>
+            <li>
+              <%= link_to code, vehicle_financial_path(code), class: tab_classes.join(" ") %>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+
+    <div class="table-responsive vehicle-financials-table-wrapper">
+      <table class="table table-sm vehicle-financials-table">
+        <colgroup>
+          <col class="vehicle-financials-section-col">
+          <col class="vehicle-financials-item-col">
+          <% @timeline_headers.each do |_header| %>
+            <col class="vehicle-financials-value-col">
+          <% end %>
+        </colgroup>
+        <thead>
+          <tr>
+            <th class="vehicle-financials-sticky-col vehicle-financials-section-col text-start">区分</th>
+            <th class="vehicle-financials-sticky-col vehicle-financials-item-col text-start">項目名</th>
+            <% @timeline_headers.each do |header| %>
+              <th class="text-center vehicle-financials-header-col"><%= header[:title] %></th>
+            <% end %>
+          </tr>
+        </thead>
+        <tbody>
+          <% current_section = nil %>
+          <% @timeline_rows.each do |row| %>
+            <% section_label = vehicle_financial_section_label(row) %>
+            <% display_section = section_label.present? && section_label != current_section ? section_label : nil %>
+            <% current_section = section_label if section_label.present? %>
+            <% row_classes = ["vehicle-financials-row", vehicle_financial_row_class(row)].compact.join(" ") %>
+            <tr class="<%= row_classes %>">
+              <td class="vehicle-financials-sticky-col text-start"><%= display_section %></td>
+              <th class="vehicle-financials-sticky-col vehicle-financials-item-col text-start"><%= row[:label] %></th>
+              <% row[:values].each do |value| %>
+                <td class="text-end"><%= vehicle_financial_value(row[:label], value) %></td>
+              <% end %>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
