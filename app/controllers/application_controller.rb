@@ -5,6 +5,7 @@ class ApplicationController < ActionController::Base
   allow_browser versions: :modern
   around_action :scope_current_tenant
   before_action :ensure_tenant_presence!, if: :user_signed_in?
+  before_action :set_locale
 
   rescue_from CanCan::AccessDenied do |_exception|
     redirect_to root_path, alert: "権限がありません。"
@@ -114,5 +115,9 @@ class ApplicationController < ActionController::Base
 
   def tenant_slug_from_session
     session[:tenant_slug]
+  end
+
+  def set_locale
+    I18n.locale = :ja
   end
 end

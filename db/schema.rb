@@ -499,6 +499,25 @@ ActiveRecord::Schema[7.2].define(version: 2025_11_04_100000) do
     t.index ["tenant_id"], name: "index_vehicle_aliases_on_tenant_id"
   end
 
+  create_table "vehicle_fault_logs", force: :cascade do |t|
+    t.bigint "tenant_id", null: false
+    t.bigint "vehicle_id", null: false
+    t.string "title", null: false
+    t.date "occurred_on"
+    t.date "resolved_on"
+    t.string "status", default: "on_hold", null: false
+    t.string "severity", default: "medium", null: false
+    t.string "category"
+    t.text "description"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.string "cause_primary"
+    t.decimal "estimated_cost", precision: 12, scale: 2
+    t.index ["tenant_id", "vehicle_id", "occurred_on"], name: "index_fault_logs_on_tenant_vehicle_date"
+    t.index ["tenant_id"], name: "index_vehicle_fault_logs_on_tenant_id"
+    t.index ["vehicle_id"], name: "index_vehicle_fault_logs_on_vehicle_id"
+  end
+
   create_table "vehicle_financial_metrics", force: :cascade do |t|
     t.bigint "tenant_id", null: false
     t.bigint "vehicle_id"
@@ -517,6 +536,41 @@ ActiveRecord::Schema[7.2].define(version: 2025_11_04_100000) do
     t.index ["tenant_id", "vehicle_code", "month", "metric_key"], name: "index_vehicle_financial_metrics_dedup"
     t.index ["tenant_id"], name: "index_vehicle_financial_metrics_on_tenant_id"
     t.index ["vehicle_id"], name: "index_vehicle_financial_metrics_on_vehicle_id"
+  end
+
+  create_table "vehicle_inspection_records", force: :cascade do |t|
+    t.bigint "tenant_id", null: false
+    t.bigint "vehicle_id", null: false
+    t.string "inspection_type", null: false
+    t.date "scheduled_on"
+    t.date "completed_on"
+    t.string "status", default: "scheduled", null: false
+    t.string "inspector_name"
+    t.text "notes"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.string "inspection_scope"
+    t.string "vendor_name"
+    t.decimal "estimated_cost", precision: 12, scale: 2
+    t.index ["tenant_id", "vehicle_id", "scheduled_on"], name: "index_inspections_on_tenant_vehicle_scheduled"
+    t.index ["tenant_id"], name: "index_vehicle_inspection_records_on_tenant_id"
+    t.index ["vehicle_id"], name: "index_vehicle_inspection_records_on_vehicle_id"
+  end
+
+  create_table "vehicle_statuses", force: :cascade do |t|
+    t.bigint "tenant_id", null: false
+    t.bigint "vehicle_id", null: false
+    t.string "status", null: false
+    t.string "source_type"
+    t.bigint "source_id"
+    t.date "effective_on"
+    t.string "notes"
+    t.jsonb "metadata", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["source_type", "source_id"], name: "index_vehicle_statuses_on_source_type_and_source_id"
+    t.index ["tenant_id"], name: "index_vehicle_statuses_on_tenant_id"
+    t.index ["vehicle_id"], name: "index_vehicle_statuses_on_vehicle_id"
   end
 
   create_table "vehicles", force: :cascade do |t|
@@ -719,8 +773,14 @@ ActiveRecord::Schema[7.2].define(version: 2025_11_04_100000) do
   add_foreign_key "users", "employees", column: "employment_id"
   add_foreign_key "users", "tenants"
   add_foreign_key "vehicle_aliases", "tenants"
+  add_foreign_key "vehicle_fault_logs", "tenants"
+  add_foreign_key "vehicle_fault_logs", "vehicles"
   add_foreign_key "vehicle_financial_metrics", "tenants"
   add_foreign_key "vehicle_financial_metrics", "vehicles"
+  add_foreign_key "vehicle_inspection_records", "tenants"
+  add_foreign_key "vehicle_inspection_records", "vehicles"
+  add_foreign_key "vehicle_statuses", "tenants"
+  add_foreign_key "vehicle_statuses", "vehicles"
   add_foreign_key "vehicles", "tenants"
   add_foreign_key "workflow_approvals", "tenants"
   add_foreign_key "workflow_approvals", "users", column: "actor_id"
