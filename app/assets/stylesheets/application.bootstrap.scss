@@ -427,7 +427,7 @@ a:hover {
 
 .app-content {
   flex: 1;
-  padding: 2.25rem 2.5rem;
+  padding: 2rem 2rem;
   background: transparent;
   box-sizing: border-box;
   width: 100%;
@@ -561,7 +561,7 @@ body.sidebar-expanded .app-sidebar__user-info .meta {
 }
 
 .app-content__inner {
-  max-width: min(1460px, 100%);
+ /* max-width: min(1460px, 100%);*/
   width: 100%;
   margin: 0 auto;
   display: flex;

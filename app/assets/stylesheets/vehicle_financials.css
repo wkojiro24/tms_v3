@@ -21,6 +21,10 @@
   overflow: auto;
 }
 
+.vehicle-financials-output .form-check {
+  min-width: 8rem;
+}
+
 .vehicle-financials-header {
   margin-bottom: 0.5rem;
 }
@@ -139,6 +143,11 @@
 .vehicle-financials-summary-cell {
   font-weight: 600;
   background: #f4f6fb;
+}
+
+.vehicle-financials-summary-table th,
+.vehicle-financials-summary-table td {
+  white-space: nowrap;
 }
 
 .vehicle-financials-row.vehicle-grid__row--vehicle th,

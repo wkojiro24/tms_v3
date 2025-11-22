@@ -39,6 +39,7 @@ Rails.application.routes.draw do
   end
   get "maintenance_schedule", to: "vehicles#schedule"
   resources :maintenance_events, only: [:create, :update, :destroy]
+  resources :maintenance_categories
   resources :vehicle_financials, only: [:index, :show]
 
   namespace :admin do
@@ -66,5 +67,9 @@ Rails.application.routes.draw do
       resources :workflow_stage_templates, only: [:create, :update, :destroy]
       resources :workflow_category_notifications, only: [:create, :destroy]
     end
+    resources :metric_categories do
+      resources :metric_category_items, except: [:index, :show]
+    end
+    resources :metric_label_mappings, only: [:index, :create]
   end
 end

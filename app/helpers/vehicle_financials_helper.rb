@@ -4,6 +4,17 @@ module VehicleFinancialsHelper
   DIVIDER_LABELS = %w[輸送原価計 営業所損益 本社管理費].freeze
 
   def vehicle_financial_value(label, value)
+    text = vehicle_financial_value_text(label, value)
+    return text if text.blank?
+
+    if value.is_a?(Numeric) && value.negative?
+      return wrap_negative(text, value)
+    end
+
+    text
+  end
+
+  def vehicle_financial_value_text(label, value)
     return "" if value.nil?
     return "-" if value.blank?
     return value.to_s if value.is_a?(String)
@@ -15,7 +26,7 @@ module VehicleFinancialsHelper
     when TEXT_LABELS.include?(label_text)
       value.to_s
     when CODE_LABELS.include?(label_text)
-      value.to_i
+      value.to_i.to_s
     when distance_label?(label_downcase)
       number_with_precision(value, precision: 0, delimiter: ",", strip_insignificant_zeros: true)
     when label_text.include?("使用リットル")
@@ -24,8 +35,6 @@ module VehicleFinancialsHelper
       number_with_precision(value, precision: 2, strip_insignificant_zeros: true)
     else
       formatted = number_with_delimiter(value.to_f.round)
-      return wrap_negative(formatted, value) if value.is_a?(Numeric) && value.negative?
-
       formatted
     end
   end

@@ -49,71 +49,66 @@ class VehiclesController < ApplicationController
   def schedule
     @start_month = parse_month(params[:start_month]) || Date.current.beginning_of_month
     @schedule_depot = params[:depot].presence
-    @schedule_type = params[:vehicle_type].presence
+    @schedule_type  = params[:vehicle_type].presence
 
-    @vehicles = Vehicle.ordered
-    @vehicles = @vehicles.where(depot_name: @schedule_depot) if @schedule_depot.present?
-    @vehicles = @vehicles.where(vehicle_category: @schedule_type) if @schedule_type.present?
-    @vehicles = @vehicles.to_a
-    @timeline_range_end = @start_month.advance(months: 6).end_of_month
+    scope = Vehicle.ordered
+    scope = scope.where(depot_name: @schedule_depot) if @schedule_depot.present? && @schedule_depot != "all"
+    scope = scope.where(vehicle_category: @schedule_type) if @schedule_type.present?
+    @vehicles = scope.to_a
 
+    # セレクトボックス用
+    @all_depots    = Vehicle.distinct.pluck(:depot_name).compact_blank
+    @vehicle_types = Vehicle.distinct.pluck(:vehicle_category).compact_blank
+
+    # groups（左側：車両）
+    number_to_group = {}
     @timeline_groups = @vehicles.map do |vehicle|
-      plate_text = vehicle.registration_number.presence || vehicle.call_sign.presence || format("車両%03d", vehicle.id)
+      raw_number = vehicle.registration_number.to_s.presence ||
+                   vehicle.call_sign.to_s.presence ||
+                   vehicle.id.to_s
+      group_id = vehicle.id.to_s
+
       plate_parts = view_context.vehicle_plate_parts(vehicle)
+      content_html = <<~HTML.squish
+        <div class="plate-mini">
+          <div class="plate-mini__line1">#{ERB::Util.h(plate_parts[:region])} #{ERB::Util.h(plate_parts[:klass])}</div>
+          <div class="plate-mini__line2">#{ERB::Util.h(plate_parts[:kana])} #{ERB::Util.h(plate_parts[:number])}</div>
+        </div>
+      HTML
+
+      number_to_group[raw_number] ||= group_id
+
       {
-        id: vehicle.id,
-        content: plate_text,
-        plate: plate_text,
-        region: plate_parts[:region],
-        klass: plate_parts[:klass],
-        kana: plate_parts[:kana],
-        number: plate_parts[:number],
-        call_sign: vehicle.call_sign,
-        depot: vehicle.depot_name,
-        vehicle_category: vehicle.vehicle_category,
-        shipper: vehicle.shipper_name
+        id: group_id,
+        number: raw_number,
+        content: content_html.html_safe,
+        office: vehicle.depot_name.to_s,
+        vehicle_type: vehicle.vehicle_category.to_s
       }
     end
 
-    vehicle_ids = @vehicles.map(&:id)
-    @timeline_items =
-      if vehicle_ids.empty?
-        []
-      else
-        VehicleInspectionRecord.where(vehicle_id: vehicle_ids)
-                               .where(scheduled_on: @start_month..@timeline_range_end)
-                               .map do |record|
-          {
-            id: record.id,
-            group: record.vehicle_id,
-            start: record.scheduled_on,
-            end: record.scheduled_on,
-            content: record.inspection_type,
-            status: record.status
-          }
-        end
-      end
+    # メンテナンス種別
+    categories = MaintenanceCategory.order(:key).index_by(&:key)
+    @maintenance_categories = categories.values
 
-    @vehicles.each do |vehicle|
-      next if @timeline_items.any? { |item| item[:group] == vehicle.id }
+    # items（MaintenanceEvent）
+    @timeline_items = MaintenanceEvent.all.map do |event|
+      cat = categories[event.category]
+      group_id = number_to_group[event.vehicle_number.to_s] || event.vehicle_number.to_s
 
-      @timeline_items << {
-        id: "placeholder-#{vehicle.id}",
-        group: vehicle.id,
-        start: @start_month,
-        end: @timeline_range_end,
-        type: "background",
-        content: "",
-        status: "placeholder",
-        placeholder: true
+      {
+        id: "event-#{event.id}",
+        db_id: event.id,
+        group: group_id,
+        start: event.start_at&.iso8601,
+        end: event.end_at&.iso8601,
+        content: label_for_event(event, cat),
+        type: "range",
+        # 色は MaintenanceCategory.key にひも付くクラスで制御
+        className: (cat.present? ? "item-#{cat.key.to_s.parameterize}" : css_class_for_event(event, cat)),
+        category_key: event.category
       }
     end
-
-    @event_labels = [
-      { label: "車検", inspection_type: "車検", inspection_scope: "statutory", status: "scheduled", style: "danger" },
-      { label: "定期点検", inspection_type: "定期点検", inspection_scope: "routine", status: "scheduled", style: "info" },
-      { label: "タイヤ交換", inspection_type: "タイヤ交換", inspection_scope: "tires", status: "scheduled", style: "warning" }
-    ]
   end
 
   def timeline_demo
@@ -150,7 +145,6 @@ class VehiclesController < ApplicationController
 
     render layout: "timeline_demo"
   end
-
 
   private
 
@@ -205,6 +199,26 @@ class VehiclesController < ApplicationController
     end
 
     entries.compact.sort_by { |entry| entry[:occurred_on] || Date.new(1900) }.reverse
+  end
+
+  def label_for_event(event, category = nil)
+    return category.name if category&.name.present?
+
+    case event.category
+    when "shaken" then "車検"
+    when "tenken" then "点検"
+    when "shuuri" then "修理"
+    when "tire"   then "タイヤ交換"
+    else
+      event.category
+    end
+  end
+
+  def css_class_for_event(event, category = nil)
+    key = category&.key || event.category
+    return "" if key.blank?
+
+    "item-#{key.parameterize}"
   end
 
   def filter_by_query(vehicles, query)

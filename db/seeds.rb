@@ -244,6 +244,107 @@ ActsAsTenant.with_tenant(tenant) do
     notifications: [{ role: "accounting", description: "損害保険・費用計上の確認" }]
   )
 
+  metric_categories = [
+    {
+      name: "revenue",
+      label: "売上",
+      position: 0,
+      items: [
+        { label: "輸送収入", sources: ["輸送収入"] }
+      ]
+    },
+    {
+      name: "fixed_cost",
+      label: "固定費",
+      position: 1,
+      items: [
+        { label: "減価償却", sources: ["減価償却"] },
+        { label: "自動車税", sources: ["自動車税"] },
+        { label: "自動車重量税・取得税", sources: ["自動車重量税", "自動車取得税"] },
+        { label: "自賠責保険", sources: ["自賠責保険"] },
+        { label: "任意保険", sources: ["任意保険"] },
+        { label: "車検費用", sources: ["車検"] },
+        { label: "駐車場・地代", sources: ["駐車場代", "地代", "地代家賃"] }
+      ]
+    },
+    {
+      name: "variable_cost",
+      label: "変動費",
+      position: 2,
+      items: [
+        { label: "高速代", sources: ["高速代", "高速代計"] },
+        { label: "軽油費", sources: ["軽油費"] },
+        { label: "オイル", sources: ["その他燃料費", "油脂費"] },
+        { label: "タイヤ・チューブ", sources: ["タイヤ・チューブ費"] },
+        { label: "その他修繕費", sources: ["一般修理費", "部品費"] }
+      ]
+    },
+    {
+      name: "driver_cost",
+      label: "ドライバー人件費",
+      position: 3,
+      items: [
+        { label: "人件費", sources: ["人件費", "ドライバー人件費"] }
+      ]
+    },
+    {
+      name: "depot_admin",
+      label: "営業所管理費",
+      position: 4,
+      items: [
+        { label: "営業所管理費", sources: ["営業所管理費"] }
+      ]
+    },
+    {
+      name: "depot_personnel",
+      label: "営業所人件費",
+      position: 5,
+      items: [
+        { label: "営業所人件費", sources: ["営業所人件費"] }
+      ]
+    },
+    {
+      name: "hq_personnel",
+      label: "本社人件費",
+      position: 6,
+      items: [
+        { label: "本社人件費", sources: ["本社人件費"] }
+      ]
+    },
+    {
+      name: "hq_admin",
+      label: "本社管理費",
+      position: 7,
+      items: [
+        { label: "本社管理費", sources: ["本社管理費"] }
+      ]
+    },
+    {
+      name: "profit",
+      label: "損益",
+      position: 8,
+      items: [
+        { label: "損益", sources: ["損益"] }
+      ]
+    }
+  ]
+
+  metric_categories.each do |category_attrs|
+    category = MetricCategory.find_or_initialize_by(name: category_attrs[:name])
+    category.display_label = category_attrs[:label]
+    category.position = category_attrs[:position]
+    category.save!
+
+    category.items.delete_all
+    category_attrs[:items].each_with_index do |item_attrs, index|
+      category.items.create!(
+        display_label: item_attrs[:label],
+        source_labels: item_attrs[:sources],
+        position: index + 1
+      )
+    end
+  end
+
   def ensure_pl_node(code:, name:, parent_code: nil, display_order: 0, node_type: "normal", expression: nil)
     parent = parent_code.present? ? PlTreeNode.find_by!(code: parent_code) : nil
     PlTreeNode.find_or_initialize_by(code: code).tap do |node|

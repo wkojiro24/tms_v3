@@ -6,13 +6,18 @@ class VehicleFinancialTimeline
 
   DEFAULT_MONTH_COLUMNS = 12
 
-  attr_reader :vehicle_code, :page, :per_page
+  attr_reader :vehicle_code, :page, :per_page, :start_month, :end_month
 
-  def initialize(vehicle_code:, tenant: ActsAsTenant.current_tenant || Tenant.first, page: 1, per_page: DEFAULT_MONTH_COLUMNS)
+  def initialize(vehicle_code:, tenant: ActsAsTenant.current_tenant || Tenant.first, page: 1, per_page: DEFAULT_MONTH_COLUMNS, start_month: nil, end_month: nil)
     @vehicle_code = vehicle_code
     @tenant = tenant
     @page = [page.to_i, 1].max
     @per_page = per_page
+    @start_month = start_month
+    @end_month = end_month
+    if @start_month.present? && @end_month.present? && @start_month > @end_month
+      @start_month, @end_month = @end_month, @start_month
+    end
     load_data
   end
 
@@ -66,6 +71,7 @@ class VehicleFinancialTimeline
 
   def load_data
     months_scope = scope.select(:month).distinct.order(month: :desc)
+    months_scope = apply_month_range(months_scope)
     @total_months = months_scope.count
     @months = months_scope.offset((page - 1) * per_page).limit(per_page).pluck(:month)
     @months.reverse!
@@ -155,5 +161,17 @@ class VehicleFinancialTimeline
     end
 
     :detail
+  end
+
+  def apply_month_range(months_scope)
+    if start_month.present? && end_month.present?
+      months_scope.where(month: start_month..end_month)
+    elsif start_month.present?
+      months_scope.where("month >= ?", start_month)
+    elsif end_month.present?
+      months_scope.where("month <= ?", end_month)
+    else
+      months_scope
+    end
   end
 end

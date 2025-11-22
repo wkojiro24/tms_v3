@@ -1,326 +1,451 @@
-<% content_for :title, "点検・整備計画" %>
-<% content_for :section_label, "車両" %>
-<% content_for :head do %>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis-timeline/7.7.3/vis-timeline-graph2d.min.css">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-timeline/7.7.3/vis-timeline-graph2d.min.js"></script>
-<% end %>
 
-<div class="card shadow-sm mb-4">
-  <div class="card-body d-flex flex-wrap justify-content-between align-items-center">
-    <div>
-      <h1 class="h4 mb-1 fw-semibold">点検・整備スケジュール</h1>
-      <p class="text-muted mb-0 small">縦軸に車両、横軸に月をとったマトリクスで車検・点検の計画を可視化します。</p>
-    </div>
-    <%= link_to "配車情報へ", dispatch_path, class: "btn btn-outline-secondary btn-sm" %>
+<!-- app/views/vehicles/schedule.html.erb -->
+
+<link rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/vis-timeline/7.7.3/vis-timeline-graph2d.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vis-timeline/7.7.3/vis-timeline-graph2d.min.js"></script>
+
+<h2 class="mb-3">点検・整備スケジュール</h2>
+
+<div class="d-flex align-items-center gap-3 mb-3">
+  <!-- 営業所フィルタ（@timeline_groups から自動生成） -->
+  <div class="d-flex align-items-center gap-2">
+    <label for="schedule-office-filter" class="fw-semibold mb-0">営業所</label>
+    <select id="schedule-office-filter" class="form-select form-select-sm" style="width:auto;">
+      <option value="all">全営業所</option>
+      <% offices = (@timeline_groups || []).map { |g| g[:office] }.compact_blank.uniq.sort %>
+      <% offices.each do |office| %>
+        <option value="<%= office %>"><%= office %></option>
+      <% end %>
+    </select>
+  </div>
+
+  <!-- 日 / 週 / 月 切り替え -->
+  <div class="schedule-view-switch ms-auto d-flex align-items-center gap-2">
+    <button type="button" class="btn btn-outline-secondary btn-sm active" data-schedule-view="day">日</button>
+    <button type="button" class="btn btn-outline-secondary btn-sm" data-schedule-view="week">週</button>
+    <button type="button" class="btn btn-outline-secondary btn-sm" data-schedule-view="month">月</button>
   </div>
 </div>
 
-<div class="card shadow-sm mb-3">
-  <div class="card-body">
-    <%= form_with url: maintenance_schedule_path, method: :get, local: true, class: "row g-2" do %>
-      <div class="col-md-4">
-        <label class="form-label small text-muted">表示開始月</label>
-        <input type="month" name="start_month" value="<%= @start_month.strftime('%Y-%m') %>" class="form-control">
-      </div>
-      <div class="col-md-3">
-        <label class="form-label small text-muted">営業所</label>
-        <%= select_tag :depot, options_for_select([["すべて", ""]]+Vehicle.distinct.pluck(:depot_name).compact_blank.map { |d| [d, d] }, @schedule_depot), class: "form-select" %>
-      </div>
-      <div class="col-md-3">
-        <label class="form-label small text-muted">車種</label>
-        <%= select_tag :vehicle_type, options_for_select([["すべて", ""]]+Vehicle.distinct.pluck(:vehicle_category).compact_blank.map { |t| [t, t] }, @schedule_type), class: "form-select" %>
-      </div>
-      <div class="col-md-2 d-grid align-items-end">
-        <button class="btn btn-primary mt-auto">更新</button>
-      </div>
+<!-- 上：パレット（メンテ種別） -->
+<div class="palette-box d-flex align-items-center flex-wrap gap-2 mb-2">
+  <h6 class="mb-0 me-2">メンテナンス種別</h6>
+  <ul class="list-unstyled d-flex flex-wrap gap-2 mb-0">
+    <% (@maintenance_categories || []).each do |cat| %>
+      <% key   = cat.key.to_s %>
+      <% cls   = "item-#{key.parameterize}" %>
+      <% style = cat.color.present? ? "background-color: #{cat.color}; border-color: #{cat.color};" : "" %>
+      <li draggable="true"
+          class="vis-demo-item <%= cls %>"
+          data-category="<%= key %>"
+          data-label="<%= cat.name %>"
+          style="<%= style %>">
+        <%= cat.name %>
+      </li>
     <% end %>
-  </div>
+  </ul>
 </div>
 
-<div class="row g-3 align-items-stretch">
-  <div class="col-lg-10">
-    <div class="card shadow-sm">
-      <div class="card-header bg-white d-flex justify-content-between align-items-center">
-        <span class="fw-semibold">整備タイムライン</span>
-        <div class="btn-group btn-group-sm timeline-view-toggle" role="group">
-          <button type="button" class="btn btn-outline-secondary active" data-timeline-view="month">月</button>
-          <button type="button" class="btn btn-outline-secondary" data-timeline-view="week">週</button>
-          <button type="button" class="btn btn-outline-secondary" data-timeline-view="day">日</button>
-        </div>
-      </div>
-      <div class="card-body">
-        <div id="maintenance-timeline"
-             data-groups="<%= raw(@timeline_groups.to_json) %>"
-             data-items="<%= raw(@timeline_items.to_json) %>"
-             data-range-start="<%= @start_month.strftime('%Y-%m-%d') %>"
-             data-range-end="<%= @timeline_range_end.strftime('%Y-%m-%d') %>"
-             data-create-url="<%= maintenance_events_path %>"
-             data-event-base-url="<%= maintenance_events_path %>">
-        </div>
-      </div>
-    </div>
-  </div>
-  <div class="col-lg-2">
-    <div class="card shadow-sm timeline-labels-card">
-      <div class="card-header bg-white fw-semibold">整備ラベル</div>
-      <div class="card-body">
-        <p class="text-muted small mb-2">ラベルをドラッグしてタイムラインへ投下してください。</p>
-        <div id="external-labels" class="d-flex flex-column gap-2">
-          <% @event_labels.each do |label| %>
-            <div class="timeline-label badge bg-<%= label[:style] %> text-white"
-                 draggable="true"
-                 data-label="<%= label[:label] %>"
-                 data-inspection-type="<%= label[:inspection_type] %>"
-                 data-scope="<%= label[:inspection_scope] %>"
-                 data-status="<%= label[:status] %>">
-              <%= label[:label] %>
-            </div>
-          <% end %>
-        </div>
-      </div>
-    </div>
-  </div>
+<!-- タイムライン本体（横いっぱい・縦スクロール） -->
+<div class="timeline-wrapper">
+  <div id="schedule-timeline"
+       data-base-date="<%= (@start_month || Date.current.beginning_of_month).iso8601 %>"></div>
+
+  <!-- groups: 左の行 -->
+  <script type="application/json" id="schedule-groups-json">
+    <%= (@timeline_groups || []).to_json.html_safe %>
+  </script>
+
+  <!-- items: MaintenanceEvent 由来 -->
+  <script type="application/json" id="schedule-items-json">
+    <%= (@timeline_items || []).to_json.html_safe %>
+  </script>
 </div>
 
-<%= javascript_tag do %>
-  document.addEventListener("turbo:load", function () {
-    const container = document.getElementById("maintenance-timeline")
-    if (!container || typeof vis === "undefined" || container.dataset.timelineBound === "true") {
-      return
+<style>
+  /* 画面を横いっぱいに使う */
+  .timeline-wrapper {
+    width: 100%;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    /* 高さを固定して、内部をスクロールさせる */
+    height: 45vh;
+   /* min-height: 280px; */
+    overflow-y: auto;
+  }
+
+  #schedule-timeline {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* パレット（ドラッグ元） */
+  .vis-demo-item {
+    min-width: 110px;
+    padding: 6px 12px;
+    border-radius: 4px;
+    border: 1px solid #3793e0;
+    color: #fff;
+    background-color: #3793e0;
+    font-weight: 600;
+    text-align: center;
+    cursor: grab;
+    user-select: none;
+  }
+  .vis-demo-item::before {
+    content: "≣";
+    margin-right: 6px;
+  }
+
+  /* ナンバープレート風ラベル */
+  .plate-mini {
+    display: inline-block;
+    background: #0f5132;
+    color: #fff;
+    padding: 4px 6px;
+    border-radius: 6px;
+    font-size: 12px;
+    line-height: 1.2;
+    min-width: 84px;
+    text-align: left;
+  }
+  .plate-mini__line1 {
+    font-weight: 600;
+    opacity: 0.9;
+  }
+  .plate-mini__line2 {
+    font-weight: 700;
+    font-size: 13px;
+  }
+  .vis-label .vis-inner {
+    padding: 2px 4px;
+    font-size: 12px;
+    line-height: 1.2;
+  }
+  .vis-time-axis .vis-text {
+    font-size: 12px;
+  }
+
+  .schedule-view-switch button.active {
+    background-color: #e2e8f0;
+  }
+
+  /* 編集中（選択中）のアイテムをオレンジで強調 */
+  .vis-item.vis-selected {
+    background-color: #f97316 !important;
+    border-color: #c2410c !important;
+    color: #fff !important;
+  }
+
+  /* MaintenanceCategory の色をアイテムにも適用 */
+  <% (@maintenance_categories || []).each do |cat| %>
+    <% next if cat.color.blank? %>
+    .vis-item.item-<%= cat.key.to_s.parameterize %> {
+      background-color: <%= cat.color %> !important;
+      border-color: <%= cat.color %> !important;
+      color: #fff !important;
+    }
+  <% end %>
+</style>
+
+<script>
+//<![CDATA[
+(function () {
+  function initScheduleTimeline () {
+    const container = document.getElementById("schedule-timeline");
+    if (!container) return;
+    if (container.dataset.timelineInitialized === "true") return;
+    if (typeof vis === "undefined") {
+      console.error("[schedule] vis is undefined");
+      return;
     }
 
-    let groups = []
-    let items = []
+    // --- JSON 読み込み -------------------------------------------------
+    let rawGroups = [];
+    let rawItems  = [];
     try {
-      groups = JSON.parse(container.dataset.groups || "[]")
-      items = JSON.parse(container.dataset.items || "[]")
+      const groupsSource = document.getElementById("schedule-groups-json")?.textContent || "[]";
+      const itemsSource  = document.getElementById("schedule-items-json")?.textContent || "[]";
+      rawGroups = JSON.parse(groupsSource);
+      rawItems  = JSON.parse(itemsSource);
     } catch (error) {
-      groups = []
-      items = []
+      console.error("[schedule] failed to parse json", error);
+      rawGroups = [];
+      rawItems  = [];
     }
 
-    console.log("maintenance schedule groups", groups)
-    console.log("maintenance schedule items", items)
-    const dataGroups = new vis.DataSet(groups)
+    // group.id -> group オブジェクト
+    let groupById = {};
+    rawGroups.forEach(g => { groupById[g.id] = g; });
 
-    const groupTemplate = function (group) {
-      const regionLine = [group.region, group.klass].filter(Boolean).join(" ")
-      const meta = []
-      if (group.depot) meta.push(group.depot)
-      if (group.call_sign) meta.push(group.call_sign)
-      if (group.vehicle_category) meta.push(group.vehicle_category)
-      return `
-        <div class="timeline-group">
-          <div class="timeline-group__plate plate-mini mb-1">
-            <div class="plate-mini__region">${regionLine}</div>
-            <div class="plate-mini__body">
-              <span class="plate-mini__kana">${group.kana || ""}</span>
-              <span class="plate-mini__number">${group.number || group.plate}</span>
-            </div>
-          </div>
-          <div class="timeline-group__meta">${meta.join(" / ")}</div>
-        </div>
-      `
-    }
-    const dataItems = new vis.DataSet(
-      items.map((item) => {
-        const mapped = { ...item }
-        if (item.placeholder) {
-          mapped.className = "timeline-placeholder"
-          mapped.type = "background"
-          mapped.selectable = false
-          mapped.editable = false
-        } else {
-          mapped.className = `timeline-event timeline-event-${item.status || "scheduled"}`
-        }
-        return mapped
-      })
-    )
+    const dataGroups = new vis.DataSet(rawGroups);
+    const dataItems  = new vis.DataSet(rawItems);
 
-    const baseStart = new Date(container.dataset.rangeStart)
-    const rangeEnd = new Date(container.dataset.rangeEnd)
+    // --- タイムライン基本設定 -----------------------------------------
+    const baseDateStr = container.dataset.baseDate || new Date().toISOString();
+    const baseStart   = new Date(baseDateStr);
+    baseStart.setHours(0, 0, 0, 0);
+
+    let currentView = "month";
+
     const options = {
       stack: false,
-      orientation: "top",
+      groupHeightMode: "fitRows",
+      horizontalScroll: false,
+      verticalScroll: true,     
       zoomable: false,
-      horizontalScroll: true,
       moveable: true,
-      selectable: true,
-      multiselect: false,
-      min: baseStart,
-      max: rangeEnd,
-      groupHeightMode: "fitRows",
       editable: {
-        add: false,
-        updateTime: true,
-        updateGroup: true,
-        remove: true
+        add: false,          // 追加はパレットからのみ
+        updateTime: true,    // ドラッグで時間変更OK
+        remove: true         // Del キーで削除OK
       },
-      margin: { item: 20, axis: 20 },
-      groupHeightMode: "fitRows",
-      groupTemplate: groupTemplate
+      orientation: "top",
+      margin: { item: { vertical: 12 } },
+      timeAxis: { scale: "day", step: 1 }
+    };
+
+    const timeline = new vis.Timeline(container, dataItems, dataGroups, options);
+    container.dataset.timelineInitialized = "true";
+
+    // --- CSRF トークン -------------------------------------------------
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+
+    function toIso(value) {
+      if (!value) return null;
+      if (value instanceof Date) return value.toISOString();
+      const d = new Date(value);
+      return isNaN(d.getTime()) ? null : d.toISOString();
     }
 
-    const timeline = new vis.Timeline(container, dataItems, dataGroups, options)
-    const csrfToken = document.querySelector("meta[name='csrf-token']")?.content
-    const createUrl = container.dataset.createUrl
-    const baseUrl = container.dataset.eventBaseUrl
-
-    const viewButtons = container.closest(".card").querySelectorAll("[data-timeline-view]")
-    viewButtons.forEach((button) => {
-      button.addEventListener("click", () => setView(button.dataset.timelineView, button))
-    })
-
-    function setView (type, button) {
-      const start = new Date(baseStart)
-      const end = new Date(start)
-      let axis = { scale: "day", step: 1 }
-
-      if (type === "day") {
-        end.setDate(start.getDate() + 1)
-        axis = { scale: "hour", step: 2 }
-      } else if (type === "week") {
-        end.setDate(start.getDate() + 7)
-        axis = { scale: "day", step: 1 }
-      } else {
-        end.setMonth(start.getMonth() + 1)
-        axis = { scale: "day", step: 2 }
-      }
-
-      timeline.setOptions({ timeAxis: axis })
-      timeline.setWindow(start, end, { animation: false })
-      viewButtons.forEach((btn) => btn.classList.remove("active"))
-      if (button) button.classList.add("active")
+    function vehicleNumberFor(item) {
+      const g = groupById[item.group];
+      return g ? (g.number || g.id || g.content) : null;
     }
 
-    setView("month", container.closest(".card").querySelector("[data-timeline-view='month']"))
+    // --- サーバー同期（CRUD）-----------------------------------------
+    let syncing = false;
 
-    timeline.on("move", function (item, callback) {
-      if (item.placeholder) {
-        callback(null)
-        return
-      }
-      persistUpdate(item).then((success) => {
-        callback(success ? item : null)
-      })
-    })
-
-    timeline.on("remove", function (item, callback) {
-      if (item.placeholder) {
-        callback(null)
-        return
-      }
-      if (!confirm("この予定を削除しますか？")) {
-        callback(null)
-        return
-      }
-      fetch(`${baseUrl}/${item.id}`, {
-        method: "DELETE",
-        headers: { "X-CSRF-Token": csrfToken }
-      })
-        .then((response) => {
-          if (response.ok) {
-            callback(item)
-          } else {
-            alert("削除に失敗しました。")
-            callback(null)
-          }
-        })
-        .catch(() => {
-          alert("削除に失敗しました。")
-          callback(null)
-        })
-    })
-
-    container.addEventListener("dragover", function (event) {
-      event.preventDefault()
-    })
-
-    container.addEventListener("drop", function (event) {
-      event.preventDefault()
-      let payload
-      try {
-        payload = JSON.parse(event.dataTransfer.getData("text/plain"))
-      } catch (error) {
-        payload = null
-      }
-      if (!payload) return
-
-      const props = timeline.getEventProperties(event)
-      if (!props.group || !props.time) return
-
-      createEvent(payload, props.group, props.time)
-    })
-
-    document.querySelectorAll(".timeline-label").forEach((label) => {
-      label.addEventListener("dragstart", (event) => {
-        const payload = {
-          label: label.dataset.label,
-          inspectionType: label.dataset.inspectionType,
-          inspectionScope: label.dataset.scope,
-          status: label.dataset.status
+    async function createEvent(item) {
+      const payload = {
+        maintenance_event: {
+          vehicle_number: vehicleNumberFor(item),
+          category: item.category_key || item.category || "",
+          start_at: toIso(item.start),
+          end_at:   toIso(item.end)
         }
-        event.dataTransfer.setData("text/plain", JSON.stringify(payload))
-      })
-    })
+      };
 
-    function createEvent (source, groupId, time) {
-      const scheduledOn = new Date(time).toISOString().slice(0, 10)
-      fetch(createUrl, {
+      const res = await fetch("/maintenance_events", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Accept": "application/json",
           "X-CSRF-Token": csrfToken
         },
-        body: JSON.stringify({
-          vehicle_id: groupId,
-          inspection_type: source.inspectionType,
-          inspection_scope: source.inspectionScope,
-          status: source.status,
-          scheduled_on: scheduledOn
-        })
-      }).then(async (response) => {
-        if (!response.ok) {
-          const error = await response.json().catch(() => ({}))
-          alert(error.error || "登録に失敗しました。")
-          return
-        }
-        const data = await response.json()
-        dataItems.add({
-          id: data.id,
-          group: data.vehicle_id,
-          start: data.scheduled_on,
-          content: data.inspection_type,
-          className: `timeline-event timeline-event-${data.status}`
-        })
-      })
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        console.error("create failed", await res.text());
+        return;
+      }
+
+      const json = await res.json();
+      syncing = true;
+      dataItems.update({ id: item.id, db_id: json.id });
+      syncing = false;
     }
 
-    function persistUpdate (item) {
-      const scheduledOn = new Date(item.start).toISOString().slice(0, 10)
-      return fetch(`${baseUrl}/${item.id}`, {
+    async function updateEvent(item) {
+      if (!item.db_id) {
+        return createEvent(item);
+      }
+
+      const payload = {
+        maintenance_event: {
+          vehicle_number: vehicleNumberFor(item),
+          category: item.category_key || item.category || "",
+          start_at: toIso(item.start),
+          end_at:   toIso(item.end)
+        }
+      };
+
+      const res = await fetch("/maintenance_events/" + item.db_id, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
+          "Accept": "application/json",
           "X-CSRF-Token": csrfToken
         },
-        body: JSON.stringify({
-          scheduled_on: scheduledOn,
-          vehicle_id: item.group
-        })
-      }).then(async (response) => {
-        if (!response.ok) {
-          const error = await response.json().catch(() => ({}))
-          alert(error.error || "更新に失敗しました。")
-          return false
-        }
-        return true
-      }).catch(() => {
-        alert("更新に失敗しました。")
-        return false
-      })
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        console.error("update failed", await res.text());
+      }
     }
 
-    container.dataset.timelineBound = "true"
-  })
-<% end %>
+    async function deleteEvent(oldItem) {
+      if (!oldItem || !oldItem.db_id) return;
+
+      const res = await fetch("/maintenance_events/" + oldItem.db_id, {
+        method: "DELETE",
+        headers: {
+          "X-CSRF-Token": csrfToken,
+          "Accept": "application/json"
+        }
+      });
+
+      if (!res.ok) {
+        console.error("delete failed", await res.text());
+      }
+    }
+
+    dataItems.on("*", function (event, props) {
+      if (syncing) return;
+      if (!props || !props.items) return;
+
+      if (event === "add") {
+        props.items.forEach(id => {
+          const item = dataItems.get(id);
+          if (!item) return;
+          if (!item.db_id) createEvent(item);
+        });
+      } else if (event === "update") {
+        props.items.forEach(id => {
+          const item = dataItems.get(id);
+          if (!item) return;
+          updateEvent(item);
+        });
+      } else if (event === "remove") {
+        (props.oldData || []).forEach(oldItem => {
+          deleteEvent(oldItem);
+        });
+      }
+    });
+
+    // --- パレット（ドラッグ元） --------------------------------------
+    document.querySelectorAll(".vis-demo-item").forEach((itemEl) => {
+      itemEl.addEventListener("dragstart", function (event) {
+        const label    = itemEl.dataset.label || itemEl.textContent.trim();
+        const category = itemEl.dataset.category || "";
+
+        const item = {
+          id:          new Date().valueOf(),
+          type:        "range",
+          content:     label,
+          className:   category ? "item-" + category : "",
+          category_key: category
+        };
+
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("text", JSON.stringify(item)); // text/plain ではなく text
+      });
+    });
+
+    // --- timeline 側 drop --------------------------------------------
+    container.addEventListener("dragover", function (event) {
+      event.preventDefault();
+    });
+
+    timeline.on("drop", function (props) {
+      const data = props.event.dataTransfer.getData("text");
+      if (!data) return;
+
+      let newItem;
+      try {
+        newItem = JSON.parse(data);
+      } catch (e) {
+        console.error("failed to parse drag data", e);
+        return;
+      }
+
+      const start   = props.time;
+      const groupId = props.group;
+
+      newItem.group = groupId;
+      newItem.start = start;
+
+      // ビュー別デフォルト長さ：日=2時間 / 週=1日 / 月=2日
+      if (!newItem.end) {
+        const base = start.getTime();
+        let lengthMs;
+        if (currentView === "day") {
+          lengthMs = 2 * 60 * 60 * 1000;           // 2h
+        } else if (currentView === "week") {
+          lengthMs = 24 * 60 * 60 * 1000;          // 1日
+        } else {
+          lengthMs = 2 * 24 * 60 * 60 * 1000;      // 2日
+        }
+        newItem.end = new Date(base + lengthMs);
+      }
+
+      dataItems.add(newItem);
+    });
+
+    // --- 営業所フィルタ ----------------------------------------------
+    const officeSelect = document.getElementById("schedule-office-filter");
+    if (officeSelect) {
+      officeSelect.addEventListener("change", function () {
+        const office = this.value;
+        const filteredGroups = (office === "all")
+          ? rawGroups
+          : rawGroups.filter((g) => g.office === office);
+
+        dataGroups.clear();
+        dataGroups.add(filteredGroups);
+
+        // group マップを更新（vehicleNumberFor 用）
+        groupById = {};
+        filteredGroups.forEach(g => { groupById[g.id] = g; });
+      });
+
+      // 初期表示: 何も触らず全営業所（＝rawGroups 全部）を表示
+      // → change は自動発火させない
+    }
+
+    // --- 日 / 週 / 月 ビュー切替 -------------------------------------
+    const viewButtons = document.querySelectorAll("[data-schedule-view]");
+
+    function setView(view) {
+      currentView = view;
+      const start = new Date(baseStart);
+      const end   = new Date(baseStart);
+
+      if (view === "day") {
+        end.setDate(start.getDate() + 1);
+        timeline.setOptions({ timeAxis: { scale: "hour", step: 1 } });
+      } else if (view === "week") {
+        end.setDate(start.getDate() + 7);
+        timeline.setOptions({ timeAxis: { scale: "day", step: 1 } });
+      } else {
+        end.setDate(start.getDate() + 30);
+        timeline.setOptions({ timeAxis: { scale: "day", step: 1 } });
+      }
+
+      timeline.setWindow(start, end, { animation: false });
+    }
+
+    viewButtons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const view = btn.dataset.scheduleView;
+        setView(view);
+        viewButtons.forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+      });
+    });
+
+    setView(currentView); // 初期表示（月）
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initScheduleTimeline);
+    document.addEventListener("turbo:load", initScheduleTimeline);
+  } else {
+    initScheduleTimeline();
+  }
+})();
+//]]>
+</script>

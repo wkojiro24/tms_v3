@@ -12,6 +12,7 @@ document.addEventListener("turbo:load", () => {
   recalcSidebarSectionHeights()
   initAutoSubmitControls()
   initVehicleFinancialsFullscreen()
+  initPeriodRadios()
 
   document.querySelectorAll("[data-toggle-sidebar]").forEach((button) => {
     button.addEventListener("click", () => {
@@ -151,4 +152,15 @@ function initVehicleFinancialsFullscreen () {
   document.addEventListener("webkitfullscreenchange", updateLabel)
   updateLabel()
   button.dataset.fullscreenBound = "true"
+}
+
+function initPeriodRadios () {
+  document.querySelectorAll(".js-period").forEach((radio) => {
+    if (radio.dataset.periodBound === "true") return
+    radio.addEventListener("change", () => {
+      const form = radio.closest("form")
+      if (form) form.requestSubmit()
+    })
+    radio.dataset.periodBound = "true"
+  })
 }

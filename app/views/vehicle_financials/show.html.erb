@@ -9,6 +9,12 @@
   <% end %>
 
   <section class="vehicle-financials-timeline" data-selected-vehicle="<%= @vehicle_code %>">
+    <div class="vehicle-financials-actions mb-3 text-end">
+      <%= link_to "Excelダウンロード",
+                  vehicle_financial_path(@vehicle_code, vehicle_financial_query(history_page: @timeline.current_page).merge(format: :csv)),
+                  class: "btn btn-outline-secondary btn-sm" %>
+    </div>
+
     <div class="d-flex justify-content-between align-items-center mb-3">
       <div>
         <h2 class="h6 mb-1">車両別推移: <%= @vehicle_code %></h2>
@@ -16,10 +22,10 @@
       </div>
       <div class="btn-group btn-group-sm" role="group">
         <% if @timeline.current_page.to_i > 1 %>
-          <%= link_to "前へ", vehicle_financial_path(@vehicle_code, history_page: @timeline.current_page.to_i - 1), class: "btn btn-outline-secondary" %>
+          <%= link_to "前へ", vehicle_financial_path(@vehicle_code, vehicle_financial_query(history_page: @timeline.current_page.to_i - 1)), class: "btn btn-outline-secondary" %>
         <% end %>
         <% if @timeline.total_pages > @timeline.current_page.to_i %>
-          <%= link_to "次へ", vehicle_financial_path(@vehicle_code, history_page: @timeline.current_page.to_i + 1), class: "btn btn-outline-secondary" %>
+          <%= link_to "次へ", vehicle_financial_path(@vehicle_code, vehicle_financial_query(history_page: @timeline.current_page.to_i + 1)), class: "btn btn-outline-secondary" %>
         <% end %>
       </div>
     </div>
@@ -31,7 +37,7 @@
             <% tab_classes = ["vehicle-financials-tab"]
                tab_classes << "is-active" if code == @vehicle_code %>
             <li>
-              <%= link_to code, vehicle_financial_path(code), class: tab_classes.join(" ") %>
+              <%= link_to code, vehicle_financial_path(code, vehicle_financial_query(history_page: @timeline.current_page)), class: tab_classes.join(" ") %>
             </li>
           <% end %>
         </ul>
@@ -73,6 +79,123 @@
           <% end %>
         </tbody>
       </table>
+    </div>
+  </section>
+
+  <section class="vehicle-financials-output mt-5">
+    <div class="card card-lift">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <div>
+            <h2 class="h6 mb-1">カテゴリ別アウトプット</h2>
+            <p class="text-muted small mb-0">固定費・変動費などのカテゴリにまとめて出力します。</p>
+          </div>
+          <%= link_to "Excelダウンロード",
+                      vehicle_financial_path(@vehicle_code, vehicle_financial_query(history_page: @timeline.current_page, view: "category", category_ids: @selected_category_ids).merge(format: :csv)),
+                      class: "btn btn-outline-secondary btn-sm" %>
+        </div>
+
+        <%= form_with url: vehicle_financial_path(@vehicle_code), method: :get, local: true, class: "vehicle-output-form" do %>
+          <%= hidden_field_tag :history_page, @timeline.current_page %>
+          <%= hidden_field_tag :start_month, @start_month&.strftime("%Y-%m") %>
+          <%= hidden_field_tag :end_month, @end_month&.strftime("%Y-%m") %>
+          <div class="d-flex flex-wrap gap-3 mb-3">
+            <% Array(@metric_categories).each do |category| %>
+              <% checkbox_id = "category-#{category.id}" %>
+              <div class="form-check">
+                <%= check_box_tag "category_ids[]", category.id, @selected_category_ids.include?(category.id), id: checkbox_id, class: "form-check-input" %>
+                <%= label_tag checkbox_id, category.display_label, class: "form-check-label" %>
+              </div>
+            <% end %>
+          </div>
+          <button type="submit" class="btn btn-outline-primary btn-sm">反映</button>
+        <% end %>
+
+        <% if @category_table && @category_table.item_rows.any? %>
+          <div class="table-responsive vehicle-financials-table-wrapper mt-4">
+            <% month_colspan = @category_table.column_count %>
+            <table class="table table-sm vehicle-financials-table">
+              <colgroup>
+                <col class="vehicle-financials-section-col">
+                <col class="vehicle-financials-item-col">
+                <% @category_headers.each do |_header| %>
+                  <col class="vehicle-financials-value-col">
+                <% end %>
+                <col class="vehicle-financials-summary-col">
+                <col class="vehicle-financials-summary-col">
+              </colgroup>
+              <thead>
+                <tr>
+                  <th class="vehicle-financials-sticky-col vehicle-financials-section-col text-start">カテゴリ</th>
+                  <th class="vehicle-financials-sticky-col vehicle-financials-item-col text-start">項目名</th>
+                  <% @category_headers.each do |header| %>
+                    <th class="text-center vehicle-financials-header-col"><%= header[:title] %></th>
+                  <% end %>
+                  <th class="text-center vehicle-financials-header-col vehicle-financials-summary-col">合計</th>
+                  <th class="text-center vehicle-financials-header-col vehicle-financials-summary-col">平均</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% current_category_id = nil %>
+                <% @category_table.rows.each do |row| %>
+                  <% next if row.type == :section %>
+                  <% display_category = nil %>
+                  <% if row.category&.id != current_category_id %>
+                    <% current_category_id = row.category&.id %>
+                    <% display_category = row.category&.display_label %>
+                  <% end %>
+                  <% summary = vehicle_financial_row_summary(row) %>
+                  <tr class="vehicle-financials-row">
+                    <td class="vehicle-financials-sticky-col text-start fw-semibold"><%= display_category %></td>
+                    <th class="vehicle-financials-sticky-col vehicle-financials-item-col text-start"><%= row.label %></th>
+                    <% row.values.each do |value| %>
+                      <td class="text-end"><%= vehicle_financial_value(row.label, value) %></td>
+                    <% end %>
+                    <td class="text-end vehicle-financials-summary-cell"><%= vehicle_financial_value(row.label, summary[:total]) %></td>
+                    <td class="text-end vehicle-financials-summary-cell"><%= vehicle_financial_value(row.label, summary[:average]) %></td>
+                  </tr>
+                <% end %>
+                <% if @profit_check && @profit_check[:missing_labels].blank? %>
+                  <% calc_row = { label: @profit_check[:calc_label], values: @profit_check[:calc_values] } %>
+                  <% recorded_row = { label: @profit_check[:profit_label], values: @profit_check[:recorded_values] } %>
+                  <% diff_row = { label: "差額(検算-損益)", values: @profit_check[:diff_values] } %>
+                  <% [calc_row, recorded_row, diff_row].each do |row| %>
+                    <% summary = vehicle_financial_row_summary(row) %>
+                    <tr class="vehicle-financials-row vehicle-grid__row--grand">
+                      <td class="vehicle-financials-sticky-col text-start" colspan="2"><%= row[:label] %></td>
+                      <% row[:values].each do |value| %>
+                        <td class="text-end"><%= vehicle_financial_value(row[:label], value) %></td>
+                      <% end %>
+                      <td class="text-end vehicle-financials-summary-cell"><%= vehicle_financial_value(row[:label], summary[:total]) %></td>
+                      <td class="text-end vehicle-financials-summary-cell"><%= vehicle_financial_value(row[:label], summary[:average]) %></td>
+                    </tr>
+                  <% end %>
+                <% elsif @profit_check && @profit_check[:missing_labels].present? %>
+                  <tr class="vehicle-financials-row vehicle-grid__row--grand">
+                    <td class="vehicle-financials-sticky-col text-start" colspan="<%= 2 + @category_table.column_count + 2 %>">
+                      検算に必要なカテゴリが不足しています: <%= @profit_check[:missing_labels].join(", ") %>
+                    </td>
+                  </tr>
+                <% end %>
+                <tr class="vehicle-financials-row vehicle-grid__row--grand">
+                  <td class="vehicle-financials-sticky-col text-start" colspan="2">合計</td>
+                  <td colspan="<%= month_colspan %>"></td>
+                  <td class="text-end fw-bold vehicle-financials-summary-cell"><%= vehicle_financial_value("合計", @category_table.total_values_sum) %></td>
+                  <td class="text-end vehicle-financials-summary-cell"><%= vehicle_financial_value("合計", @category_table.total_average_value) %></td>
+                </tr>
+                <tr class="vehicle-financials-row vehicle-grid__row--grand">
+                  <td class="vehicle-financials-sticky-col text-start" colspan="2">平均</td>
+                  <td colspan="<%= month_colspan %>"></td>
+                  <td class="text-end vehicle-financials-summary-cell"></td>
+                  <td class="text-end vehicle-financials-summary-cell"><%= vehicle_financial_value("平均", @category_table.average_summary_value) %></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        <% else %>
+          <p class="text-muted small mt-3">表示できるカテゴリがありません。カテゴリ設定を確認してください。</p>
+        <% end %>
+      </div>
     </div>
   </section>
 </div>

@@ -239,6 +239,10 @@
                   <i class="bi bi-diagram-3"></i>
                   <span>承認カテゴリ</span>
                 <% end %>
+                <%= link_to admin_metric_label_mappings_path, class: "app-sidebar__link #{'is-active' if request.path.starts_with?('/admin/metric_label_mappings')}", title: "指標マッピング", data: { bs_toggle: "tooltip", bs_placement: "right", bs_container: "body" } do %>
+                  <i class="bi bi-diagram-3-fill"></i>
+                  <span>指標マッピング</span>
+                <% end %>
                 <%= link_to admin_users_path, class: "app-sidebar__link #{'is-active' if request.path.starts_with?('/admin/users')}", title: "ユーザー管理", data: { bs_toggle: "tooltip", bs_placement: "right", bs_container: "body" } do %>
                   <i class="bi bi-people-fill"></i>
                   <span>ユーザー管理</span>
@@ -246,6 +250,10 @@
                 <%= link_to admin_departments_path, class: "app-sidebar__link #{'is-active' if request.path.starts_with?('/admin/departments')}", title: "部署", data: { bs_toggle: "tooltip", bs_placement: "right", bs_container: "body" } do %>
                   <i class="bi bi-buildings"></i>
                   <span>部署</span>
+                <% end %>
+                <%= link_to admin_metric_categories_path, class: "app-sidebar__link #{'is-active' if request.path.starts_with?('/admin/metric_categories')}", title: "指標カテゴリ", data: { bs_toggle: "tooltip", bs_placement: "right", bs_container: "body" } do %>
+                  <i class="bi bi-layers"></i>
+                  <span>指標カテゴリ</span>
                 <% end %>
                 <%= link_to admin_job_categories_path, class: "app-sidebar__link #{'is-active' if request.path.starts_with?('/admin/job_categories')}", title: "職種", data: { bs_toggle: "tooltip", bs_placement: "right", bs_container: "body" } do %>
                   <i class="bi bi-briefcase"></i>

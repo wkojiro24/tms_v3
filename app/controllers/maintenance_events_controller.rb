@@ -1,65 +1,37 @@
 class MaintenanceEventsController < ApplicationController
-  before_action :set_event, only: [:update, :destroy]
+  protect_from_forgery with: :null_session, unless: -> { request.format.html? }
 
   def create
-    vehicle = Vehicle.find(params.require(:vehicle_id))
-    scheduled_on = parse_date(params[:scheduled_on])
-
-    record = vehicle.vehicle_inspection_records.create!(
-      inspection_type: params[:inspection_type].presence || "点検",
-      inspection_scope: params[:inspection_scope].presence || "その他",
-      status: params[:status].presence || "scheduled",
-      scheduled_on: scheduled_on,
-      notes: params[:notes]
-    )
-    VehicleStatusManager.record(
-      vehicle: vehicle,
-      status: VehicleStatusManager.status_for_inspection(record),
-      source: record,
-      notes: record.inspection_type
-    )
-
-    render json: event_payload(record), status: :created
-  rescue ActiveRecord::RecordInvalid => e
-    render json: { error: e.record.errors.full_messages.to_sentence }, status: :unprocessable_entity
-  end
-
-  def update
-    scheduled_on = parse_date(params[:scheduled_on])
-    attrs = { scheduled_on: scheduled_on }
-    attrs[:vehicle_id] = params[:vehicle_id] if params[:vehicle_id].present?
-    if @event.update(attrs)
-      render json: event_payload(@event)
+    event = MaintenanceEvent.new(event_params)
+    if event.save
+      render json: { id: event.id }, status: :created
     else
-      render json: { error: @event.errors.full_messages.to_sentence }, status: :unprocessable_entity
+      render json: { errors: event.errors.full_messages }, status: :unprocessable_entity
     end
   end
 
+  def update
+    event = MaintenanceEvent.find(params[:id])
+    if event.update(event_params)
+      head :no_content
+    else
+      render json: { errors: event.errors.full_messages }, status: :unprocessable_entity
+    end
+  rescue ActiveRecord::RecordNotFound
+    head :not_found
+  end
+
   def destroy
-    @event.destroy!
+    event = MaintenanceEvent.find(params[:id])
+    event.destroy!
     head :no_content
+  rescue ActiveRecord::RecordNotFound
+    head :not_found
   end
 
   private
 
-  def set_event
-    @event = VehicleInspectionRecord.find(params[:id])
-  end
-
-  def parse_date(value)
-    Date.parse(value)
-  rescue ArgumentError, TypeError
-    nil
-  end
-
-  def event_payload(record)
-    {
-      id: record.id,
-      vehicle_id: record.vehicle_id,
-      inspection_type: record.inspection_type,
-      inspection_scope: record.inspection_scope,
-      status: record.status,
-      scheduled_on: record.scheduled_on
-    }
+  def event_params
+    params.require(:maintenance_event).permit(:vehicle_number, :category, :start_at, :end_at)
   end
 end

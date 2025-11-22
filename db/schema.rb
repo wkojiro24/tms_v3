@@ -336,6 +336,47 @@ ActiveRecord::Schema[7.2].define(version: 2025_11_04_100000) do
     t.index ["journal_entry_id"], name: "index_journal_lines_on_journal_entry_id"
   end
 
+  create_table "maintenance_categories", force: :cascade do |t|
+    t.string "key", null: false
+    t.string "name", null: false
+    t.string "color"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["key"], name: "index_maintenance_categories_on_key", unique: true
+  end
+
+  create_table "maintenance_events", force: :cascade do |t|
+    t.string "vehicle_number", null: false
+    t.string "category", null: false
+    t.datetime "start_at", null: false
+    t.datetime "end_at"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["category"], name: "index_maintenance_events_on_category"
+    t.index ["start_at"], name: "index_maintenance_events_on_start_at"
+    t.index ["vehicle_number"], name: "index_maintenance_events_on_vehicle_number"
+  end
+
+  create_table "metric_categories", force: :cascade do |t|
+    t.string "name", null: false
+    t.string "display_label"
+    t.integer "position", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["position"], name: "index_metric_categories_on_position"
+  end
+
+  create_table "metric_category_items", force: :cascade do |t|
+    t.bigint "metric_category_id", null: false
+    t.string "display_label", null: false
+    t.text "source_labels", default: "", null: false
+    t.integer "position", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["metric_category_id", "position"], name: "index_metric_category_items_on_category_and_position"
+    t.index ["metric_category_id"], name: "index_metric_category_items_on_metric_category_id"
+  end
+
   create_table "payroll_batches", force: :cascade do |t|
     t.bigint "period_id", null: false
     t.string "location"
@@ -752,6 +793,7 @@ ActiveRecord::Schema[7.2].define(version: 2025_11_04_100000) do
   add_foreign_key "journal_entries", "import_batches"
   add_foreign_key "journal_entries", "tenants"
   add_foreign_key "journal_lines", "journal_entries"
+  add_foreign_key "metric_category_items", "metric_categories"
   add_foreign_key "payroll_batches", "periods"
   add_foreign_key "payroll_batches", "tenants"
   add_foreign_key "payroll_batches", "users", column: "uploaded_by_id"

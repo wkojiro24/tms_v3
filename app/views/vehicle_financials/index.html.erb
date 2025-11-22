@@ -38,6 +38,22 @@
         </div>
 
         <div class="col-sm-6 col-lg-3">
+          <%= f.label :start_month, "開始月", class: "form-label small" %>
+          <%= f.select :start_month,
+                       options_for_select(@month_options, @start_month&.strftime("%Y-%m")),
+                       { include_blank: "指定なし" },
+                       class: "form-select form-select-sm js-auto-submit" %>
+        </div>
+
+        <div class="col-sm-6 col-lg-3">
+          <%= f.label :end_month, "終了月", class: "form-label small" %>
+          <%= f.select :end_month,
+                       options_for_select(@month_options, @end_month&.strftime("%Y-%m")),
+                       { include_blank: "指定なし" },
+                       class: "form-select form-select-sm js-auto-submit" %>
+        </div>
+
+        <div class="col-sm-6 col-lg-3">
           <%= f.label :depot, "営業所", class: "form-label small" %>
           <%= f.select :depot,
                        options_for_select(@available_depots, @selected_depot),
@@ -103,9 +119,9 @@
             <th class="vehicle-financials-sticky-col vehicle-financials-section-col text-start">区分</th>
             <th class="vehicle-financials-sticky-col vehicle-financials-item-col text-start">項目名</th>
             <% @header_window.each do |header| %>
-              <% if header[:link_path] %>
+              <% if header[:link_path] && header[:key].present? %>
                 <th class="text-center vehicle-financials-header-col">
-                  <%= link_to header[:title], header[:link_path], class: "vehicle-financials-col-link" %>
+                  <%= link_to header[:title], vehicle_financial_path(header[:key], vehicle_financial_query(history_page: nil)), class: "vehicle-financials-col-link" %>
                 </th>
               <% else %>
                 <th class="text-center vehicle-financials-header-col"><%= header[:title] %></th>
