@@ -106,11 +106,11 @@ module Admin
 
       seconds_zero = if time.respond_to?(:sec)
                        time.sec.zero?
-                     elsif time.respond_to?(:second)
+      elsif time.respond_to?(:second)
                        time.second.zero?
-                     else
+      else
                        true
-                     end
+      end
 
       return "" if time.hour.zero? && time.min.zero? && seconds_zero
 

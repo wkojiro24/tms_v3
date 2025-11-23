@@ -1,0 +1,122 @@
+<% content_for :title, "車両一覧" %>
+<% content_for :section_label, "車両" %>
+
+<div class="card shadow-sm mb-4">
+  <div class="card-body d-flex flex-wrap justify-content-between align-items-center">
+    <div>
+      <h1 class="h4 mb-1 fw-semibold">車両リスト</h1>
+      <p class="text-muted mb-0 small">稼働状況・ステータスを一覧で把握し、必要に応じて詳細へ移動します。</p>
+    </div>
+    <div class="d-flex gap-2">
+      <%= link_to "点検・整備計画", maintenance_schedule_path, class: "btn btn-outline-primary btn-sm" %>
+      <button class="btn btn-outline-secondary btn-sm">エクスポート</button>
+      <%= link_to "+ 新規車両", "#", class: "btn btn-primary btn-sm disabled", title: "準備中", data: { bs_toggle: "tooltip" } %>
+    </div>
+  </div>
+</div>
+
+<div class="card shadow-sm mb-3">
+  <div class="card-body">
+    <div class="d-flex flex-wrap align-items-center gap-3 mb-3">
+      <% status_tabs = [["all", "すべて", nil], ["active", "稼働中", "active"], ["maintenance", "整備中", "maintenance"], ["inspection", "点検予定", "inspection"], ["attention", "要確認", "attention"], ["out_of_service", "休車", "out_of_service"]] %>
+      <% status_tabs.each do |key, label, value| %>
+        <% active = (value.nil? && @status_filter.blank?) || value == @status_filter %>
+        <% count = value.present? ? @status_counts.fetch(value, 0) : @status_counts.values.sum %>
+        <%= link_to vehicles_path(params.permit(:q, :vehicle_type, :group).merge(status: value).compact), class: "btn btn-sm #{active ? 'btn-primary' : 'btn-outline-secondary'}" do %>
+          <%= label %> <span class="badge text-bg-light ms-1"><%= count %></span>
+        <% end %>
+      <% end %>
+    </div>
+    <%= form_with url: vehicles_path, method: :get, local: true, class: "row g-2" do |f| %>
+      <div class="col-md-4">
+        <%= f.text_field :q, value: @query, class: "form-control", placeholder: "車両名・登録番号・VINで検索" %>
+      </div>
+      <div class="col-md-3">
+        <%= f.select :vehicle_type, options_for_select([["車種でフィルタ", ""]]+@vehicle_types.map { |t| [t, t] }, @vehicle_type), {}, class: "form-select" %>
+      </div>
+      <div class="col-md-3">
+        <%= f.select :group, options_for_select([["営業所でフィルタ", ""]]+@all_depots.map { |d| [d, d] }, @vehicle_group), {}, class: "form-select" %>
+      </div>
+      <div class="col-md-2 d-grid">
+        <%= f.submit "検索", class: "btn btn-primary" %>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table align-middle mb-0">
+        <thead class="table-light text-muted small">
+          <tr>
+            <th style="width: 3rem;"><input type="checkbox" disabled></th>
+            <th>名前 / 車両情報</th>
+            <th>ステータス</th>
+            <th>種別</th>
+            <th>営業所</th>
+            <th>車両形状</th>
+            <th>荷主 / タンク材質</th>
+            <th>タンク容量</th>
+            <th>稼働年数</th>
+            <th class="text-end">アクション</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @vehicles.each do |vehicle| %>
+            <tr class="align-middle">
+              <td><input type="checkbox" disabled></td>
+              <td>
+                <%= link_to vehicle_path(vehicle), class: "text-decoration-none d-block text-dark" do %>
+                  <div class="d-flex align-items-center gap-3">
+                    <% plate = vehicle_plate_parts(vehicle) %>
+                    <div style="<%= vehicle_plate_style %>">
+                      <div class="text-uppercase small mb-1" style="letter-spacing:1px;"><%= plate[:region] %> <%= plate[:klass] %></div>
+                      <div class="d-flex align-items-center justify-content-center gap-1">
+                        <span><%= plate[:kana] %></span>
+                        <span class="fw-semibold" style="font-size:1.1rem;"><%= plate[:number] %></span>
+                      </div>
+                    </div>
+                    <div>
+                      <div class="fw-semibold text-primary"><%= vehicle.display_name.presence || vehicle.registration_number %></div>
+                      <div class="text-muted small">
+                        <%= [vehicle.manufacturer_name, vehicle.model_code].compact.join(" ") %>
+                      </div>
+                    </div>
+                  </div>
+                <% end %>
+              </td>
+              <td>
+                <% status_key = vehicle.maintenance_status %>
+                <span class="badge <%= vehicle_status_badge_class(status_key) %>"><%= vehicle_status_label_from_key(status_key) %></span>
+              </td>
+              <td><%= vehicle.vehicle_category.presence || "-" %></td>
+              <td><%= vehicle.depot_name.presence || "-" %></td>
+              <td><%= vehicle.body_type.presence || vehicle.vehicle_category.presence || "-" %></td>
+              <td>
+                <div class="fw-semibold"><%= vehicle.shipper_name.presence || "-" %></div>
+                <% if vehicle.tank_material.present? %>
+                  <div class="text-muted small">タンク: <%= vehicle.tank_material %></div>
+                <% end %>
+              </td>
+              <td>
+                <% if vehicle.max_load_kg.present? %>
+                  <%= number_with_delimiter(vehicle.max_load_kg) %> kg
+                <% else %>
+                  <span class="text-muted">-</span>
+                <% end %>
+              </td>
+              <td><%= vehicle.age_text.presence || "-" %></td>
+              <td class="text-end">
+                <div class="btn-group">
+                  <%= link_to "詳細", vehicle_path(vehicle), class: "btn btn-sm btn-outline-primary" %>
+                  <button class="btn btn-sm btn-outline-secondary disabled">アクション</button>
+                </div>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

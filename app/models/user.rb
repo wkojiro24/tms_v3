@@ -13,10 +13,7 @@ class User < ApplicationRecord
   devise :database_authenticatable, :registerable,
          :recoverable, :rememberable, :validatable
 
-  enum role: {
-    staff: "staff",
-    admin: "admin"
-  }, _suffix: true
+  enum :role, { staff: "staff", admin: "admin" }, suffix: true
 
   validates :role, presence: true
   validates :email, uniqueness: { scope: :tenant_id, case_sensitive: false }

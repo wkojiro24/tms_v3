@@ -1,13 +1,13 @@
 module WorkflowRequestsHelper
   def workflow_status_badge(request)
     classes = case request.status
-              when "approved" then "badge bg-success"
-              when "pending" then "badge bg-primary"
-              when "returned" then "badge bg-warning text-dark"
-              when "rejected" then "badge bg-danger"
-              else
-                "badge bg-secondary"
-              end
+    when "approved" then "badge bg-success"
+    when "pending" then "badge bg-primary"
+    when "returned" then "badge bg-warning text-dark"
+    when "rejected" then "badge bg-danger"
+    else
+      "badge bg-secondary"
+    end
     content_tag(:span, request.human_status, class: classes)
   end
 

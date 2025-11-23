@@ -1,0 +1,167 @@
+<% content_for :title, @vehicle.display_name.presence || "車両詳細" %>
+<% content_for :section_label, "車両" %>
+
+<div class="d-flex gap-2 justify-content-end mb-3">
+  <%= link_to "車両管理", "#maintenance", class: "btn btn-primary btn-sm" %>
+</div>
+
+<%= render "gallery" %>
+
+<div class="row g-3">
+  <div class="col-12 col-xl-7">
+    <div class="card shadow-sm">
+      <div class="card-header bg-white fw-semibold d-flex align-items-center justify-content-between">
+        <span>基本情報</span>
+        <button class="btn btn-link btn-sm text-secondary text-decoration-none" data-bs-toggle="modal" data-bs-target="#vehicleDetailsModal">
+          <i class="bi bi-pencil-square me-1"></i>編集する
+        </button>
+      </div>
+      <div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-sm-4 text-muted small">初度登録</dt>
+          <dd class="col-sm-8"><%= l(@vehicle.first_registration_on, format: :long) if @vehicle.first_registration_on.present? %> <span class="text-muted small"><%= @vehicle.age_text %></span></dd>
+          <dt class="col-sm-4 text-muted small">型式 / 車名</dt>
+          <dd class="col-sm-8"><%= [@vehicle.model_code, @vehicle.manufacturer_name].compact.join(" / ") %></dd>
+          <dt class="col-sm-4 text-muted small">車台番号</dt>
+          <dd class="col-sm-8"><%= @vehicle.chassis_number %></dd>
+          <dt class="col-sm-4 text-muted small">種別</dt>
+          <dd class="col-sm-8"><%= @vehicle.vehicle_category %></dd>
+          <dt class="col-sm-4 text-muted small">最大積載量</dt>
+          <dd class="col-sm-8"><%= number_with_delimiter(@vehicle.max_load_kg) if @vehicle.max_load_kg.present? %> kg</dd>
+          <dt class="col-sm-4 text-muted small">車両総重量</dt>
+          <dd class="col-sm-8"><%= number_with_delimiter(@vehicle.gross_weight_kg) if @vehicle.gross_weight_kg.present? %> kg</dd>
+          <dt class="col-sm-4 text-muted small">シャーシ</dt>
+          <dd class="col-sm-8"><%= @vehicle.chassis_base %></dd>
+          <dt class="col-sm-4 text-muted small">荷主 / 輸送品</dt>
+          <dd class="col-sm-8"><%= [@vehicle.shipper_name, @vehicle.cargo_name].compact.join(" / ") %></dd>
+          <dt class="col-sm-4 text-muted small">タンク材質</dt>
+          <dd class="col-sm-8"><%= [@vehicle.tank_material, @vehicle.usage_category].compact.join(" / ") %></dd>
+          <dt class="col-sm-4 text-muted small">タンク製造年月</dt>
+          <dd class="col-sm-8"><%= l(@vehicle.tank_made_on, format: :long) if @vehicle.tank_made_on.present? %> <span class="text-muted small"><%= @vehicle.tank_age_text %></span></dd>
+          <dt class="col-sm-4 text-muted small">その他</dt>
+          <dd class="col-sm-8"><%= simple_format(@vehicle.notes) if @vehicle.notes.present? %></dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-xl-5">
+    <div class="card shadow-sm mb-3" id="financials">
+      <div class="card-header bg-white fw-semibold">車両別収支</div>
+      <div class="card-body">
+        <p class="text-muted small">
+          詳しい損益は車両別収支ページで確認できます。
+        </p>
+        <% if @vehicle_financial_code.present? %>
+          <%= link_to "推移表を開く", vehicle_financial_path(@vehicle_financial_code), class: "btn btn-outline-primary w-100" %>
+        <% else %>
+          <button class="btn btn-outline-secondary w-100" disabled>推移表のリンクなし</button>
+        <% end %>
+      </div>
+    </div>
+    <div class="card shadow-sm" id="maintenance">
+      <div class="card-header bg-white fw-semibold d-flex align-items-center justify-content-between">
+        <div>
+          <div>車両管理・履歴</div>
+          <p class="text-muted small mb-0">ワークフロー連携と社内記録を一元管理</p>
+        </div>
+        <div class="d-flex gap-2">
+          <%= link_to "ワークフローを開く", workflow_requests_path, class: "btn btn-outline-secondary btn-sm" %>
+          <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#maintenanceModal">
+            <i class="bi bi-plus-lg me-1"></i>記録を追加
+          </button>
+        </div>
+      </div>
+      <div class="card-body">
+        <p class="text-muted small">修繕申請で承認済みの内容は上部に残しつつ、故障・点検の現場記録を下記のカードにまとめていきます。</p>
+        <% if @maintenance_entries.any? %>
+          <div class="d-flex flex-column gap-3">
+            <% @maintenance_entries.first(12).each do |entry| %>
+              <div class="border rounded-3 p-3 shadow-sm">
+                <div class="d-flex align-items-start justify-content-between mb-2">
+                  <div>
+                    <span class="badge rounded-pill text-bg-light text-dark me-2"><%= maintenance_entry_type_label(entry[:type]) %></span>
+                    <div class="fw-semibold"><%= entry[:title] %></div>
+                    <% if entry[:occurred_on].present? %>
+                      <div class="text-muted small"><%= l(entry[:occurred_on], format: :long) %></div>
+                    <% end %>
+                  </div>
+                  <span class="badge rounded-pill <%= maintenance_entry_status_badge(entry) %>"><%= maintenance_entry_status_label(entry) %></span>
+                </div>
+                <p class="text-muted small mb-2"><%= entry[:detail].presence || "詳細未入力" %></p>
+                <% if entry[:type] == :fault %>
+                  <% fault = entry[:record] %>
+                  <div class="text-muted small mb-2">
+                    <% if fault.category.present? %>
+                      <span>区分: <%= fault.category %></span>
+                    <% end %>
+                    <% if fault.cause_primary.present? %>
+                      <span class="ms-2">原因: <%= fault.cause_primary %></span>
+                    <% end %>
+                    <% if fault.estimated_cost.present? %>
+                      <span class="ms-2">概算: <%= number_to_currency(fault.estimated_cost, unit: "¥", precision: 0) %></span>
+                    <% end %>
+                  </div>
+                  <% if fault.photos.attached? %>
+                    <div class="d-flex flex-wrap gap-2">
+                      <% fault.photos.each do |photo| %>
+                        <% thumb = photo.variable? ? photo.variant(resize_to_fill: [110, 110]).processed : photo %>
+                        <%= image_tag thumb, class: "rounded border", alt: "fault photo", width: 110, height: 110 %>
+                      <% end %>
+                    </div>
+                  <% end %>
+                <% else %>
+                  <% inspection = entry[:record] %>
+                  <div class="text-muted small mb-2">
+                    <% if inspection.inspector_name.present? %>
+                      <span>担当: <%= inspection.inspector_name %></span>
+                    <% end %>
+                    <% if inspection.vendor_name.present? %>
+                      <span class="ms-2">依頼先: <%= inspection.vendor_name %></span>
+                    <% end %>
+                    <% if inspection.estimated_cost.present? %>
+                      <span class="ms-2">概算: <%= number_to_currency(inspection.estimated_cost, unit: "¥", precision: 0) %></span>
+                    <% end %>
+                  </div>
+                  <% if inspection.inspection_scope.present? %>
+                    <div class="text-muted small mb-2">点検箇所: <%= inspection_scope_label(inspection.inspection_scope) %></div>
+                  <% end %>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+          <% if @inspection_events.any? %>
+            <div class="mt-4">
+              <div class="text-muted small mb-1">計画サイクル</div>
+              <ul class="list-group list-group-flush">
+                <% @inspection_events.each do |event| %>
+                  <li class="list-group-item px-0 border-0">
+                    <div class="d-flex align-items-center justify-content-between">
+                      <div>
+                        <div class="fw-semibold"><%= event[:label] %></div>
+                        <div class="text-muted small"><%= event[:interval_label] %></div>
+                        <% if event[:previous_due_on].present? %>
+                          <div class="text-muted small">前回: <%= l(event[:previous_due_on], format: :long) %></div>
+                        <% end %>
+                      </div>
+                      <div class="text-end">
+                        <span class="badge rounded-pill text-bg-<%= event[:urgency] %>">
+                          <%= l(event[:next_due_on], format: :long) %>
+                        </span>
+                        <div class="text-muted small mt-1">あと <%= event[:days_remaining] %> 日</div>
+                      </div>
+                    </div>
+                  </li>
+                <% end %>
+              </ul>
+            </div>
+          <% end %>
+        <% else %>
+          <p class="text-muted small mb-0">メンテナンスの記録はまだ登録されていません。</p>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%= render "maintenance_modal" %>
+<%= render "vehicle_details_modal" %>

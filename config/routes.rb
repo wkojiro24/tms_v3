@@ -25,6 +25,22 @@ Rails.application.routes.draw do
   get "/imports", to: redirect("/admin/imports/new")
 
   resources :workflow_requests, path: "workflows", only: [:index, :new, :create, :show]
+  resources :journal_entries, only: [:index]
+  resources :vehicles, only: [:index, :show, :update] do
+    collection do
+      get :schedule
+      get :timeline_demo
+    end
+    scope module: :vehicles do
+      resources :photos, only: [:create, :destroy]
+      resources :fault_logs, only: [:create]
+      resources :inspection_records, only: [:create]
+    end
+  end
+  get "maintenance_schedule", to: "vehicles#schedule"
+  resources :maintenance_events, only: [:create, :update, :destroy]
+  resources :maintenance_categories
+  resources :vehicle_financials, only: [:index, :show]
 
   namespace :admin do
     root to: "dashboard#index"
@@ -51,5 +67,9 @@ Rails.application.routes.draw do
       resources :workflow_stage_templates, only: [:create, :update, :destroy]
       resources :workflow_category_notifications, only: [:create, :destroy]
     end
+    resources :metric_categories do
+      resources :metric_category_items, except: [:index, :show]
+    end
+    resources :metric_label_mappings, only: [:index, :create]
   end
 end

@@ -1,0 +1,157 @@
+<% content_for :title, "車両収支グリッド" %>
+<% content_for :section_label, "車両" %>
+
+<div class="vehicle-financials-container container-fluid px-4 py-3">
+  <% content_for :page_header do %>
+    <div class="vehicle-financials-header mb-2">
+      <p class="text-muted small mb-0">期 / 月を選択して車両ごとの損益を一覧表示します。</p>
+    </div>
+  <% end %>
+
+  <section class="card vehicle-financials-filters mb-3">
+    <div class="card-body">
+      <%= form_with url: vehicle_financials_path, method: :get, local: true, class: "row gy-3 gx-3 align-items-end" do |f| %>
+
+        <div class="col-12">
+          <label class="form-label small mb-1">期</label>
+          <div class="btn-group btn-group-sm flex-wrap" role="group" aria-label="期選択">
+            <% @period_groups.each do |period| %>
+              <input class="btn-check js-period"
+                     type="radio"
+                     name="period"
+                     id="period-<%= period[:key] %>"
+                     value="<%= period[:key] %>"
+                     <%= "checked" if @selected_period == period[:key] %>>
+              <label class="btn btn-outline-secondary <%= "active" if @selected_period == period[:key] %>" for="period-<%= period[:key] %>">
+                <%= period[:label] %>
+              </label>
+            <% end %>
+          </div>
+        </div>
+
+        <div class="col-sm-6 col-lg-3">
+          <%= f.label :month, "対象月", class: "form-label small" %>
+          <%= f.select :month,
+                       options_for_select(@period_months.map { |m| [m.strftime("%Y年%m月"), m.strftime("%Y-%m")] }, @selected_month&.strftime("%Y-%m")),
+                       {},
+                       class: "form-select form-select-sm js-auto-submit" %>
+        </div>
+
+        <div class="col-sm-6 col-lg-3">
+          <%= f.label :start_month, "開始月", class: "form-label small" %>
+          <%= f.select :start_month,
+                       options_for_select(@month_options, @start_month&.strftime("%Y-%m")),
+                       { include_blank: "指定なし" },
+                       class: "form-select form-select-sm js-auto-submit" %>
+        </div>
+
+        <div class="col-sm-6 col-lg-3">
+          <%= f.label :end_month, "終了月", class: "form-label small" %>
+          <%= f.select :end_month,
+                       options_for_select(@month_options, @end_month&.strftime("%Y-%m")),
+                       { include_blank: "指定なし" },
+                       class: "form-select form-select-sm js-auto-submit" %>
+        </div>
+
+        <div class="col-sm-6 col-lg-3">
+          <%= f.label :depot, "営業所", class: "form-label small" %>
+          <%= f.select :depot,
+                       options_for_select(@available_depots, @selected_depot),
+                       { include_blank: "すべて" },
+                       class: "form-select form-select-sm js-auto-submit" %>
+        </div>
+
+        <div class="col-sm-6 col-lg-3">
+          <%= f.label :shipper, "荷主", class: "form-label small" %>
+          <%= f.select :shipper,
+                       options_for_select(@available_shippers, @selected_shipper),
+                       { include_blank: "すべて" },
+                       class: "form-select form-select-sm js-auto-submit" %>
+        </div>
+      <% end %>
+    </div>
+  </section>
+
+  <div class="vehicle-financials-actions mb-3 text-end">
+    <button type="button"
+            class="btn btn-outline-secondary btn-sm js-vehicle-financials-fullscreen"
+            data-fullscreen-target=".vehicle-financials-container">
+      フルスクリーン
+    </button>
+  </div>
+
+  <% if @selected_month.blank? %>
+    <div class="alert alert-info">車両別収支データがまだありません。</div>
+  <% elsif @header_window.blank? %>
+    <div class="alert alert-warning">該当条件のデータが見つかりませんでした。</div>
+  <% else %>
+    <p class="text-muted small mb-2">
+      表示範囲:
+      <%= @total_groups.zero? ? "0" : "#{@start_index + 1}〜#{[@start_index + @visible_count, @total_groups].min}" %>
+      / <%= @total_groups %> 件
+    </p>
+
+    <% if @prev_index || @next_index %>
+      <div class="vehicle-grid-pager mb-3">
+        <% if @prev_index %>
+          <%= link_to "← 前の列", vehicle_financials_path(vehicle_financial_query(start: @prev_index)), class: "btn btn-outline-secondary btn-sm" %>
+        <% end %>
+        <span>列 <%= (@start_index + 1)..[@start_index + @visible_count, @total_groups].min %></span>
+        <% if @next_index %>
+          <%= link_to "次の列 →", vehicle_financials_path(vehicle_financial_query(start: @next_index)), class: "btn btn-outline-secondary btn-sm" %>
+        <% end %>
+      </div>
+    <% end %>
+
+    <div class="table-responsive vehicle-financials-table-wrapper mb-5">
+      <table class="table table-sm vehicle-financials-table font-scale-<%= @font_scale %>">
+        <colgroup>
+          <col class="vehicle-financials-section-col">
+          <col class="vehicle-financials-item-col">
+          <% @header_window.each do |_header| %>
+            <col class="vehicle-financials-value-col">
+          <% end %>
+          <col class="vehicle-financials-summary-col">
+          <col class="vehicle-financials-summary-col">
+        </colgroup>
+        <thead>
+          <tr>
+            <th class="vehicle-financials-sticky-col vehicle-financials-section-col text-start">区分</th>
+            <th class="vehicle-financials-sticky-col vehicle-financials-item-col text-start">項目名</th>
+            <% @header_window.each do |header| %>
+              <% if header[:link_path] && header[:key].present? %>
+                <th class="text-center vehicle-financials-header-col">
+                  <%= link_to header[:title], vehicle_financial_path(header[:key], vehicle_financial_query(history_page: nil)), class: "vehicle-financials-col-link" %>
+                </th>
+              <% else %>
+                <th class="text-center vehicle-financials-header-col"><%= header[:title] %></th>
+              <% end %>
+            <% end %>
+            <th class="text-center vehicle-financials-header-col vehicle-financials-summary-col">合計</th>
+            <th class="text-center vehicle-financials-header-col vehicle-financials-summary-col">平均</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% current_section = nil %>
+          <% @rows.each do |row| %>
+            <% section_label = vehicle_financial_section_label(row) %>
+            <% display_section = section_label.present? && section_label != current_section ? section_label : nil %>
+            <% current_section = section_label if section_label.present? %>
+            <% row_classes = ["vehicle-financials-row", vehicle_financial_row_class(row)].compact.join(" ") %>
+            <% summary = vehicle_financial_row_summary(row) %>
+            <tr class="<%= row_classes %>">
+              <td class="vehicle-financials-sticky-col text-start"><%= display_section %></td>
+              <th class="vehicle-financials-sticky-col text-start"><%= row[:label] %></th>
+              <% row[:values].each do |value| %>
+                <td class="text-end"><%= vehicle_financial_value(row[:label], value) %></td>
+              <% end %>
+              <td class="text-end vehicle-financials-summary-cell"><%= vehicle_financial_value(row[:label], summary[:total]) %></td>
+              <td class="text-end vehicle-financials-summary-cell"><%= vehicle_financial_value(row[:label], summary[:average]) %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+
+  <% end %>
+</div>

@@ -1,0 +1,221 @@
+.vehicle-financials-container {
+  max-width: 2000px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.vehicle-financials-actions .btn {
+  min-width: 7rem;
+}
+
+.vehicle-financials-container:fullscreen,
+.vehicle-financials-container:-webkit-full-screen {
+  background: #fff;
+  padding: 1.5rem;
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.08);
+}
+
+.vehicle-financials-container:fullscreen .vehicle-financials-table-wrapper,
+.vehicle-financials-container:-webkit-full-screen .vehicle-financials-table-wrapper {
+  max-height: calc(100vh - 12rem);
+  overflow: auto;
+}
+
+.vehicle-financials-output .form-check {
+  min-width: 8rem;
+}
+
+.vehicle-financials-header {
+  margin-bottom: 0.5rem;
+}
+
+.vehicle-financials-filters.card {
+  border-radius: 0;
+  border-color: #d5dae5;
+  box-shadow: none;
+}
+
+.vehicle-financials-filters .card-body {
+  padding: 0.75rem 1rem;
+}
+
+.vehicle-financials-table-wrapper {
+  border: 1px solid #dfe3ec;
+  border-radius: 0;
+  overflow-x: auto;
+}
+
+.vehicle-financials-table {
+  min-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+}
+
+.vehicle-financials-table,
+.vehicle-financials-table th,
+.vehicle-financials-table td {
+  font-size: 11px;
+  line-height: 1.4;
+  padding: 0.25rem 0.45rem;
+  white-space: nowrap;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.vehicle-financials-table.font-scale-55,
+.vehicle-financials-table.font-scale-55 th,
+.vehicle-financials-table.font-scale-55 td {
+  font-size: 11px;
+}
+
+.vehicle-financials-table.font-scale-65,
+.vehicle-financials-table.font-scale-65 th,
+.vehicle-financials-table.font-scale-65 td {
+  font-size: 11px;
+}
+
+.vehicle-financials-table.font-scale-75,
+.vehicle-financials-table.font-scale-75 th,
+.vehicle-financials-table.font-scale-75 td {
+  font-size: 12px;
+}
+
+.vehicle-financials-table thead th {
+  background: #f5f7fb;
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  text-align: left;
+}
+
+.vehicle-financials-table td {
+  text-align: right;
+}
+
+.vehicle-financials-table th {
+  text-align: left;
+}
+
+.vehicle-financials-header-col a {
+  color: inherit;
+  text-decoration: none;
+  display: inline-block;
+  padding: 0.1rem 0.2rem;
+}
+
+.vehicle-financials-header-col a.is-active {
+  color: #2563eb;
+  font-weight: 700;
+}
+
+.vehicle-financials-sticky-col {
+  position: sticky;
+  left: 0;
+  background: #fff;
+  z-index: 2;
+}
+
+.vehicle-financials-sticky-col:nth-child(2) {
+  left: 4.5rem;
+}
+
+.vehicle-financials-section-col {
+  width: 4rem;
+  min-width: 4rem;
+}
+
+.vehicle-financials-item-col {
+  width: 5.5rem;
+  min-width: 5.5rem;
+}
+
+.vehicle-financials-value-col {
+  width: 5.4rem;
+  min-width: 5.4rem;
+}
+
+.vehicle-financials-summary-col {
+  width: 5.4rem;
+  min-width: 5.4rem;
+}
+
+.vehicle-financials-summary-cell {
+  font-weight: 600;
+  background: #f4f6fb;
+}
+
+.vehicle-financials-summary-table th,
+.vehicle-financials-summary-table td {
+  white-space: nowrap;
+}
+
+.vehicle-financials-row.vehicle-grid__row--vehicle th,
+.vehicle-financials-row.vehicle-grid__row--vehicle td {
+  background: #eef4ff;
+  font-weight: 600;
+}
+
+.vehicle-financials-row.vehicle-grid__row--subtotal th,
+.vehicle-financials-row.vehicle-grid__row--subtotal td,
+.vehicle-financials-row.vehicle-grid__row--grand th,
+.vehicle-financials-row.vehicle-grid__row--grand td {
+  background: #f8f9fb;
+  font-weight: 600;
+}
+
+.vehicle-financials-row.vehicle-grid__row--divider th,
+.vehicle-financials-row.vehicle-grid__row--divider td {
+  border-bottom-width: 2px;
+  border-bottom-color: #aeb6c9;
+}
+
+.vehicle-financials-tabs-wrapper {
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+}
+
+.vehicle-financials-tabs {
+  display: inline-flex;
+  gap: 0.35rem;
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+
+.vehicle-financials-tabs li {
+  flex: 0 0 auto;
+}
+
+.vehicle-financials-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.85rem;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #475569;
+  text-decoration: none;
+  border-radius: 0;
+  min-width: 4rem;
+}
+
+.vehicle-financials-tab.is-active {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+  color: #fff;
+  font-weight: 600;
+}
+
+.vehicle-grid-pager {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 12px;
+}
+
+.vehicle-financials-table tbody tr:hover td,
+.vehicle-financials-table tbody tr:hover th {
+  background-color: #f6fafe;
+}

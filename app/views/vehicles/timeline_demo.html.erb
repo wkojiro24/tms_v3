@@ -1,0 +1,134 @@
+<% content_for :head do %>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis-timeline/7.7.3/vis-timeline-graph2d.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-timeline/7.7.3/vis-timeline-graph2d.min.js"></script>
+<% end %>
+
+<div class="card shadow-sm mb-4">
+  <div class="card-body">
+    <h1 class="h5">Timeline Drag & Drop Example (vis公式サンプル)</h1>
+  </div>
+</div>
+
+<div class="card shadow-sm mb-3">
+  <div class="card-body">
+    <div id="demo-timeline" data-range-start="<%= @demo_start.iso8601 %>" data-range-end="<%= @demo_end.iso8601 %>"></div>
+    <script type="application/json" id="demo-groups-json"><%= raw(@demo_groups.to_json) %></script>
+    <script type="application/json" id="demo-items-json"><%= raw(@demo_items.to_json) %></script>
+  </div>
+</div>
+<div class="card">
+  <div class="card-body">
+    <div class="items-panel d-flex gap-4">
+      <div>
+        <h5>Items</h5>
+        <ul class="items list-unstyled">
+          <li draggable="true" class="item">item 1 - box</li>
+          <li draggable="true" class="item">item 2 - point</li>
+          <li draggable="true" class="item">item 3 - range</li>
+          <li draggable="true" class="item">item 3 - range - fixed times -<br>(start: now, end: now + 10 min)</li>
+        </ul>
+      </div>
+      <div>
+        <h5>Object with target:"item"</h5>
+        <ul class="list-unstyled">
+          <li draggable="true" class="object-item">object with target:'item'</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  #demo-timeline {
+    border: 1px solid #e5e7eb;
+  }
+  li.item,
+  li.object-item {
+    width: 200px;
+    color: #1a1a1a;
+    background-color: #d5ddf6;
+    border: 1px solid #97b0f8;
+    border-radius: 4px;
+    margin-bottom: 5px;
+    padding: 6px 12px;
+    list-style: none;
+  }
+  li.item::before,
+  li.object-item::before {
+    content: "≣";
+    display: inline-block;
+    margin-right: 6px;
+    cursor: move;
+  }
+</style>
+
+<%= javascript_tag do %>
+  document.addEventListener("DOMContentLoaded", function () {
+    const container = document.getElementById("demo-timeline")
+    if (!container || typeof vis === "undefined") return
+
+    let groups = []
+    let items = []
+    try {
+      const groupsSource = document.getElementById("demo-groups-json")?.textContent || "[]"
+      const itemsSource = document.getElementById("demo-items-json")?.textContent || "[]"
+      groups = JSON.parse(groupsSource)
+      items = JSON.parse(itemsSource)
+    } catch (error) {
+      console.error("failed to parse demo json", error)
+      groups = []
+      items = []
+    }
+
+    console.log("demo groups", groups)
+    console.log("demo items", items)
+    const dataGroups = new vis.DataSet(groups)
+    const dataItems = new vis.DataSet(items)
+
+    const options = {
+      stack: true,
+      start: new Date(container.dataset.rangeStart),
+      end: new Date(container.dataset.rangeEnd),
+      editable: true,
+      orientation: "top",
+      onDropObjectOnItem: function (objectData, item, callback) {
+        if (!item) return
+        alert(`dropped object "${objectData.content}" on item "${item.content}"`)
+      }
+    }
+
+    const timeline = new vis.Timeline(container, dataItems, dataGroups, options)
+
+    function handleDragStart (event) {
+      event.dataTransfer.effectAllowed = "move"
+      const label = event.target.innerText
+      const parts = label.split("-")
+      const item = {
+        id: new Date().valueOf(),
+        type: parts[1]?.trim() || "box",
+        content: parts[0]?.trim()
+      }
+      if (label.includes("fixed times")) {
+        item.start = new Date()
+        item.end = new Date(new Date().valueOf() + 10 * 60 * 1000)
+      }
+      event.dataTransfer.setData("text", JSON.stringify(item))
+    }
+
+    function handleObjectItemDragStart (event) {
+      event.dataTransfer.effectAllowed = "move"
+      const objectItem = {
+        content: "objectItemData",
+        target: "item"
+      }
+      event.dataTransfer.setData("text", JSON.stringify(objectItem))
+    }
+
+    document.querySelectorAll("li.item").forEach((item) => {
+      item.addEventListener("dragstart", handleDragStart)
+    })
+    document.querySelectorAll("li.object-item").forEach((item) => {
+      item.addEventListener("dragstart", handleObjectItemDragStart)
+    })
+  })
+<% end %>

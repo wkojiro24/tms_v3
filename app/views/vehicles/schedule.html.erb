@@ -1,0 +1,625 @@
+
+<!-- app/views/vehicles/schedule.html.erb -->
+
+<link rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/vis-timeline/7.7.3/vis-timeline-graph2d.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vis-timeline/7.7.3/vis-timeline-graph2d.min.js"></script>
+
+<h2 class="mb-3">点検・整備スケジュール</h2>
+
+<div class="schedule-header d-flex flex-column gap-2 mb-3">
+  <div class="d-flex align-items-center flex-wrap gap-3">
+    <!-- 営業所フィルタ（@timeline_groups から自動生成） -->
+    <div class="d-flex align-items-center gap-2">
+      <label for="schedule-office-filter" class="fw-semibold mb-0">営業所</label>
+      <select id="schedule-office-filter" class="form-select form-select-sm" style="width:auto;">
+        <option value="all">全営業所</option>
+        <% offices = (@timeline_groups || []).map { |g| g[:office] }.compact_blank.uniq.sort %>
+        <% offices.each do |office| %>
+          <option value="<%= office %>"><%= office %></option>
+        <% end %>
+      </select>
+    </div>
+  </div>
+
+  <!-- 日付操作エリア（メンテ種別の上にまとめる） -->
+  <div class="d-flex flex-column gap-2">
+    <div class="d-flex align-items-center flex-wrap gap-2">
+      <div class="schedule-date-nav d-flex align-items-center gap-2">
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-schedule-nav="prev">＜</button>
+        <span id="schedule-anchor-label" class="schedule-anchor-label fw-bold"></span>
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-schedule-nav="next">＞</button>
+      </div>
+    </div>
+
+    <div class="d-flex align-items-center flex-wrap gap-2">
+      <input type="date" id="schedule-anchor-picker" class="form-control form-control-sm" style="width:auto;" aria-label="基準日">
+
+      <div class="schedule-view-switch d-flex align-items-center gap-2 flex-wrap">
+        <button type="button" class="btn btn-outline-secondary btn-sm active" data-schedule-view="day">日</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-schedule-view="week">週</button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-schedule-view="month">月</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 上：パレット（メンテ種別） -->
+<div class="palette-box d-flex align-items-center flex-wrap gap-2 mb-2">
+  <h6 class="mb-0 me-2">メンテナンス種別</h6>
+  <ul class="list-unstyled d-flex flex-wrap gap-2 mb-0">
+    <% (@maintenance_categories || []).each do |cat| %>
+      <% key   = cat.key.to_s %>
+      <% cls   = "item-#{key.parameterize}" %>
+      <% style = cat.color.present? ? "background-color: #{cat.color}; border-color: #{cat.color};" : "" %>
+      <li draggable="true"
+          class="vis-demo-item <%= cls %>"
+          data-category="<%= key %>"
+          data-label="<%= cat.name %>"
+          style="<%= style %>">
+        <%= cat.name %>
+      </li>
+    <% end %>
+  </ul>
+</div>
+
+<!-- タイムライン本体（横いっぱい・縦スクロール） -->
+<div class="timeline-wrapper">
+  <div id="schedule-timeline"
+       data-base-date="<%= (@start_month || Date.current.beginning_of_month).iso8601 %>"
+       data-holidays='<%= (@japanese_holidays || []).to_json %>'></div>
+
+  <!-- groups: 左の行 -->
+  <script type="application/json" id="schedule-groups-json">
+    <%= (@timeline_groups || []).to_json.html_safe %>
+  </script>
+
+  <!-- items: MaintenanceEvent 由来 -->
+  <script type="application/json" id="schedule-items-json">
+    <%= (@timeline_items || []).to_json.html_safe %>
+  </script>
+</div>
+
+<style>
+  /* 画面を横いっぱいに使う */
+  .timeline-wrapper {
+    width: 100%;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    /* 高さを固定して、内部をスクロールさせる */
+    height: 45vh;
+   /* min-height: 280px; */
+    overflow-y: auto;
+  }
+
+  #schedule-timeline { width: 100%; height: 100%; }
+
+  /* パレット（ドラッグ元） */
+  .vis-demo-item {
+    min-width: 110px;
+    padding: 6px 12px;
+    border-radius: 4px;
+    border: 1px solid #3793e0;
+    color: #fff;
+    background-color: #3793e0;
+    font-weight: 600;
+    text-align: center;
+    cursor: grab;
+    user-select: none;
+  }
+  .vis-demo-item::before {
+    content: "≣";
+    margin-right: 6px;
+  }
+
+  /* 背景ハイライト（曜日・祝日） */
+  .vis-item.vis-background.bg-sunday {
+    background: rgba(255, 0, 0, 0.05) !important;
+  }
+  .vis-item.vis-background.bg-holiday {
+    background: rgba(255, 80, 80, 0.1) !important;
+  }
+
+  /* ナンバープレート風ラベル */
+  .plate-mini {
+    display: inline-block;
+    background: #0f5132;
+    color: #fff;
+    padding: 4px 6px;
+    border-radius: 6px;
+    font-size: 12px;
+    line-height: 1.2;
+    min-width: 84px;
+    text-align: left;
+  }
+  .plate-mini__line1 {
+    font-weight: 600;
+    opacity: 0.9;
+  }
+  .plate-mini__line2 {
+    font-weight: 700;
+    font-size: 13px;
+  }
+  .vis-label .vis-inner {
+    padding: 2px 4px;
+    font-size: 12px;
+    line-height: 1.2;
+  }
+  .vis-time-axis .vis-text {
+    font-size: 12px;
+  }
+
+  .schedule-view-switch button.active {
+    background-color: #e2e8f0;
+  }
+
+  .schedule-date-nav .btn { min-width: 48px; }
+  .schedule-anchor-label { font-size: 16px; color: #111827; }
+
+  /* MaintenanceCategory の色をアイテムにも適用 */
+  <% (@maintenance_categories || []).each do |cat| %>
+    <% next if cat.color.blank? %>
+    .vis-item.item-<%= cat.key.to_s.parameterize %> {
+      background-color: <%= cat.color %> !important;
+      border-color: <%= cat.color %> !important;
+      color: #fff !important;
+    }
+  <% end %>
+
+  /* 編集中（選択中）のアイテムをオレンジで強調
+     ※カテゴリー色より後に置いて優先させる */
+  .vis-item.vis-selected {
+    background-color: #f97316 !important;
+    border-color: #c2410c !important;
+    color: #fff !important;
+  }
+</style>
+
+<script>
+//<![CDATA[
+(function () {
+  function initScheduleTimeline () {
+    const container = document.getElementById("schedule-timeline");
+    if (!container) return;
+    if (container.dataset.timelineInitialized === "true") return;
+    if (typeof vis === "undefined") {
+      console.error("[schedule] vis is undefined");
+      return;
+    }
+
+    // --- JSON 読み込み -------------------------------------------------
+    let rawGroups = [];
+    let rawItems  = [];
+    try {
+      const groupsSource = document.getElementById("schedule-groups-json")?.textContent || "[]";
+      const itemsSource  = document.getElementById("schedule-items-json")?.textContent || "[]";
+      rawGroups = JSON.parse(groupsSource);
+      rawItems  = JSON.parse(itemsSource);
+    } catch (error) {
+      console.error("[schedule] failed to parse json", error);
+      rawGroups = [];
+      rawItems  = [];
+    }
+
+    // group.id -> group オブジェクト
+    let groupById = {};
+    rawGroups.forEach(g => { groupById[g.id] = g; });
+
+    const dataGroups = new vis.DataSet(rawGroups);
+    const dataItems  = new vis.DataSet(rawItems);
+
+    // --- タイムライン基本設定 -----------------------------------------
+    const baseDateStr = container.dataset.baseDate || new Date().toISOString();
+    const baseStart   = new Date(baseDateStr);
+    baseStart.setHours(0, 0, 0, 0);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    let currentView = "month";
+    let currentAnchor = new Date(today);
+
+    const holidays = (() => {
+      try {
+        const raw = container.dataset.holidays || "[]";
+        return JSON.parse(raw).map((s) => {
+          const d = new Date(s);
+          d.setHours(0, 0, 0, 0);
+          return d;
+        });
+      } catch (e) {
+        return [];
+      }
+    })();
+
+    const options = {
+      stack: false,
+      groupHeightMode: "fitRows",
+      horizontalScroll: false,
+      verticalScroll: true,     
+      zoomable: false,
+      moveable: true,
+      editable: {
+        add: false,          // 追加はパレットからのみ
+        updateTime: true,    // ドラッグで時間変更OK
+        remove: true         // Del キーで削除OK
+      },
+      orientation: "top",
+      margin: { item: { vertical: 12 } },
+      timeAxis: { scale: "day", step: 1 }
+    };
+
+    const timeline = new vis.Timeline(container, dataItems, dataGroups, options);
+    container.dataset.timelineInitialized = "true";
+
+    // --- CSRF トークン -------------------------------------------------
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+
+    function toIso(value) {
+      if (!value) return null;
+      if (value instanceof Date) return value.toISOString();
+      const d = new Date(value);
+      return isNaN(d.getTime()) ? null : d.toISOString();
+    }
+
+    function vehicleNumberFor(item) {
+      const g = groupById[item.group];
+      return g ? (g.number || g.id || g.content) : null;
+    }
+
+    // --- サーバー同期（CRUD）-----------------------------------------
+    let syncing = false;
+
+    async function createEvent(item) {
+      const payload = {
+        maintenance_event: {
+          vehicle_number: vehicleNumberFor(item),
+          category: item.category_key || item.category || "",
+          start_at: toIso(item.start),
+          end_at:   toIso(item.end)
+        }
+      };
+
+      const res = await fetch("/maintenance_events", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "X-CSRF-Token": csrfToken
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        console.error("create failed", await res.text());
+        return;
+      }
+
+      const json = await res.json();
+      syncing = true;
+      dataItems.update({ id: item.id, db_id: json.id });
+      syncing = false;
+    }
+
+    async function updateEvent(item) {
+      if (!item.db_id) {
+        return createEvent(item);
+      }
+
+      const payload = {
+        maintenance_event: {
+          vehicle_number: vehicleNumberFor(item),
+          category: item.category_key || item.category || "",
+          start_at: toIso(item.start),
+          end_at:   toIso(item.end)
+        }
+      };
+
+      const res = await fetch("/maintenance_events/" + item.db_id, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "X-CSRF-Token": csrfToken
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        console.error("update failed", await res.text());
+      }
+    }
+
+    async function deleteEvent(oldItem) {
+      if (!oldItem || !oldItem.db_id) return;
+
+      const res = await fetch("/maintenance_events/" + oldItem.db_id, {
+        method: "DELETE",
+        headers: {
+          "X-CSRF-Token": csrfToken,
+          "Accept": "application/json"
+        }
+      });
+
+      if (!res.ok) {
+        console.error("delete failed", await res.text());
+      }
+    }
+
+    dataItems.on("*", function (event, props) {
+      if (syncing) return;
+      if (!props || !props.items) return;
+
+      if (event === "add") {
+        props.items.forEach(id => {
+          const item = dataItems.get(id);
+          if (!item || item.isBackground) return;
+          if (!item.db_id) createEvent(item);
+        });
+      } else if (event === "update") {
+        props.items.forEach(id => {
+          const item = dataItems.get(id);
+          if (!item || item.isBackground) return;
+          updateEvent(item);
+        });
+      } else if (event === "remove") {
+        (props.oldData || []).forEach(oldItem => {
+          if (oldItem && oldItem.isBackground) return;
+          deleteEvent(oldItem);
+        });
+      }
+    });
+
+    // --- パレット（ドラッグ元） --------------------------------------
+    document.querySelectorAll(".vis-demo-item").forEach((itemEl) => {
+      itemEl.addEventListener("dragstart", function (event) {
+        const label    = itemEl.dataset.label || itemEl.textContent.trim();
+        const category = itemEl.dataset.category || "";
+
+        const item = {
+          id:          new Date().valueOf(),
+          type:        "range",
+          content:     label,
+          className:   category ? "item-" + category : "",
+          category_key: category
+        };
+
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("text", JSON.stringify(item)); // text/plain ではなく text
+      });
+    });
+
+    // --- timeline 側 drop --------------------------------------------
+    container.addEventListener("dragover", function (event) {
+      event.preventDefault();
+    });
+
+    timeline.on("drop", function (props) {
+      const data = props.event.dataTransfer.getData("text");
+      if (!data) return;
+
+      let newItem;
+      try {
+        newItem = JSON.parse(data);
+      } catch (e) {
+        console.error("failed to parse drag data", e);
+        return;
+      }
+
+      const start   = props.time;
+      const groupId = props.group;
+
+      newItem.group = groupId;
+      newItem.start = start;
+
+      // ビュー別デフォルト長さ：日=2時間 / 週=1日 / 月=2日
+      if (!newItem.end) {
+        const base = start.getTime();
+        let lengthMs;
+        if (currentView === "day") {
+          lengthMs = 2 * 60 * 60 * 1000;           // 2h
+        } else if (currentView === "week") {
+          lengthMs = 24 * 60 * 60 * 1000;          // 1日
+        } else {
+          lengthMs = 2 * 24 * 60 * 60 * 1000;      // 2日
+        }
+        newItem.end = new Date(base + lengthMs);
+      }
+
+      dataItems.add(newItem);
+    });
+
+    // --- 営業所フィルタ ----------------------------------------------
+    const officeSelect = document.getElementById("schedule-office-filter");
+    if (officeSelect) {
+      officeSelect.addEventListener("change", function () {
+        const office = this.value;
+        const filteredGroups = (office === "all")
+          ? rawGroups
+          : rawGroups.filter((g) => g.office === office);
+
+        dataGroups.clear();
+        dataGroups.add(filteredGroups);
+
+        // group マップを更新（vehicleNumberFor 用）
+        groupById = {};
+        filteredGroups.forEach(g => { groupById[g.id] = g; });
+      });
+
+      // 初期表示: 何も触らず全営業所（＝rawGroups 全部）を表示
+      // → change は自動発火させない
+    }
+
+    // --- 日 / 週 / 月 ビュー切替 -------------------------------------
+    const viewButtons    = document.querySelectorAll("[data-schedule-view]");
+    const navButtons     = document.querySelectorAll("[data-schedule-nav]");
+    const anchorLabel    = document.getElementById("schedule-anchor-label");
+    const anchorPicker   = document.getElementById("schedule-anchor-picker");
+
+    function formatAnchor(date, view) {
+      if (view === "month") {
+        const y = date.getFullYear();
+        const m = String(date.getMonth() + 1).padStart(2, "0");
+        return `${y}/${m}`;
+      }
+      if (view === "week") {
+        const weekStart = startOfWeekMonday(date);
+        const y = weekStart.getFullYear();
+        const m = String(weekStart.getMonth() + 1).padStart(2, "0");
+        const d = String(weekStart.getDate()).padStart(2, "0");
+        return `${y}/${m}/${d}の週`;
+      }
+      return date.toLocaleDateString("ja-JP", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        weekday: "short"
+      });
+    }
+
+    function updateAnchorDisplay() {
+      if (anchorLabel) anchorLabel.textContent = formatAnchor(currentAnchor, currentView);
+      if (anchorPicker) {
+        const iso = new Date(currentAnchor.getTime() - currentAnchor.getTimezoneOffset() * 60000)
+          .toISOString()
+          .slice(0, 10);
+        anchorPicker.value = iso;
+      }
+    }
+
+    function startOfWeekMonday(date) {
+      const d = new Date(date);
+      const day = d.getDay(); // 0:Sun ... 6:Sat
+      const diff = (day === 0 ? -6 : 1 - day); // Monday start
+      d.setDate(d.getDate() + diff);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    }
+
+    function updateNavLabels() {
+      // ナビゲーションテキストは固定で「＜」「＞」
+    }
+
+    function rebuildBackgrounds(rangeStart, rangeEnd) {
+      const ids = dataItems.get({ filter: (i) => i.isBackground }).map((i) => i.id);
+      if (ids.length) dataItems.remove(ids);
+
+      if (!rangeStart || !rangeEnd) return;
+      const msDay = 24 * 60 * 60 * 1000;
+      const start = new Date(rangeStart); start.setHours(0, 0, 0, 0);
+      const end   = new Date(rangeEnd);   end.setHours(0, 0, 0, 0);
+
+      const items = [];
+      for (let t = start.getTime(); t < end.getTime(); t += msDay) {
+        const d = new Date(t);
+        const next = new Date(t + msDay);
+        const isSunday = d.getDay() === 0;
+        const isHoliday = holidays.some((h) => h.getTime() === d.getTime());
+        if (!isSunday && !isHoliday) continue;
+        const cls = isHoliday ? "bg-holiday" : "bg-sunday";
+        items.push({
+          id: `bg-${cls}-${t}`,
+          start: d,
+          end: next,
+          type: "background",
+          className: cls,
+          isBackground: true
+        });
+      }
+      if (items.length) dataItems.add(items);
+    }
+
+    function applyWindow(view, anchor) {
+      if (view === "day") {
+        const start = new Date(anchor);
+        const end   = new Date(anchor);
+        start.setHours(0, 0, 0, 0);
+        end.setHours(0, 0, 0, 0);
+        end.setDate(end.getDate() + 1);         // 当日だけ
+        timeline.setOptions({ timeAxis: { scale: "hour", step: 1 } });
+        timeline.setWindow(start, end, { animation: false });
+        rebuildBackgrounds(start, end);
+      } else if (view === "week") {
+        const start = startOfWeekMonday(anchor); // 当週月曜始まり
+        const end = new Date(start);
+        end.setDate(end.getDate() + 7);          // 当週だけ
+        timeline.setOptions({ timeAxis: { scale: "day", step: 1 } });
+        timeline.setWindow(start, end, { animation: false });
+        rebuildBackgrounds(start, end);
+      } else {
+        const start = new Date(anchor.getFullYear(), anchor.getMonth(), 1);          // 当月1日
+        const end   = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 1);      // 翌月1日
+        timeline.setOptions({ timeAxis: { scale: "day", step: 1 } });
+        timeline.setWindow(start, end, { animation: false });
+        rebuildBackgrounds(start, end);
+      }
+    }
+
+    function setView(view) {
+      currentView = view;
+      applyWindow(view, currentAnchor);
+      updateNavLabels();
+      updateAnchorDisplay();
+    }
+
+    function setActiveViewButton(view) {
+      viewButtons.forEach((b) => b.classList.toggle("active", b.dataset.scheduleView === view));
+    }
+
+    viewButtons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const view = btn.dataset.scheduleView;
+        setView(view);
+        setActiveViewButton(view);
+      });
+    });
+
+    navButtons.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const nav = btn.dataset.scheduleNav;
+        let nextAnchor = new Date(currentAnchor);
+        if (nav === "today") {
+          nextAnchor = new Date(today);
+        } else if (nav === "prev") {
+          if (currentView === "day") nextAnchor.setDate(nextAnchor.getDate() - 1);
+          else if (currentView === "week") nextAnchor.setDate(nextAnchor.getDate() - 7);
+          else nextAnchor.setMonth(nextAnchor.getMonth() - 1);
+        } else if (nav === "next") {
+          if (currentView === "day") nextAnchor.setDate(nextAnchor.getDate() + 1);
+          else if (currentView === "week") nextAnchor.setDate(nextAnchor.getDate() + 7);
+          else nextAnchor.setMonth(nextAnchor.getMonth() + 1);
+        }
+        currentAnchor = nextAnchor;
+        applyWindow(currentView, currentAnchor);
+        updateAnchorDisplay();
+      });
+    });
+
+    if (anchorPicker) {
+      anchorPicker.addEventListener("change", (event) => {
+        const value = event.target.value;
+        if (!value) return;
+        const picked = new Date(value + "T00:00:00");
+        if (isNaN(picked.getTime())) return;
+        currentAnchor = picked;
+        applyWindow(currentView, currentAnchor);
+        updateAnchorDisplay();
+      });
+    }
+
+    updateNavLabels();
+    currentAnchor = new Date(today);
+    setView(currentView); // 初期表示（月）
+    setActiveViewButton(currentView);
+    updateAnchorDisplay();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initScheduleTimeline);
+    document.addEventListener("turbo:load", initScheduleTimeline);
+  } else {
+    initScheduleTimeline();
+  }
+})();
+//]]>
+</script>

@@ -17,156 +17,295 @@
     <%= javascript_importmap_tags %>
   </head>
 
-  <body class="bg-body-tertiary">
-    <div class="d-flex min-vh-100">
-      <aside class="portal-sidebar d-flex flex-column p-4">
-        <div class="d-flex align-items-center gap-3 mb-4">
-          <span class="portal-logo d-inline-flex align-items-center justify-content-center">
+  <body class="app-shell">
+    <div class="app-shell__container">
+      <aside class="app-sidebar">
+        <div class="app-sidebar__brand">
+          <button type="button"
+                  class="app-sidebar__toggle"
+                  data-toggle-sidebar
+                  aria-label="サイドバーの幅を切り替え">
+            <i class="bi bi-chevron-right"></i>
+          </button>
+          <span class="app-sidebar__logo">
             <i class="bi bi-truck-front"></i>
           </span>
-          <div>
-            <div class="fw-semibold text-white">TMS Portal</div>
-            <div class="text-white-50 small">物流DXダッシュボード</div>
+          <div class="app-sidebar__brand-text">
+            <div class="app-sidebar__title">TMS Portal</div>
             <% if current_tenant.present? %>
-              <div class="text-white small mt-1">
-                <i class="bi bi-building"></i>
-                <%= current_tenant.name %>
-              </div>
+              <div class="app-sidebar__tenant"><i class="bi bi-building"></i> <%= current_tenant.name %></div>
             <% end %>
           </div>
         </div>
 
-        <nav class="nav flex-column gap-1 portal-nav">
-          <%= link_to dashboard_path, class: "nav-link portal-nav-link #{'active' if current_page?(dashboard_path) || current_page?(root_path)}" do %>
-            <i class="bi bi-speedometer2"></i>
-            <span>ダッシュボード</span>
-          <% end %>
+        <nav class="app-sidebar__menu">
+          <div class="app-sidebar__menu-stack">
+            <%= link_to dashboard_path, class: "app-sidebar__link #{'is-active' if current_page?(dashboard_path) || current_page?(root_path)}", title: "ダッシュボード", data: { bs_toggle: "tooltip", bs_placement: "right", bs_container: "body" } do %>
+              <i class="bi bi-speedometer2"></i>
+              <span>ダッシュボード</span>
+            <% end %>
+          </div>
 
-          <div class="portal-divider my-3"></div>
-          <div class="portal-section-label text-white-50">お知らせ</div>
-          <%= link_to announcements_path, class: "nav-link portal-nav-link #{'active' if current_page?(announcements_path)}" do %>
-            <i class="bi bi-megaphone"></i>
-            <span>お知らせ</span>
-          <% end %>
+          <% primary_sections = [
+            {
+              key: "news",
+              label: "おしらせ",
+              icon: "bi-megaphone",
+              default_expanded: false,
+              links: [
+                {
+                  label: "お知らせ一覧",
+                  icon: "bi-megaphone",
+                  path: announcements_path,
+                  active_paths: [announcements_path]
+                }
+              ]
+            },
+            {
+              key: "business",
+              label: "経営",
+              icon: "bi-graph-up",
+              default_expanded: false,
+              links: [
+                { label: "経営情報", icon: "bi-clipboard-data", path: dashboard_path, active_paths: [dashboard_path, root_path] },
+                { label: "キャッシュフロー", icon: "bi-cash-coin", path: journal_entries_path, active_paths: [journal_entries_path] },
+                { label: "固定資産管理", icon: "bi-buildings", path: fleet_path(anchor: "assets"), active_paths: [fleet_path] }
+              ]
+            },
+            {
+              key: "dispatch",
+              label: "配車",
+              icon: "bi-diagram-3",
+              default_expanded: false,
+              links: [
+                { label: "配車ダッシュボード", icon: "bi-kanban", path: dispatch_path, active_paths: [dispatch_path] },
+                { label: "配車ワークフロー", icon: "bi-arrows-move", path: workflow_requests_path, active_prefix: "/workflows" }
+              ]
+            },
+            {
+              key: "vehicles",
+              label: "車両",
+              icon: "bi-truck",
+              default_expanded: false,
+              links: [
+                { label: "車両一覧", icon: "bi-ui-checks-grid", path: vehicles_path, active_paths: [vehicles_path] },
+                { label: "点検・整備計画", icon: "bi-calendar-range", path: maintenance_schedule_path, active_paths: [maintenance_schedule_path] },
+                { label: "収支グリッド", icon: "bi-table", path: vehicle_financials_path, active_paths: [vehicle_financials_path] },
+                { label: "車両別収支", icon: "bi-graph-up-arrow", path: revenue_path, active_paths: [revenue_path] },
+                { label: "車両管理", icon: "bi-tools", path: fleet_path(anchor: "maintenance"), active_paths: [fleet_path] }
+              ]
+            },
+            {
+              key: "hr",
+              label: "人事",
+              icon: "bi-people",
+              default_expanded: false,
+              links: [
+                { label: "社員情報", icon: "bi-person-badge", path: hr_path, active_paths: [hr_path] },
+                { label: "給与情報", icon: "bi-cash-stack", path: admin_payrolls_path, active_prefix: "/admin/payrolls", requires_admin: true }
+              ]
+            },
+            {
+              key: "services",
+              label: "サービス",
+              icon: "bi-grid",
+              default_expanded: false,
+              links: [
+                { label: "ワークフロー", icon: "bi-kanban", path: workflow_requests_path, active_prefix: "/workflows" },
+                { label: "承認", icon: "bi-check2-square", path: admin_workflow_requests_path, active_prefix: "/admin/workflow_requests", requires_admin: true },
+                { label: "備品管理", icon: "bi-archive", path: admin_workflow_categories_path, active_prefix: "/admin/workflow_categories", requires_admin: true }
+              ]
+            },
+            {
+              key: "knowledge",
+              label: "ナレッジ",
+              icon: "bi-lightbulb",
+              default_expanded: false,
+              links: [
+                { label: "WIKI", icon: "bi-journal-richtext", path: knowledge_path, active_paths: [knowledge_path] },
+                { label: "FAQ", icon: "bi-question-circle", path: faq_path, active_paths: [faq_path] }
+              ]
+            }
+          ] %>
 
-          <div class="portal-divider my-3"></div>
-          <div class="portal-section-label text-white-50">オペレーション</div>
-          <%= link_to revenue_path, class: "nav-link portal-nav-link #{'active' if current_page?(revenue_path)}" do %>
-            <i class="bi bi-currency-yen"></i>
-            <span>収益管理</span>
-          <% end %>
-          <%= link_to dispatch_path, class: "nav-link portal-nav-link #{'active' if current_page?(dispatch_path)}" do %>
-            <i class="bi bi-diagram-3"></i>
-            <span>配車管理</span>
-          <% end %>
-          <%= link_to fleet_path, class: "nav-link portal-nav-link #{'active' if current_page?(fleet_path)}" do %>
-            <i class="bi bi-truck"></i>
-            <span>車両管理</span>
-          <% end %>
-          <%= link_to hr_path, class: "nav-link portal-nav-link #{'active' if current_page?(hr_path)}" do %>
-            <i class="bi bi-people"></i>
-            <span>人事情報</span>
-          <% end %>
+          <div class="app-sidebar__menu-stack app-sidebar__menu-stack--sections">
+            <% primary_sections.each do |section| %>
+              <% section_key = section[:key] %>
+              <% section_id = "sidebar-section-#{section_key}" %>
+              <% default_expanded = section[:default_expanded] %>
+              <% section_default = default_expanded ? "expanded" : "collapsed" %>
+              <% body_classes = ["app-sidebar__section-body"] %>
+              <% body_classes << "is-collapsed" unless default_expanded %>
 
-          <div class="portal-divider my-3"></div>
-          <div class="portal-section-label text-white-50">ナレッジ</div>
-          <%= link_to knowledge_path, class: "nav-link portal-nav-link #{'active' if current_page?(knowledge_path)}" do %>
-            <i class="bi bi-lightbulb"></i>
-            <span>ナレッジ</span>
-          <% end %>
-          <%= link_to workflow_requests_path, class: "nav-link portal-nav-link #{'active' if request.path.starts_with?('/workflows')}" do %>
-            <i class="bi bi-kanban"></i>
-            <span>ワークフロー</span>
-          <% end %>
-          <%= link_to faq_path, class: "nav-link portal-nav-link #{'active' if current_page?(faq_path)}" do %>
-            <i class="bi bi-question-circle"></i>
-            <span>FAQ</span>
-          <% end %>
+              <div class="app-sidebar__section" data-sidebar-section="<%= section_key %>">
+                <button type="button"
+                        class="app-sidebar__section-toggle"
+                        data-toggle-sidebar-section="<%= section_key %>"
+                        data-section-default="<%= section_default %>"
+                        aria-expanded="<%= default_expanded %>"
+                        aria-controls="<%= section_id %>"
+                        title="<%= "#{section[:label]}メニュー" %>"
+                        data-bs-toggle="tooltip"
+                        data-bs-placement="right"
+                        data-bs-container="body">
+                  <span class="app-sidebar__section-label">
+                    <i class="bi <%= section[:icon] %>"></i>
+                    <span class="app-sidebar__section-label-text"><%= section[:label] %></span>
+                  </span>
+                  <span class="app-sidebar__section-indicator" aria-hidden="true">
+                    <i class="bi bi-plus-lg icon-collapsed"></i>
+                    <i class="bi bi-dash-lg icon-expanded"></i>
+                  </span>
+                </button>
+
+                <div class="<%= body_classes.join(' ') %>"
+                     id="<%= section_id %>"
+                     data-sidebar-section-body="<%= section_key %>"
+                     data-section-default="<%= section_default %>">
+                  <% section[:links].each do |link| %>
+                    <% next if link[:requires_admin] && !current_user&.admin_role? %>
+                    <% link_path = link[:path] || "#" %>
+                    <% active =
+                      if link[:active_when].respond_to?(:call)
+                        instance_exec(&link[:active_when])
+                      elsif link[:active_prefix].present?
+                        request.path.starts_with?(link[:active_prefix])
+                      elsif link[:active_paths].present?
+                        link[:active_paths].any? { |path| current_page?(path) }
+                      else
+                        link_path != "#" && current_page?(link_path)
+                      end %>
+                    <% link_classes = ["app-sidebar__link"] %>
+                    <% link_classes << "is-active" if active %>
+
+                    <%= link_to link_path,
+                                class: link_classes.join(" "),
+                                title: link[:label],
+                                data: { bs_toggle: "tooltip", bs_placement: "right", bs_container: "body" } do %>
+                      <i class="bi <%= link[:icon] %>"></i>
+                      <span><%= link[:label] %></span>
+                    <% end %>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          </div>
 
           <% if current_user&.admin_role? %>
-            <div class="portal-divider my-3"></div>
-            <div class="portal-section-label text-white-50">権限</div>
-            <%= link_to admin_root_path, class: "nav-link portal-nav-link #{'active' if request.path.starts_with?('/admin')}" do %>
-              <i class="bi bi-shield-lock"></i>
-              <span>管理者</span>
-            <% end %>
-            <%= link_to new_admin_import_path, class: "nav-link portal-nav-link #{'active' if request.path == '/admin/imports/new'}" do %>
-              <i class="bi bi-upload"></i>
-              <span>給与インポート</span>
-            <% end %>
-            <%= link_to admin_payrolls_path, class: "nav-link portal-nav-link #{'active' if request.path == '/admin/payrolls'}" do %>
-              <i class="bi bi-table"></i>
-              <span>給与グリッド</span>
-            <% end %>
-            <%= link_to admin_workflow_requests_path, class: "nav-link portal-nav-link #{'active' if request.path.starts_with?('/admin/workflow_requests')}" do %>
-              <i class="bi bi-check2-square"></i>
-              <span>承認タスク</span>
-            <% end %>
-            <%= link_to admin_workflow_categories_path, class: "nav-link portal-nav-link #{'active' if request.path.starts_with?('/admin/workflow_categories')}" do %>
-              <i class="bi bi-diagram-3"></i>
-              <span>承認カテゴリ</span>
-            <% end %>
-            <%= link_to admin_users_path, class: "nav-link portal-nav-link #{'active' if request.path.starts_with?('/admin/users')}" do %>
-              <i class="bi bi-people-fill"></i>
-              <span>ユーザー管理</span>
-            <% end %>
-            <div class="portal-divider my-3"></div>
-            <div class="portal-section-label text-white-50">マスタ</div>
-            <%= link_to admin_departments_path, class: "nav-link portal-nav-link #{'active' if request.path.starts_with?('/admin/departments')}" do %>
-              <i class="bi bi-buildings"></i>
-              <span>部署</span>
-            <% end %>
-            <%= link_to admin_job_categories_path, class: "nav-link portal-nav-link #{'active' if request.path.starts_with?('/admin/job_categories')}" do %>
-              <i class="bi bi-briefcase"></i>
-              <span>職種</span>
-            <% end %>
-            <%= link_to admin_job_positions_path, class: "nav-link portal-nav-link #{'active' if request.path.starts_with?('/admin/job_positions')}" do %>
-              <i class="bi bi-person-badge"></i>
-              <span>役職</span>
-            <% end %>
-            <%= link_to admin_grade_levels_path, class: "nav-link portal-nav-link #{'active' if request.path.starts_with?('/admin/grade_levels')}" do %>
-              <i class="bi bi-bar-chart-steps"></i>
-              <span>等級</span>
-            <% end %>
-            <%= link_to admin_evaluation_grades_path, class: "nav-link portal-nav-link #{'active' if request.path.starts_with?('/admin/evaluation_grades')}" do %>
-              <i class="bi bi-award"></i>
-              <span>評価ランク</span>
-            <% end %>
-            <%= link_to admin_evaluation_cycles_path, class: "nav-link portal-nav-link #{'active' if request.path.starts_with?('/admin/evaluation_cycles')}" do %>
-              <i class="bi bi-calendar4-range"></i>
-              <span>評価サイクル</span>
-            <% end %>
+            <div class="app-sidebar__divider"></div>
+
+            <div class="app-sidebar__section" data-sidebar-section="admin">
+              <button type="button"
+                      class="app-sidebar__section-toggle"
+                      data-toggle-sidebar-section="admin"
+                      data-section-default="collapsed"
+                      aria-expanded="false"
+                      aria-controls="sidebar-section-admin"
+                      title="管理者メニュー"
+                      data-bs-toggle="tooltip"
+                      data-bs-placement="right"
+                      data-bs-container="body">
+                <span class="app-sidebar__section-label">
+                  <i class="bi bi-gear-wide-connected"></i>
+                  <span class="app-sidebar__section-label-text">管理者</span>
+                </span>
+                <span class="app-sidebar__section-indicator" aria-hidden="true">
+                  <i class="bi bi-plus-lg icon-collapsed"></i>
+                  <i class="bi bi-dash-lg icon-expanded"></i>
+                </span>
+              </button>
+
+              <div class="app-sidebar__section-body is-collapsed"
+                   id="sidebar-section-admin"
+                   data-sidebar-section-body="admin"
+                   data-section-default="collapsed">
+                <%= link_to admin_root_path, class: "app-sidebar__link #{'is-active' if request.path.starts_with?('/admin')}", title: "管理者", data: { bs_toggle: "tooltip", bs_placement: "right", bs_container: "body" } do %>
+                  <i class="bi bi-shield-lock"></i>
+                  <span>管理者</span>
+                <% end %>
+                <%= link_to new_admin_import_path, class: "app-sidebar__link #{'is-active' if request.path == '/admin/imports/new'}", title: "給与インポート", data: { bs_toggle: "tooltip", bs_placement: "right", bs_container: "body" } do %>
+                  <i class="bi bi-upload"></i>
+                  <span>給与インポート</span>
+                <% end %>
+                <%= link_to admin_payrolls_path, class: "app-sidebar__link #{'is-active' if request.path == '/admin/payrolls'}", title: "給与グリッド", data: { bs_toggle: "tooltip", bs_placement: "right", bs_container: "body" } do %>
+                  <i class="bi bi-table"></i>
+                  <span>給与グリッド</span>
+                <% end %>
+                <%= link_to admin_workflow_requests_path, class: "app-sidebar__link #{'is-active' if request.path.starts_with?('/admin/workflow_requests')}", title: "承認タスク", data: { bs_toggle: "tooltip", bs_placement: "right", bs_container: "body" } do %>
+                  <i class="bi bi-check2-square"></i>
+                  <span>承認タスク</span>
+                <% end %>
+                <%= link_to admin_workflow_categories_path, class: "app-sidebar__link #{'is-active' if request.path.starts_with?('/admin/workflow_categories')}", title: "承認カテゴリ", data: { bs_toggle: "tooltip", bs_placement: "right", bs_container: "body" } do %>
+                  <i class="bi bi-diagram-3"></i>
+                  <span>承認カテゴリ</span>
+                <% end %>
+                <%= link_to admin_metric_label_mappings_path, class: "app-sidebar__link #{'is-active' if request.path.starts_with?('/admin/metric_label_mappings')}", title: "指標マッピング", data: { bs_toggle: "tooltip", bs_placement: "right", bs_container: "body" } do %>
+                  <i class="bi bi-diagram-3-fill"></i>
+                  <span>指標マッピング</span>
+                <% end %>
+                <%= link_to admin_users_path, class: "app-sidebar__link #{'is-active' if request.path.starts_with?('/admin/users')}", title: "ユーザー管理", data: { bs_toggle: "tooltip", bs_placement: "right", bs_container: "body" } do %>
+                  <i class="bi bi-people-fill"></i>
+                  <span>ユーザー管理</span>
+                <% end %>
+                <%= link_to admin_departments_path, class: "app-sidebar__link #{'is-active' if request.path.starts_with?('/admin/departments')}", title: "部署", data: { bs_toggle: "tooltip", bs_placement: "right", bs_container: "body" } do %>
+                  <i class="bi bi-buildings"></i>
+                  <span>部署</span>
+                <% end %>
+                <%= link_to admin_metric_categories_path, class: "app-sidebar__link #{'is-active' if request.path.starts_with?('/admin/metric_categories')}", title: "指標カテゴリ", data: { bs_toggle: "tooltip", bs_placement: "right", bs_container: "body" } do %>
+                  <i class="bi bi-layers"></i>
+                  <span>指標カテゴリ</span>
+                <% end %>
+                <%= link_to admin_job_categories_path, class: "app-sidebar__link #{'is-active' if request.path.starts_with?('/admin/job_categories')}", title: "職種", data: { bs_toggle: "tooltip", bs_placement: "right", bs_container: "body" } do %>
+                  <i class="bi bi-briefcase"></i>
+                  <span>職種</span>
+                <% end %>
+                <%= link_to admin_job_positions_path, class: "app-sidebar__link #{'is-active' if request.path.starts_with?('/admin/job_positions')}", title: "役職", data: { bs_toggle: "tooltip", bs_placement: "right", bs_container: "body" } do %>
+                  <i class="bi bi-person-badge"></i>
+                  <span>役職</span>
+                <% end %>
+                <%= link_to admin_grade_levels_path, class: "app-sidebar__link #{'is-active' if request.path.starts_with?('/admin/grade_levels')}", title: "等級", data: { bs_toggle: "tooltip", bs_placement: "right", bs_container: "body" } do %>
+                  <i class="bi bi-bar-chart-steps"></i>
+                  <span>等級</span>
+                <% end %>
+                <%= link_to admin_evaluation_grades_path, class: "app-sidebar__link #{'is-active' if request.path.starts_with?('/admin/evaluation_grades')}", title: "評価ランク", data: { bs_toggle: "tooltip", bs_placement: "right", bs_container: "body" } do %>
+                  <i class="bi bi-award"></i>
+                  <span>評価ランク</span>
+                <% end %>
+                <%= link_to admin_evaluation_cycles_path, class: "app-sidebar__link #{'is-active' if request.path.starts_with?('/admin/evaluation_cycles')}", title: "評価サイクル", data: { bs_toggle: "tooltip", bs_placement: "right", bs_container: "body" } do %>
+                  <i class="bi bi-calendar4-range"></i>
+                  <span>評価サイクル</span>
+                <% end %>
+              </div>
+            </div>
           <% end %>
         </nav>
 
-        <div class="mt-auto pt-4">
-          <div class="card bg-transparent border-0 text-white-50 small">
-            <div class="card-body px-0">
-              <div class="d-flex align-items-center gap-3">
-                <div class="avatar-sm">
-                  <i class="bi bi-person-circle"></i>
-                </div>
-                <div>
-                  <div class="text-white">配車本部</div>
-                  <div>最終ログイン: <%= l(Time.current, format: :short) %></div>
-                </div>
-              </div>
+        <div class="app-sidebar__footer">
+          <div class="app-sidebar__user">
+            <div class="app-sidebar__avatar"><i class="bi bi-person-circle"></i></div>
+            <div class="app-sidebar__user-info">
+              <div class="name">配車本部</div>
+              <div class="meta">最終ログイン: <%= l(Time.current, format: :short) %></div>
             </div>
           </div>
         </div>
       </aside>
 
-      <main class="flex-grow-1">
-        <header class="portal-header d-flex align-items-center justify-content-between px-4 py-3 border-bottom">
+      <div class="app-main">
+        <header class="app-header">
           <div>
             <div class="small text-muted text-uppercase"><%= yield(:section_label) %></div>
             <h1 class="h4 mb-0 fw-semibold"><%= content_for(:title) || "TMS Portal" %></h1>
           </div>
           <div class="d-flex align-items-center gap-3">
-            <button type="button" class="btn btn-outline-secondary btn-sm" id="sidebar-toggle" title="サイドバーの表示切替">
+            <button type="button"
+                    class="btn btn-outline-secondary btn-sm"
+                    data-toggle-sidebar
+                    title="サイドバーの表示切替"
+                    aria-label="サイドバーの表示切替">
               <i class="bi bi-layout-sidebar-inset"></i>
             </button>
-            <div class="input-group input-group-sm portal-search">
+            <div class="input-group input-group-sm app-header__search">
               <span class="input-group-text bg-white border-end-0"><i class="bi bi-search"></i></span>
               <input type="search" class="form-control border-start-0" placeholder="ポータル内検索...">
             </div>
@@ -202,27 +341,19 @@
             </div>
           </div>
         </header>
-        <div class="portal-content px-4 py-4">
-          <% flash.each do |type, message| %>
-            <% next if message.blank? %>
-            <div class="alert alert-<%= type == "alert" ? "danger" : "success" %> alert-dismissible fade show" role="alert">
-              <%= message %>
-              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-          <% end %>
-          <%= yield %>
-        </div>
-      </main>
+        <main class="app-content">
+          <div class="app-content__inner">
+            <% flash.each do |type, message| %>
+              <% next if message.blank? %>
+              <div class="alert alert-<%= type == "alert" ? "danger" : "success" %> alert-dismissible fade show app-flash" role="alert">
+                <%= message %>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+              </div>
+            <% end %>
+            <%= yield %>
+          </div>
+        </main>
+      </div>
     </div>
-    <%= javascript_tag do %>
-      document.addEventListener("turbo:load", function() {
-        var sidebarToggle = document.getElementById("sidebar-toggle");
-        if (sidebarToggle) {
-          sidebarToggle.addEventListener("click", function() {
-            document.body.classList.toggle("sidebar-collapsed");
-          });
-        }
-      });
-    <% end %>
   </body>
 </html>
