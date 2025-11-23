@@ -147,9 +147,9 @@ module Imports
 
       batch = if digest.present?
                 tenant.import_batches.find_or_initialize_by(source_digest: digest)
-              else
+      else
                 tenant.import_batches.build
-              end
+      end
 
       batch.source_file_name = source_file_name
       batch.imported_at = timestamp

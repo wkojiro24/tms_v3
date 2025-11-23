@@ -145,7 +145,7 @@ class VehicleFinancialTimeline
     total = numeric_values.sum if numeric_values.any?
     average = if numeric_values.any? && numeric_values.length.positive?
                 total / numeric_values.length
-              end
+    end
     values + [total, average]
   end
 

@@ -405,5 +405,4 @@ class VehicleFinancialsController < ApplicationController
       profit_label: "損益"
     }
   end
-
 end

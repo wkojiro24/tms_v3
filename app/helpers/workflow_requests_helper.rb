@@ -7,7 +7,7 @@ module WorkflowRequestsHelper
               when "rejected" then "badge bg-danger"
               else
                 "badge bg-secondary"
-              end
+    end
     content_tag(:span, request.human_status, class: classes)
   end
 

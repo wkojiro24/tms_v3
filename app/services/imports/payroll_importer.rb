@@ -501,9 +501,9 @@ module Imports
       if monetary_section
         begin
           amount = Float(normalized).round
-          return ["", amount.zero? ? nil : amount]
+          ["", amount.zero? ? nil : amount]
         rescue ArgumentError
-          return [string, nil]
+          [string, nil]
         end
       else
         begin
@@ -520,9 +520,9 @@ module Imports
           end
 
           str = numeric.round(2).to_s.sub(/\.0+\z/, "")
-          return [str == "0" ? "" : str, nil]
+          [str == "0" ? "" : str, nil]
         rescue ArgumentError
-          return [string, nil]
+          [string, nil]
         end
       end
     end

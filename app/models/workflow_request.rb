@@ -127,7 +127,7 @@ class WorkflowRequest < ApplicationRecord
                     parse_datetime(value) || value
                   else
                     value
-                  end
+      end
 
       list << { key:, label: meta[:label], value: formatted }
     end
