@@ -80,6 +80,7 @@ class VehicleFinancialImporter
       label = label_info[:label]
       section_label = label_info[:section_label]
       next if label.blank?
+      break if final_label?(label)
 
       metric_key = normalize_key(label)
       vehicles.each do |vehicle|
@@ -109,8 +110,6 @@ class VehicleFinancialImporter
           updated_at: timestamp
         }
       end
-
-      break if final_label?(label)
     end
 
     collection
