@@ -2,6 +2,8 @@
 require "rubygems"
 require "bundler/setup"
 
-ARGV.unshift("--ensure-latest")
+# Skip version check in CI to avoid failures when updating is not possible
+# (network restrictions or minor patch drift).
+ARGV.unshift("--no-update-check")
 
 load Gem.bin_path("brakeman", "brakeman")
