@@ -120,14 +120,15 @@ class WorkflowRequest < ApplicationRecord
       value = send(key)
       next if value.blank?
 
-      formatted = case meta[:type]
-                  when :date
-                    parse_date(value) || value
-                  when :datetime
-                    parse_datetime(value) || value
-                  else
-                    value
-                  end
+      formatted =
+        case meta[:type]
+        when :date
+          parse_date(value) || value
+        when :datetime
+          parse_datetime(value) || value
+        else
+          value
+        end
 
       list << { key:, label: meta[:label], value: formatted }
     end
