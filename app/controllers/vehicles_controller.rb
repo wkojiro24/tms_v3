@@ -47,6 +47,8 @@ class VehiclesController < ApplicationController
   end
 
   def schedule
+    require "holiday_jp"
+
     @start_month = parse_month(params[:start_month]) || Date.current.beginning_of_month
     @schedule_depot = params[:depot].presence
     @schedule_type  = params[:vehicle_type].presence
@@ -109,6 +111,12 @@ class VehiclesController < ApplicationController
         category_key: event.category
       }
     end
+
+    # 祝日一覧（前年〜来年まで取得。表示範囲に応じて調整可）
+    # 祝日キャッシュ期間を広めに確保（過去5年〜未来5年）
+    holiday_from = Date.current.beginning_of_year - 5.years
+    holiday_to   = Date.current.end_of_year + 5.years
+    @japanese_holidays = HolidayJp.between(holiday_from, holiday_to).map { |h| h.date.iso8601 }
   end
 
   def timeline_demo
