@@ -24,11 +24,11 @@ class WorkflowStage < ApplicationRecord
       update!(last_comment: comment.presence)
     else
       status_value = case action
-      when "approved" then "approved"
-      when "rejected" then "rejected"
-      when "returned" then "returned"
+                     when "approved" then "approved"
+                     when "rejected" then "rejected"
+                     when "returned" then "returned"
                      else "approved"
-      end
+                     end
       update!(status: status_value, completed_at: Time.current, last_comment: comment)
     end
   end

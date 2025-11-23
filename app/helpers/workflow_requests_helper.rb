@@ -5,8 +5,8 @@ module WorkflowRequestsHelper
     when "pending" then "badge bg-primary"
     when "returned" then "badge bg-warning text-dark"
     when "rejected" then "badge bg-danger"
-              else
-                "badge bg-secondary"
+    else
+      "badge bg-secondary"
     end
     content_tag(:span, request.human_status, class: classes)
   end
