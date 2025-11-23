@@ -121,9 +121,9 @@ class WorkflowRequest < ApplicationRecord
       next if value.blank?
 
       formatted = case meta[:type]
-                  when :date
+      when :date
                     parse_date(value) || value
-                  when :datetime
+      when :datetime
                     parse_datetime(value) || value
                   else
                     value
