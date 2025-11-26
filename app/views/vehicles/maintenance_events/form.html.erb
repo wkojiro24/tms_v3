@@ -1,0 +1,12 @@
+<div class="container py-3">
+  <h2 class="mb-3">
+    メンテナンス記録を<%= @maintenance_event.persisted? ? "編集" : "追加" %>
+  </h2>
+
+  <div class="card">
+    <div class="card-body">
+      <%= render partial: "form",
+                 locals: { vehicle: @vehicle, maintenance_event: @maintenance_event } %>
+    </div>
+  </div>
+</div>

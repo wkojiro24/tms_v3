@@ -18,11 +18,11 @@
 <div class="card shadow-sm mb-3">
   <div class="card-body">
     <div class="d-flex flex-wrap align-items-center gap-3 mb-3">
-      <% status_tabs = [["all", "すべて", nil], ["active", "稼働中", "active"], ["maintenance", "整備中", "maintenance"], ["inspection", "点検予定", "inspection"], ["attention", "要確認", "attention"], ["out_of_service", "休車", "out_of_service"]] %>
+      <% status_tabs = [["all", "すべて", nil], ["normal", "稼働中", "normal"], ["suspended", "休車", "suspended"], ["reduced", "減車", "reduced"]] %>
       <% status_tabs.each do |key, label, value| %>
         <% active = (value.nil? && @status_filter.blank?) || value == @status_filter %>
         <% count = value.present? ? @status_counts.fetch(value, 0) : @status_counts.values.sum %>
-        <%= link_to vehicles_path(params.permit(:q, :vehicle_type, :group).merge(status: value).compact), class: "btn btn-sm #{active ? 'btn-primary' : 'btn-outline-secondary'}" do %>
+        <%= link_to vehicles_path(params.permit(:q, :vehicle_type, :group, :show_reduced).merge(status: value, show_reduced: (@show_reduced ? 1 : nil)).compact), class: "btn btn-sm #{active ? 'btn-primary' : 'btn-outline-secondary'}" do %>
           <%= label %> <span class="badge text-bg-light ms-1"><%= count %></span>
         <% end %>
       <% end %>
@@ -39,6 +39,12 @@
       </div>
       <div class="col-md-2 d-grid">
         <%= f.submit "検索", class: "btn btn-primary" %>
+      </div>
+      <div class="col-12">
+        <div class="form-check form-check-inline">
+          <%= f.check_box :show_reduced, { checked: @show_reduced, value: 1, class: "form-check-input", id: "show_reduced" }, "1", "0" %>
+          <label class="form-check-label" for="show_reduced">減車（売却済み）も表示</label>
+        </div>
       </div>
     <% end %>
   </div>
@@ -87,7 +93,7 @@
                 <% end %>
               </td>
               <td>
-                <% status_key = vehicle.maintenance_status %>
+                <% status_key = vehicle.fault_status %>
                 <span class="badge <%= vehicle_status_badge_class(status_key) %>"><%= vehicle_status_label_from_key(status_key) %></span>
               </td>
               <td><%= vehicle.vehicle_category.presence || "-" %></td>

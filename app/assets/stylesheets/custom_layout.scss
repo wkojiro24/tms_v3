@@ -1,0 +1,53 @@
+.card, .btn, .form-control, .modal-content, .table, input, select, textarea {
+  border-radius: 0;
+}
+
+.page-layout {
+  padding: 16px 24px;
+}
+
+.page-layout__row {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 16px;
+}
+
+.section {
+  border: 1px solid #e1e3e8;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  background-color: #fff;
+}
+
+.section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.section__body {
+  font-size: 0.9rem;
+}
+
+.vehicle-show-page .card {
+  border-radius: 0;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  border: 1px solid #e5e7eb;
+}
+
+.vehicle-show-page .card-header {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.maintenance-schedule .vehicle-row-faulted {
+  background-color: #f3f4f6;
+}
+.maintenance-schedule .vehicle-row-faulted .vehicle-label::before,
+.maintenance-schedule .vehicle-row-faulted .vis-inner::before {
+ /* content: "⚠ "; */
+  color: #f97316;
+}

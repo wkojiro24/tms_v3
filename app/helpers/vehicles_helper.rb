@@ -85,7 +85,10 @@ module VehiclesHelper
 
   def vehicle_status_options
     {
-      "active" => "稼働中",
+      "normal" => "稼働中",
+      "faulted" => "休車",
+      "suspended" => "休車",
+      "reduced" => "減車（売却済み）",
       "maintenance" => "整備中",
       "inspection" => "点検予定",
       "attention" => "要確認",
@@ -113,6 +116,14 @@ module VehiclesHelper
       "text-bg-secondary"
     when "out_of_service"
       "text-bg-danger"
+    when "faulted"
+      "text-bg-warning"
+    when "suspended"
+      "text-bg-warning"
+    when "reduced"
+      "text-bg-secondary"
+    when "normal"
+      "text-bg-success"
     else
       "text-bg-secondary"
     end
@@ -141,5 +152,13 @@ module VehiclesHelper
 
   def vehicle_plate_style
     "background:#0f5132;color:#fff;border-radius:0.5rem;padding:0.4rem 0.6rem;display:inline-block;text-align:center;min-width:88px;"
+  end
+
+  def maintenance_category_label(category_key)
+    cat = MaintenanceCategory.find_by(key: category_key)
+    label = cat&.name || category_key.to_s
+    return "故障・修理" if category_key.to_s == "repair" || label == "修理"
+
+    label
   end
 end

@@ -32,6 +32,6 @@ class MaintenanceEventsController < ApplicationController
   private
 
   def event_params
-    params.require(:maintenance_event).permit(:vehicle_number, :category, :start_at, :end_at)
+    params.require(:maintenance_event).permit(:vehicle_number, :category, :start_at, :end_at, :status, :notes, :repair_location, :vendor_name, :estimated_cost, photos: [])
   end
 end

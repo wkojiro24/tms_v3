@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2025_11_04_100000) do
+ActiveRecord::Schema[7.2].define(version: 2025_11_25_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -352,6 +352,11 @@ ActiveRecord::Schema[7.2].define(version: 2025_11_04_100000) do
     t.datetime "end_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "status", default: "scheduled", null: false
+    t.text "notes"
+    t.string "repair_location"
+    t.string "vendor_name"
+    t.decimal "estimated_cost", precision: 12, scale: 2
     t.index ["category"], name: "index_maintenance_events_on_category"
     t.index ["start_at"], name: "index_maintenance_events_on_start_at"
     t.index ["vehicle_number"], name: "index_maintenance_events_on_vehicle_number"
@@ -559,6 +564,20 @@ ActiveRecord::Schema[7.2].define(version: 2025_11_04_100000) do
     t.index ["vehicle_id"], name: "index_vehicle_fault_logs_on_vehicle_id"
   end
 
+  create_table "vehicle_faults", force: :cascade do |t|
+    t.bigint "tenant_id", null: false
+    t.bigint "vehicle_id", null: false
+    t.date "started_on", null: false
+    t.date "resolved_on"
+    t.string "summary", null: false
+    t.text "details"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id", "vehicle_id", "started_on"], name: "index_vehicle_faults_on_tenant_vehicle_started"
+    t.index ["tenant_id"], name: "index_vehicle_faults_on_tenant_id"
+    t.index ["vehicle_id"], name: "index_vehicle_faults_on_vehicle_id"
+  end
+
   create_table "vehicle_financial_metrics", force: :cascade do |t|
     t.bigint "tenant_id", null: false
     t.bigint "vehicle_id"
@@ -644,6 +663,7 @@ ActiveRecord::Schema[7.2].define(version: 2025_11_04_100000) do
     t.jsonb "metadata", default: {}, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "fault_status", default: 0, null: false
     t.index ["tenant_id", "registration_number", "first_registration_on"], name: "idx_vehicles_unique_registration", unique: true
     t.index ["tenant_id"], name: "index_vehicles_on_tenant_id"
   end
@@ -817,6 +837,8 @@ ActiveRecord::Schema[7.2].define(version: 2025_11_04_100000) do
   add_foreign_key "vehicle_aliases", "tenants"
   add_foreign_key "vehicle_fault_logs", "tenants"
   add_foreign_key "vehicle_fault_logs", "vehicles"
+  add_foreign_key "vehicle_faults", "tenants"
+  add_foreign_key "vehicle_faults", "vehicles"
   add_foreign_key "vehicle_financial_metrics", "tenants"
   add_foreign_key "vehicle_financial_metrics", "vehicles"
   add_foreign_key "vehicle_inspection_records", "tenants"

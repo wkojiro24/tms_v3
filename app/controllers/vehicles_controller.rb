@@ -5,16 +5,18 @@ class VehiclesController < ApplicationController
     @vehicle_type = params[:vehicle_type].presence
     @vehicle_group = params[:group].presence
     @status_filter = params[:status].presence
+    @show_reduced = params[:show_reduced] == "1"
 
     vehicles = filter_by_query(vehicles, @query)
     vehicles = vehicles.select { |vehicle| vehicle.vehicle_category == @vehicle_type } if @vehicle_type.present?
     vehicles = vehicles.select { |vehicle| vehicle.depot_name == @vehicle_group } if @vehicle_group.present?
-    vehicles = vehicles.select { |vehicle| vehicle.maintenance_status == @status_filter } if @status_filter.present?
+    vehicles = vehicles.reject { |vehicle| vehicle.fault_status_reduced? } unless @show_reduced
+    vehicles = vehicles.select { |vehicle| vehicle.fault_status == @status_filter } if @status_filter.present?
 
     @vehicles = vehicles
     @all_depots = Vehicle.distinct.pluck(:depot_name).compact_blank
     @vehicle_types = Vehicle.distinct.pluck(:vehicle_category).compact_blank
-    @status_counts = build_status_counts(Vehicle.ordered.to_a)
+    @status_counts = vehicles.group_by(&:fault_status).transform_values(&:count)
   end
 
   def show
@@ -27,6 +29,8 @@ class VehiclesController < ApplicationController
     @fault_logs = @maintenance_overview.fault_logs(limit: nil)
     @inspection_records = @maintenance_overview.inspection_records
     @inspection_events = @maintenance_overview.inspection_schedule_events
+    @maintenance_events = @vehicle.maintenance_events.order(start_at: :desc)
+    @maintenance_categories = MaintenanceCategory.order(:key)
     @maintenance_entries = build_maintenance_entries
     @selected_photo = selected_vehicle_photo
     @new_fault_log = @vehicle.vehicle_fault_logs.build(occurred_on: Date.current)
@@ -39,10 +43,35 @@ class VehiclesController < ApplicationController
 
   def update
     @vehicle = Vehicle.find(params[:id])
+    previous_status = @vehicle.fault_status
+
     if @vehicle.update(vehicle_params)
+      if previous_status != @vehicle.fault_status
+        if @vehicle.fault_status_suspended?
+          @vehicle.vehicle_faults.create!(
+            started_on: Date.current,
+            summary: params[:vehicle][:fault_summary].presence || "故障",
+            details: params[:vehicle][:fault_details]
+          )
+        elsif @vehicle.fault_status_normal?
+          if (fault = @vehicle.current_fault)
+            fault.update!(resolved_on: Date.current)
+          end
+        end
+      end
       redirect_to vehicle_path(@vehicle), notice: "車両情報を更新しました。"
     else
       redirect_to vehicle_path(@vehicle), alert: @vehicle.errors.full_messages.to_sentence
+    end
+  end
+
+  def update_fault_status
+    @vehicle = Vehicle.find(params[:id])
+    status_param = params.require(:vehicle).permit(:fault_status)[:fault_status]
+    if @vehicle.update(fault_status: status_param)
+      redirect_to vehicle_path(@vehicle), notice: "状態を更新しました。"
+    else
+      redirect_to vehicle_path(@vehicle), alert: "状態を更新できませんでした。"
     end
   end
 
@@ -57,6 +86,9 @@ class VehiclesController < ApplicationController
     scope = scope.where(depot_name: @schedule_depot) if @schedule_depot.present? && @schedule_depot != "all"
     scope = scope.where(vehicle_category: @schedule_type) if @schedule_type.present?
     @vehicles = scope.to_a
+    events = MaintenanceEvent.includes(:vehicle).to_a
+    events_by_vehicle = events.group_by(&:vehicle_number)
+    @timeline_attention = events_by_vehicle.transform_values { |arr| arr.any?(&:needs_attention?) }
 
     # セレクトボックス用
     @all_depots    = Vehicle.distinct.pluck(:depot_name).compact_blank
@@ -69,6 +101,12 @@ class VehiclesController < ApplicationController
                    vehicle.call_sign.to_s.presence ||
                    vehicle.id.to_s
       group_id = vehicle.id.to_s
+      attention = @timeline_attention[vehicle.registration_number.to_s] || vehicle.current_fault.present?
+      group_classes = ["vehicle-row"]
+      group_classes << "vehicle-row--suspended" if vehicle.suspended?
+      fault_background = vehicle.fault_status_suspended?
+      group_classes << "vehicle-row-faulted" if fault_background
+      group_style = nil
 
       plate_parts = view_context.vehicle_plate_parts(vehicle)
       content_html = <<~HTML.squish
@@ -76,16 +114,21 @@ class VehiclesController < ApplicationController
           <div class="plate-mini__line1">#{ERB::Util.h(plate_parts[:region])} #{ERB::Util.h(plate_parts[:klass])}</div>
           <div class="plate-mini__line2">#{ERB::Util.h(plate_parts[:kana])} #{ERB::Util.h(plate_parts[:number])}</div>
         </div>
+        #{attention ? "<span class=\"maintenance-attention\" title=\"#{vehicle.current_fault&.summary.presence || '標準外のメンテナンス記録があります'}\">⚠︎</span>" : ""}
       HTML
 
       number_to_group[raw_number] ||= group_id
+      
 
       {
         id: group_id,
         number: raw_number,
         content: content_html.html_safe,
         office: vehicle.depot_name.to_s,
-        vehicle_type: vehicle.vehicle_category.to_s
+        vehicle_type: vehicle.vehicle_category.to_s,
+        className: group_classes.join(" "),
+        style: group_style,
+        faulted: fault_background
       }
     end
 
@@ -94,7 +137,7 @@ class VehiclesController < ApplicationController
     @maintenance_categories = categories.values
 
     # items（MaintenanceEvent）
-    @timeline_items = MaintenanceEvent.all.map do |event|
+    @timeline_items = events.map do |event|
       cat = categories[event.category]
       group_id = number_to_group[event.vehicle_number.to_s] || event.vehicle_number.to_s
 
@@ -168,7 +211,8 @@ class VehiclesController < ApplicationController
       :shipper_name,
       :cargo_name,
       :tank_material,
-      :notes
+      :notes,
+      :fault_status
     )
   end
 

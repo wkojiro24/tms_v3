@@ -27,6 +27,9 @@ Rails.application.routes.draw do
   resources :workflow_requests, path: "workflows", only: [:index, :new, :create, :show]
   resources :journal_entries, only: [:index]
   resources :vehicles, only: [:index, :show, :update] do
+    member do
+      patch :update_fault_status
+    end
     collection do
       get :schedule
       get :timeline_demo
@@ -35,6 +38,7 @@ Rails.application.routes.draw do
       resources :photos, only: [:create, :destroy]
       resources :fault_logs, only: [:create]
       resources :inspection_records, only: [:create]
+      resources :maintenance_events, except: [:index, :show]
     end
   end
   get "maintenance_schedule", to: "vehicles#schedule"

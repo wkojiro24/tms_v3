@@ -4,14 +4,18 @@ class Vehicle < ApplicationRecord
   has_many :financial_metrics, class_name: "VehicleFinancialMetric", dependent: :destroy
   has_many_attached :photos
   has_many :vehicle_fault_logs, dependent: :destroy
+  has_many :vehicle_faults, dependent: :destroy
   has_many :vehicle_inspection_records, dependent: :destroy
   has_many :vehicle_statuses, -> { recent_first }, dependent: :destroy
+  has_many :maintenance_events, primary_key: :registration_number, foreign_key: :vehicle_number, dependent: :destroy
+
+  enum :fault_status, { normal: 0, faulted: 1, suspended: 1, reduced: 2 }, prefix: true
 
   scope :ordered, -> { order(:depot_name, :registration_number, :first_registration_on) }
   def display_name
     [registration_number, call_sign].compact.join(" / ")
   end
-
+  
   def max_load_tons
     return nil if max_load_kg.blank?
 
@@ -32,5 +36,21 @@ class Vehicle < ApplicationRecord
 
   def maintenance_status
     vehicle_statuses.first&.status || metadata&.fetch("status", nil) || "active"
+  end
+
+  def suspended?
+    maintenance_status == "休車" || fault_status_suspended?
+  end
+
+  def current_fault
+    vehicle_faults.current.order(started_on: :desc).first
+  end
+
+  def faulted?
+    fault_status_faulted? || fault_status_suspended?
+  end
+
+  def reduced?
+    fault_status_reduced?
   end
 end

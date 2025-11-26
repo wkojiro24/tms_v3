@@ -1,6 +1,7 @@
 @import "bootstrap/scss/bootstrap";
 @import "bootstrap-icons/font/bootstrap-icons";
 @import "vehicle_financials";
+@import "custom_layout";
 
 :root {
   --app-bg: #f5f7fb;
@@ -285,6 +286,16 @@ a:hover {
 
 .vehicle-grid th:first-child {
   text-align: left;
+}
+
+/* 故障／休車中の車両行を、タイムライン部分ごと薄いグレーにする */
+.vis-timeline .vis-group.vehicle-row--suspended .vis-inner {
+  background-color: #f6f7fb;  /* お好みで調整可：かなり薄めのグレー */
+}
+
+/* 左側ラベルも同じ色で揃える（既に設定済みなら不要） */
+.vis-timeline .vis-group.vehicle-row--suspended .vis-label {
+  background-color: #f6f7fb;
 }
 
 .app-sidebar__divider {

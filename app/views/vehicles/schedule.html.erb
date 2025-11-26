@@ -119,6 +119,12 @@
   .vis-item.vis-background.bg-holiday {
     background: rgba(255, 80, 80, 0.1) !important;
   }
+  .vis-item.vis-background.bg-faulted {
+    background: rgba(108, 117, 125, 0.12) !important;
+  }
+  .vis-item.vis-background.bg-faulted {
+    background: rgba(108, 117, 125, 0.12) !important;
+  }
 
   /* ナンバープレート風ラベル */
   .plate-mini {
@@ -172,6 +178,26 @@
     background-color: #f97316 !important;
     border-color: #c2410c !important;
     color: #fff !important;
+  }
+
+  /* vis のラベルに自動付与される折り畳みアイコン(span)を非表示にする */
+  .vis-labelset .vis-label .vis-inner span {
+    display: none !important;
+  }
+
+  /* 故障中は休日・祝日と同様、背景アイテムで表現する（ラベルは通常色のまま） */
+
+  /* ラベルを前面に出す */
+  .vis-labelset,
+  .vis-labelset .vis-label {
+    position: relative;
+    z-index: 3;
+  }
+
+  /* アイテム面は背面に */
+  .vis-itemset,
+  .vis-itemset .vis-group {
+    z-index: 1;
   }
 </style>
 
@@ -248,6 +274,24 @@
       margin: { item: { vertical: 12 } },
       timeAxis: { scale: "day", step: 1 }
     };
+
+    // 故障中グループに背景アイテムを追加（休日・祝日と同様に background type を使う）
+    const faultedBackgrounds = [];
+    rawGroups.forEach((g) => {
+      if (!g.faulted) return;
+      const start = new Date(baseStart.getFullYear(), baseStart.getMonth(), 1);
+      const end   = new Date(baseStart.getFullYear(), baseStart.getMonth() + 1, 1);
+      faultedBackgrounds.push({
+        id: `fault-bg-${g.id}`,
+        group: g.id,
+        start: start,
+        end: end,
+        type: "background",
+        className: "bg-faulted",
+        isBackground: true
+      });
+    });
+    if (faultedBackgrounds.length) dataItems.add(faultedBackgrounds);
 
     const timeline = new vis.Timeline(container, dataItems, dataGroups, options);
     container.dataset.timelineInitialized = "true";
@@ -527,6 +571,22 @@
         });
       }
       if (items.length) dataItems.add(items);
+
+      // 故障車両用の背景（休日と同じ background アイテムで表現）
+      const faultItems = [];
+      rawGroups.forEach((g) => {
+        if (!g.faulted) return;
+        faultItems.push({
+          id: `fault-bg-${g.id}`,
+          group: g.id,
+          start: start,
+          end: end,
+          type: "background",
+          className: "bg-faulted",
+          isBackground: true
+        });
+      });
+      if (faultItems.length) dataItems.add(faultItems);
     }
 
     function applyWindow(view, anchor) {
@@ -536,20 +596,20 @@
         start.setHours(0, 0, 0, 0);
         end.setHours(0, 0, 0, 0);
         end.setDate(end.getDate() + 1);         // 当日だけ
-        timeline.setOptions({ timeAxis: { scale: "hour", step: 1 } });
+        timeline.setOptions({ timeAxis: { scale: "hour", step: 1 }, min: start, max: end });
         timeline.setWindow(start, end, { animation: false });
         rebuildBackgrounds(start, end);
       } else if (view === "week") {
         const start = startOfWeekMonday(anchor); // 当週月曜始まり
         const end = new Date(start);
         end.setDate(end.getDate() + 7);          // 当週だけ
-        timeline.setOptions({ timeAxis: { scale: "day", step: 1 } });
+        timeline.setOptions({ timeAxis: { scale: "day", step: 1 }, min: start, max: end });
         timeline.setWindow(start, end, { animation: false });
         rebuildBackgrounds(start, end);
       } else {
         const start = new Date(anchor.getFullYear(), anchor.getMonth(), 1);          // 当月1日
         const end   = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 1);      // 翌月1日
-        timeline.setOptions({ timeAxis: { scale: "day", step: 1 } });
+        timeline.setOptions({ timeAxis: { scale: "day", step: 1 }, min: start, max: end });
         timeline.setWindow(start, end, { animation: false });
         rebuildBackgrounds(start, end);
       }

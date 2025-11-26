@@ -1,0 +1,29 @@
+<div class="vehicle-fault-toggle">
+  <%= form_with model: vehicle,
+                url: update_fault_status_vehicle_path(vehicle),
+                method: :patch,
+                local: true do |f| %>
+    <div class="btn-group" role="group">
+      <%= f.button type: "submit",
+                   name: "vehicle[fault_status]",
+                   value: "normal",
+                   class: "btn btn-sm #{vehicle.fault_status == 'normal' ? 'btn-success' : 'btn-outline-secondary'}" do %>
+        稼働中
+      <% end %>
+
+      <%= f.button type: "submit",
+                   name: "vehicle[fault_status]",
+                   value: "faulted",
+                   class: "btn btn-sm #{vehicle.fault_status.in?(%w[faulted suspended]) ? 'btn-warning' : 'btn-outline-secondary'}" do %>
+        故障・修理
+      <% end %>
+
+      <%= f.button type: "submit",
+                   name: "vehicle[fault_status]",
+                   value: "reduced",
+                   class: "btn btn-sm #{vehicle.fault_status == 'reduced' ? 'btn-secondary' : 'btn-outline-secondary'}" do %>
+        減車（売却済み）
+      <% end %>
+    </div>
+  <% end %>
+</div>
