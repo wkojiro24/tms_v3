@@ -1,0 +1,77 @@
+<% content_for :title, "等級別基本給テーブル" %>
+<% content_for :section_label, "人事管理" %>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h2 class="h4 mb-1">等級別基本給テーブル</h2>
+    <p class="text-muted small mb-0">評価等級ごとの基本給と割増率を設定</p>
+  </div>
+  <div class="d-flex gap-2">
+    <%= link_to admin_payroll_simulations_path, class: "btn btn-outline-secondary btn-sm" do %>
+      <i class="bi bi-arrow-left me-1"></i>シミュレーションへ
+    <% end %>
+    <%= link_to new_grade_table_admin_payroll_simulations_path, class: "btn btn-primary btn-sm" do %>
+      <i class="bi bi-plus me-1"></i>新規登録
+    <% end %>
+  </div>
+</div>
+
+<% if @grade_tables.any? %>
+  <div class="card card-lift">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>等級コード</th>
+              <th>等級名</th>
+              <th class="text-end">基本給</th>
+              <th class="text-end">大都市加算</th>
+              <th class="text-end">時給</th>
+              <th class="text-center">残業率</th>
+              <th class="text-center">深夜率</th>
+              <th class="text-center">休日率</th>
+              <th>有効期間</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @grade_tables.each do |table| %>
+              <tr>
+                <td class="fw-bold"><%= table.grade_code %></td>
+                <td><%= table.grade_name %></td>
+                <td class="text-end"><%= number_with_delimiter(table.base_salary) %> 円</td>
+                <td class="text-end"><%= number_with_delimiter(table.city_allowance) %> 円</td>
+                <td class="text-end text-muted"><%= number_with_delimiter(table.hourly_rate_calculated) %> 円</td>
+                <td class="text-center"><%= (table.overtime_rate * 100).to_i %>%</td>
+                <td class="text-center"><%= (table.late_night_rate * 100).to_i %>%</td>
+                <td class="text-center"><%= (table.holiday_rate * 100).to_i %>%</td>
+                <td>
+                  <% if table.effective_from || table.effective_until %>
+                    <small class="text-muted">
+                      <%= table.effective_from&.strftime('%Y/%m/%d') || '...' %>
+                      〜
+                      <%= table.effective_until&.strftime('%Y/%m/%d') || '...' %>
+                    </small>
+                  <% else %>
+                    <span class="badge bg-light text-muted">常時</span>
+                  <% end %>
+                </td>
+                <td class="text-end">
+                  <%= link_to edit_grade_table_admin_payroll_simulation_path(table), class: "btn btn-outline-secondary btn-sm" do %>
+                    <i class="bi bi-pencil"></i>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+<% else %>
+  <div class="alert alert-info">
+    <i class="bi bi-info-circle me-1"></i>
+    等級別基本給テーブルが登録されていません。「新規登録」から登録してください。
+  </div>
+<% end %>

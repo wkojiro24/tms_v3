@@ -1,0 +1,9 @@
+<% content_for :title, "項目追加" %>
+<% content_for :section_label, "マスタ管理" %>
+
+<div class="card card-lift">
+  <div class="card-body">
+    <h2 class="h5 mb-3"><%= @category.display_label %> に項目を追加</h2>
+    <%= render "form", category: @category, item: @item %>
+  </div>
+</div>

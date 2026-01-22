@@ -1,0 +1,86 @@
+<%= form_with model: [:admin, @employee], local: true do |f| %>
+  <% if @employee.errors.any? %>
+    <div class="alert alert-danger">
+      <ul class="mb-0">
+        <% @employee.errors.full_messages.each do |message| %>
+          <li><%= message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="row g-3">
+    <div class="col-md-4">
+      <%= f.label :employee_code, "従業員コード", class: "form-label" %>
+      <%= f.text_field :employee_code, class: "form-control", required: true %>
+    </div>
+    <div class="col-md-4">
+      <%= f.label :last_name, "姓", class: "form-label" %>
+      <%= f.text_field :last_name, class: "form-control", required: true %>
+    </div>
+    <div class="col-md-4">
+      <%= f.label :first_name, "名", class: "form-label" %>
+      <%= f.text_field :first_name, class: "form-control", required: true %>
+    </div>
+    <div class="col-md-4">
+      <%= f.label :last_name_kana, "姓（カナ）", class: "form-label" %>
+      <%= f.text_field :last_name_kana, class: "form-control" %>
+    </div>
+    <div class="col-md-4">
+      <%= f.label :first_name_kana, "名（カナ）", class: "form-label" %>
+      <%= f.text_field :first_name_kana, class: "form-control" %>
+    </div>
+    <div class="col-md-4">
+      <%= f.label :full_name, "表示名", class: "form-label" %>
+      <%= f.text_field :full_name, class: "form-control" %>
+    </div>
+    <div class="col-md-4">
+      <%= f.label :date_of_birth, "生年月日", class: "form-label" %>
+      <%= f.date_field :date_of_birth, class: "form-control" %>
+    </div>
+    <div class="col-md-4">
+      <%= f.label :hire_date, "入社日", class: "form-label" %>
+      <%= f.date_field :hire_date, class: "form-control" %>
+    </div>
+    <div class="col-md-4">
+      <%= f.label :email, "メール", class: "form-label" %>
+      <%= f.email_field :email, class: "form-control" %>
+    </div>
+    <div class="col-md-4">
+      <%= f.label :phone, "電話", class: "form-label" %>
+      <%= f.text_field :phone, class: "form-control" %>
+    </div>
+    <div class="col-md-4">
+      <%= f.label :department_id, "所属", class: "form-label" %>
+      <%= f.collection_select :department_id, @departments, :id, :display_name, { include_blank: "未設定" }, class: "form-select" %>
+    </div>
+    <div class="col-md-4">
+      <%= f.label :job_category_id, "職種", class: "form-label" %>
+      <%= f.collection_select :job_category_id, @job_categories, :id, :display_name, { include_blank: "未設定" }, class: "form-select" %>
+    </div>
+    <div class="col-md-4">
+      <%= f.label :job_position_id, "役職", class: "form-label" %>
+      <%= f.collection_select :job_position_id, @job_positions, :id, :display_name, { include_blank: "未設定" }, class: "form-select" %>
+    </div>
+    <div class="col-md-4">
+      <%= f.label :grade_level_id, "等級", class: "form-label" %>
+      <%= f.collection_select :grade_level_id, @grade_levels, :id, :display_name, { include_blank: "未設定" }, class: "form-select" %>
+    </div>
+    <div class="col-md-4">
+      <%= f.label :current_status, "ステータス", class: "form-label" %>
+      <%= f.text_field :current_status, class: "form-control", required: true %>
+    </div>
+    <div class="col-12">
+      <%= f.label :notes, "備考", class: "form-label" %>
+      <%= f.text_area :notes, rows: 3, class: "form-control" %>
+    </div>
+    <div class="col-12 form-check form-switch">
+      <%= f.check_box :submit_enabled, class: "form-check-input" %>
+      <%= f.label :submit_enabled, "ワークフロー申請を許可する", class: "form-check-label" %>
+    </div>
+  </div>
+  <div class="mt-3">
+    <%= f.submit(@employee.persisted? ? "更新" : "登録", class: "btn btn-primary") %>
+    <%= link_to "キャンセル", admin_employees_path, class: "btn btn-link" %>
+  </div>
+<% end %>

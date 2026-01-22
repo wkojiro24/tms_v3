@@ -1,0 +1,81 @@
+<% content_for :title, "#{@employee.full_name || @employee.employee_code} - 履歴" %>
+<% content_for :section_label, "履歴タイムライン" %>
+
+<div class="d-flex gap-2 mb-4">
+  <%= link_to "詳細へ戻る", admin_employee_path(@employee), class: "btn btn-outline-secondary btn-sm" %>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-6">
+    <div class="card card-lift shadow-sm h-100">
+      <div class="card-body">
+        <h2 class="h5 mb-3">所属 / 雇用区分</h2>
+        <ul class="list-group list-group-flush small">
+          <% @assignments.each do |assignment| %>
+            <li class="list-group-item d-flex justify-content-between">
+              <span>
+                <strong><%= assignment.department %></strong>
+                <span class="text-muted">(<%= assignment.employment_type %>)</span>
+              </span>
+              <span><%= assignment.effective_from&.strftime("%Y-%m-%d") %> 〜 <%= assignment.effective_to&.strftime("%Y-%m-%d") || "現在" %></span>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card card-lift shadow-sm h-100">
+      <div class="card-body">
+        <h2 class="h5 mb-3">役職</h2>
+        <ul class="list-group list-group-flush small">
+          <% @positions.each do |position| %>
+            <li class="list-group-item d-flex justify-content-between">
+              <span><%= position.title %></span>
+              <span><%= position.effective_from&.strftime("%Y-%m-%d") %> 〜 <%= position.effective_to&.strftime("%Y-%m-%d") || "現在" %></span>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4 mt-1">
+  <div class="col-lg-6">
+    <div class="card card-lift shadow-sm h-100">
+      <div class="card-body">
+        <h2 class="h5 mb-3">在籍ステータス</h2>
+        <ul class="list-group list-group-flush small">
+          <% @statuses.each do |status| %>
+            <li class="list-group-item d-flex justify-content-between">
+              <span><strong><%= status.status %></strong> <%= status.reason %></span>
+              <span><%= status.effective_from&.strftime("%Y-%m-%d") %> 〜 <%= status.effective_to&.strftime("%Y-%m-%d") || "現在" %></span>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card card-lift shadow-sm h-100">
+      <div class="card-body">
+        <h2 class="h5 mb-3">評価履歴</h2>
+        <ul class="list-group list-group-flush small">
+          <% @reviews.each do |review| %>
+            <li class="list-group-item">
+              <div class="d-flex justify-content-between">
+                <span><%= review.reviewed_on&.strftime("%Y-%m-%d") %></span>
+                <span><%= review.review_cycle %></span>
+              </div>
+              <div class="fw-semibold"><%= review.grade || review.score %></div>
+              <div class="text-muted"><%= review.summary %></div>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>

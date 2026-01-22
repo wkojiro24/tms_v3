@@ -1,0 +1,407 @@
+<% content_for :title, "P/L ダッシュボード" %>
+<% content_for :section_label, "経営" %>
+<% content_for :subtitle, @fiscal_year_label %>
+
+<div class="d-flex justify-content-end mb-4">
+  <div class="d-flex gap-2 align-items-center">
+    <form action="<%= dashboard_profit_loss_index_path %>" method="get" class="d-flex gap-2">
+      <select name="fiscal_year" class="form-select form-select-sm" style="width: auto;">
+        <% (Date.current.year - 5..Date.current.year).each do |y| %>
+          <option value="<%= y %>" <%= 'selected' if y == @fiscal_year %>>第<%= fiscal_period_number_for(y) %>期（<%= y %>年度）</option>
+        <% end %>
+      </select>
+      <button type="submit" class="btn btn-primary btn-sm">表示</button>
+    </form>
+    <%= link_to "P/L詳細", profit_loss_index_path, class: "btn btn-outline-secondary btn-sm" %>
+  </div>
+</div>
+
+<%
+  # KPI用データ準備
+  sales = (@ytd_data[:totals]["sales"] || 0).to_i
+  gross_profit = (@ytd_data[:totals]["gross_profit"] || 0).to_i
+  op_income = (@ytd_data[:totals]["operating_income"] || 0).to_i
+  ord_income = (@ytd_data[:totals]["ordinary_income"] || 0).to_i
+
+  prev_sales = (@prev_ytd_data[:totals]["sales"] || 0).to_i
+  prev_ord_income = (@prev_ytd_data[:totals]["ordinary_income"] || 0).to_i
+
+  sales_rate = prev_sales > 0 ? ((sales.to_f / prev_sales * 100) - 100).round(1) : 0
+  gp_rate = sales > 0 ? (gross_profit.to_f / sales * 100).round(1) : 0
+  op_rate = sales > 0 ? (op_income.to_f / sales * 100).round(1) : 0
+  ord_rate = prev_ord_income != 0 ? ((ord_income.to_f / prev_ord_income * 100) - 100).round(1) : 0
+%>
+
+<!-- KPIカード -->
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="card card-lift shadow-sm h-100">
+      <div class="card-body">
+        <div class="text-muted small text-uppercase mb-1">売上高</div>
+        <div class="h4 mb-0"><%= number_with_delimiter(sales / 10000) %><small class="text-muted">万円</small></div>
+        <small class="<%= sales_rate >= 0 ? 'text-success' : 'text-danger' %>">
+          <i class="bi bi-arrow-<%= sales_rate >= 0 ? 'up' : 'down' %>"></i>
+          前年比 <%= sales_rate >= 0 ? '+' : '' %><%= sales_rate %>%
+        </small>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card card-lift shadow-sm h-100">
+      <div class="card-body">
+        <div class="text-muted small text-uppercase mb-1">売上総利益</div>
+        <div class="h4 mb-0"><%= number_with_delimiter(gross_profit / 10000) %><small class="text-muted">万円</small></div>
+        <small class="text-muted">粗利率 <%= gp_rate %>%</small>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card card-lift shadow-sm h-100">
+      <div class="card-body">
+        <div class="text-muted small text-uppercase mb-1">営業利益</div>
+        <div class="h4 mb-0 <%= op_income < 0 ? 'text-danger' : '' %>"><%= number_with_delimiter(op_income / 10000) %><small class="text-muted">万円</small></div>
+        <small class="<%= op_rate < 0 ? 'text-danger' : 'text-muted' %>">営業利益率 <%= op_rate %>%</small>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card card-lift shadow-sm h-100">
+      <div class="card-body">
+        <div class="text-muted small text-uppercase mb-1">経常利益</div>
+        <div class="h4 mb-0 <%= ord_income < 0 ? 'text-danger' : '' %>"><%= number_with_delimiter(ord_income / 10000) %><small class="text-muted">万円</small></div>
+        <small class="<%= ord_rate >= 0 ? 'text-success' : 'text-danger' %>">
+          <i class="bi bi-arrow-<%= ord_rate >= 0 ? 'up' : 'down' %>"></i>
+          前年比 <%= ord_rate >= 0 ? '+' : '' %><%= ord_rate %>%
+        </small>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- 月次推移グラフ -->
+  <div class="col-lg-8">
+    <div class="card card-lift shadow-sm mb-4">
+      <div class="card-body">
+        <h3 class="h6 text-muted text-uppercase mb-3">月次推移（売上・原価・利益）</h3>
+        <div style="height: 300px;">
+          <canvas id="monthlyTrendChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- 前年同月比較グラフ -->
+    <div class="card card-lift shadow-sm">
+      <div class="card-body">
+        <h3 class="h6 text-muted text-uppercase mb-3">前年同月比較（売上高）</h3>
+        <div style="height: 250px;">
+          <canvas id="yearComparisonChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <!-- 売上原価構成比 -->
+    <div class="card card-lift shadow-sm mb-4">
+      <div class="card-body">
+        <h3 class="h6 text-muted text-uppercase mb-3">売上原価 構成比</h3>
+        <div style="height: 220px;">
+          <canvas id="costBreakdownChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- 販管費構成比 -->
+    <div class="card card-lift shadow-sm mb-4">
+      <div class="card-body">
+        <h3 class="h6 text-muted text-uppercase mb-3">販管費 構成比</h3>
+        <div style="height: 220px;">
+          <canvas id="sgaBreakdownChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- 利益構造 -->
+    <div class="card card-lift shadow-sm">
+      <div class="card-body">
+        <h3 class="h6 text-muted text-uppercase mb-3">利益構造</h3>
+        <div style="height: 200px;">
+          <canvas id="profitStructureChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%
+  # グラフ用データ準備
+  monthly_labels = @current_monthly.map { |m| m[:label] }
+  current_sales_data = @current_monthly.map { |m| ((m[:data][:totals]["sales"] || 0) / 10000).to_i }
+  current_cost_data = @current_monthly.map { |m| ((m[:data][:totals]["cost_of_sales"] || 0) / 10000).to_i }
+  current_op_income_data = @current_monthly.map { |m| ((m[:data][:totals]["operating_income"] || 0) / 10000).to_i }
+  prev_sales_data = @prev_monthly.map { |m| ((m[:data][:totals]["sales"] || 0) / 10000).to_i }
+
+  # 売上原価構成比データ
+  cost_section = @ytd_data[:sections].find { |s| s[:code] == "cost_of_sales" }
+  cost_children = cost_section&.dig(:children)&.select { |c| (c[:total] || 0) > 0 }&.sort_by { |c| -(c[:total] || 0) }&.first(8) || []
+  cost_data = cost_children.map { |c| { name: c[:name].to_s.gsub("[製]", ""), value: ((c[:total] || 0) / 10000).to_i } }
+
+  # 販管費構成比データ
+  sga_section = @ytd_data[:sections].find { |s| s[:code] == "sga_expenses" }
+  sga_children = sga_section&.dig(:children)&.select { |c| (c[:total] || 0) > 0 }&.sort_by { |c| -(c[:total] || 0) }&.first(8) || []
+  sga_data = sga_children.map { |c| { name: c[:name].to_s, value: ((c[:total] || 0) / 10000).to_i } }
+
+  # 利益構造データ
+  chart_sales = ((@ytd_data[:totals]["sales"] || 0) / 10000).to_i
+  chart_cost = ((@ytd_data[:totals]["cost_of_sales"] || 0) / 10000).to_i
+  chart_sga = ((@ytd_data[:totals]["sga_expenses"] || 0) / 10000).to_i
+  chart_non_op = (((@ytd_data[:totals]["non_operating_income"] || 0) - (@ytd_data[:totals]["non_operating_expenses"] || 0)) / 10000).to_i
+  chart_ord_income = ((@ytd_data[:totals]["ordinary_income"] || 0) / 10000).to_i
+%>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  // Chart.jsが読み込まれているか確認
+  if (typeof Chart === 'undefined') {
+    console.error('Chart.js not loaded');
+    return;
+  }
+
+  // 共通設定
+  Chart.defaults.font.family = "'Noto Sans JP', sans-serif";
+  Chart.defaults.font.size = 11;
+
+  // 月次データ
+  const monthlyLabels = <%= raw monthly_labels.to_json %>;
+  const currentSales = <%= raw current_sales_data.to_json %>;
+  const currentCost = <%= raw current_cost_data.to_json %>;
+  const currentOpIncome = <%= raw current_op_income_data.to_json %>;
+  const prevSales = <%= raw prev_sales_data.to_json %>;
+
+  // 月次推移グラフ
+  new Chart(document.getElementById('monthlyTrendChart'), {
+    type: 'bar',
+    data: {
+      labels: monthlyLabels,
+      datasets: [
+        {
+          label: '売上高',
+          data: currentSales,
+          backgroundColor: 'rgba(59, 130, 246, 0.7)',
+          borderColor: 'rgb(59, 130, 246)',
+          borderWidth: 1,
+          order: 2
+        },
+        {
+          label: '売上原価',
+          data: currentCost,
+          backgroundColor: 'rgba(239, 68, 68, 0.7)',
+          borderColor: 'rgb(239, 68, 68)',
+          borderWidth: 1,
+          order: 3
+        },
+        {
+          label: '営業利益',
+          type: 'line',
+          data: currentOpIncome,
+          borderColor: 'rgb(34, 197, 94)',
+          backgroundColor: 'rgba(34, 197, 94, 0.1)',
+          borderWidth: 2,
+          fill: true,
+          tension: 0.3,
+          order: 1
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            callback: function(value) { return value.toLocaleString() + '万'; }
+          }
+        }
+      },
+      plugins: {
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return context.dataset.label + ': ' + context.parsed.y.toLocaleString() + '万円';
+            }
+          }
+        }
+      }
+    }
+  });
+
+  // 前年同月比較グラフ
+  new Chart(document.getElementById('yearComparisonChart'), {
+    type: 'bar',
+    data: {
+      labels: monthlyLabels,
+      datasets: [
+        {
+          label: '当期',
+          data: currentSales,
+          backgroundColor: 'rgba(59, 130, 246, 0.8)',
+          borderColor: 'rgb(59, 130, 246)',
+          borderWidth: 1
+        },
+        {
+          label: '前期',
+          data: prevSales,
+          backgroundColor: 'rgba(156, 163, 175, 0.6)',
+          borderColor: 'rgb(156, 163, 175)',
+          borderWidth: 1
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            callback: function(value) { return value.toLocaleString() + '万'; }
+          }
+        }
+      },
+      plugins: {
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return context.dataset.label + ': ' + context.parsed.y.toLocaleString() + '万円';
+            }
+          }
+        }
+      }
+    }
+  });
+
+  // 売上原価構成比（円グラフ）
+  const costData = <%= raw cost_data.to_json %>;
+
+  if (costData.length > 0) {
+    new Chart(document.getElementById('costBreakdownChart'), {
+      type: 'doughnut',
+      data: {
+        labels: costData.map(d => d.name),
+        datasets: [{
+          data: costData.map(d => d.value),
+          backgroundColor: [
+            '#3b82f6', '#ef4444', '#f59e0b', '#10b981',
+            '#8b5cf6', '#ec4899', '#6366f1', '#14b8a6'
+          ]
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'right',
+            labels: { boxWidth: 12, padding: 8, font: { size: 10 } }
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                return context.label + ': ' + context.parsed.toLocaleString() + '万円';
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // 販管費構成比（円グラフ）
+  const sgaData = <%= raw sga_data.to_json %>;
+
+  if (sgaData.length > 0) {
+    new Chart(document.getElementById('sgaBreakdownChart'), {
+      type: 'doughnut',
+      data: {
+        labels: sgaData.map(d => d.name),
+        datasets: [{
+          data: sgaData.map(d => d.value),
+          backgroundColor: [
+            '#6366f1', '#ec4899', '#f59e0b', '#10b981',
+            '#3b82f6', '#ef4444', '#8b5cf6', '#14b8a6'
+          ]
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'right',
+            labels: { boxWidth: 12, padding: 8, font: { size: 10 } }
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                return context.label + ': ' + context.parsed.toLocaleString() + '万円';
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // 利益構造（ウォーターフォール風の積み上げ棒グラフ）
+  const profitLabels = ['売上高', '売上原価', '販管費', '営業外', '経常利益'];
+  const chartSales = <%= chart_sales %>;
+  const chartCost = <%= chart_cost %>;
+  const chartSga = <%= chart_sga %>;
+  const chartNonOp = <%= chart_non_op %>;
+  const chartOrdIncome = <%= chart_ord_income %>;
+
+  new Chart(document.getElementById('profitStructureChart'), {
+    type: 'bar',
+    data: {
+      labels: profitLabels,
+      datasets: [{
+        data: [chartSales, -chartCost, -chartSga, chartNonOp, chartOrdIncome],
+        backgroundColor: [
+          'rgba(59, 130, 246, 0.8)',
+          'rgba(239, 68, 68, 0.8)',
+          'rgba(249, 115, 22, 0.8)',
+          chartNonOp >= 0 ? 'rgba(34, 197, 94, 0.8)' : 'rgba(239, 68, 68, 0.8)',
+          chartOrdIncome >= 0 ? 'rgba(34, 197, 94, 0.8)' : 'rgba(239, 68, 68, 0.8)'
+        ],
+        borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      indexAxis: 'y',
+      scales: {
+        x: {
+          ticks: {
+            callback: function(value) { return value.toLocaleString() + '万'; }
+          }
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              const val = context.parsed.x;
+              return (val >= 0 ? '+' : '') + val.toLocaleString() + '万円';
+            }
+          }
+        }
+      }
+    }
+  });
+});
+</script>

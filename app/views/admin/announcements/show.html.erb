@@ -1,0 +1,72 @@
+<% content_for :title, @announcement.title %>
+<% content_for :section_label, "お知らせ管理" %>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h4 class="mb-0"><%= @announcement.title %></h4>
+  <div class="d-flex gap-2">
+    <%= link_to edit_admin_announcement_path(@announcement), class: "btn btn-outline-primary" do %>
+      <i class="bi bi-pencil me-1"></i>編集
+    <% end %>
+    <%= link_to admin_announcements_path, class: "btn btn-outline-secondary" do %>
+      <i class="bi bi-arrow-left me-1"></i>一覧へ
+    <% end %>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-lg-8">
+    <div class="card card-lift shadow-sm">
+      <div class="card-body">
+        <% if @announcement.body.present? %>
+          <%= simple_format(@announcement.body) %>
+        <% else %>
+          <p class="text-muted">本文はありません。</p>
+        <% end %>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card card-lift shadow-sm">
+      <div class="card-header bg-transparent">
+        <h6 class="card-title mb-0">情報</h6>
+      </div>
+      <div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-sm-4">カテゴリ</dt>
+          <dd class="col-sm-8">
+            <span class="badge bg-<%= category_badge_color(@announcement.category) %>">
+              <%= @announcement.category_label %>
+            </span>
+          </dd>
+          <dt class="col-sm-4">状態</dt>
+          <dd class="col-sm-8">
+            <% if @announcement.draft? %>
+              <span class="badge bg-secondary">下書き</span>
+            <% elsif @announcement.expired? %>
+              <span class="badge bg-dark">期限切れ</span>
+            <% else %>
+              <span class="badge bg-success">公開中</span>
+            <% end %>
+            <% if @announcement.pinned? %>
+              <span class="badge bg-danger">固定</span>
+            <% end %>
+          </dd>
+          <dt class="col-sm-4">公開日時</dt>
+          <dd class="col-sm-8"><%= @announcement.published_at&.strftime("%Y/%m/%d %H:%M") || "-" %></dd>
+          <dt class="col-sm-4">公開終了</dt>
+          <dd class="col-sm-8"><%= @announcement.expires_at&.strftime("%Y/%m/%d %H:%M") || "なし" %></dd>
+          <% if @announcement.event? %>
+            <dt class="col-sm-4">イベント日</dt>
+            <dd class="col-sm-8"><%= @announcement.event_period %></dd>
+            <% if @announcement.event_location.present? %>
+              <dt class="col-sm-4">場所</dt>
+              <dd class="col-sm-8"><%= @announcement.event_location %></dd>
+            <% end %>
+          <% end %>
+          <dt class="col-sm-4">投稿者</dt>
+          <dd class="col-sm-8"><%= @announcement.author&.email || "-" %></dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+</div>

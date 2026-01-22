@@ -1,0 +1,981 @@
+<% content_for :title, "勤怠詳細" %>
+<% content_for :section_label, "人事管理" %>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h2 class="h4 mb-1">
+      <%= @monthly&.employee_name || @employee_code %>の勤怠詳細
+    </h2>
+    <p class="text-muted small mb-0">
+      <% if @monthly %>
+        <%= @monthly.department_name %> / 従業員コード: <%= @employee_code %>
+      <% end %>
+    </p>
+  </div>
+  <div class="d-flex gap-2 align-items-center">
+    <!-- 年選択 -->
+    <% if @available_years.any? %>
+      <form action="<%= admin_attendance_path(@employee_code) %>" method="get" class="d-flex gap-2">
+        <select name="year" class="form-select form-select-sm" onchange="this.form.submit()">
+          <% @available_years.each do |y| %>
+            <option value="<%= y %>" <%= 'selected' if y == @year %>><%= y %>年</option>
+          <% end %>
+        </select>
+        <select name="month" class="form-select form-select-sm" onchange="this.form.submit()">
+          <% (1..12).each do |m| %>
+            <option value="<%= m %>" <%= 'selected' if m == @month %>><%= m %>月</option>
+          <% end %>
+        </select>
+      </form>
+    <% end %>
+    <%= link_to "一覧に戻る", admin_attendances_path(year: @year, month: @month), class: "btn btn-outline-secondary btn-sm" %>
+  </div>
+</div>
+
+<% if @monthly %>
+  <!-- 当月サマリー -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-2">
+      <div class="card card-lift">
+        <div class="card-body text-center py-3">
+          <div class="text-muted small">出勤日数</div>
+          <div class="h5 mb-0"><%= @monthly.working_days %><small class="text-muted">日</small></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <div class="card card-lift">
+        <div class="card-body text-center py-3">
+          <div class="text-muted small">有休取得</div>
+          <div class="h5 mb-0 text-success"><%= @monthly.paid_leave_days %><small class="text-muted">日</small></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <div class="card card-lift">
+        <div class="card-body text-center py-3">
+          <div class="text-muted small">拘束時間</div>
+          <div class="h5 mb-0"><%= @monthly.total_hours %><small class="text-muted">h</small></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <div class="card card-lift <%= 'border-danger' if @monthly.overtime_critical? %><%= 'border-warning' if @monthly.overtime_warning? && !@monthly.overtime_critical? %>">
+        <div class="card-body text-center py-3">
+          <div class="text-muted small">残業時間</div>
+          <div class="h5 mb-0 <%= 'text-danger' if @monthly.overtime_critical? %><%= 'text-warning' if @monthly.overtime_warning? && !@monthly.overtime_critical? %>">
+            <%= @monthly.total_overtime.round(1) %><small class="text-muted">h</small>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <div class="card card-lift">
+        <div class="card-body text-center py-3">
+          <div class="text-muted small">深夜残業</div>
+          <div class="h5 mb-0" style="color: #6f42c1;"><%= @monthly.late_night_hours %><small class="text-muted">h</small></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <div class="card card-lift">
+        <div class="card-body text-center py-3">
+          <div class="text-muted small">代休取得</div>
+          <div class="h5 mb-0"><%= @monthly.substitute_days %><small class="text-muted">日</small></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 年度累計 -->
+  <div class="alert alert-light mb-4">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+      <div class="fw-bold"><%= @year %>年 累計</div>
+      <div class="d-flex gap-4 flex-wrap">
+        <div>
+          <span class="text-muted small">残業:</span>
+          <span class="fw-bold <%= 'text-danger' if @yearly_summary[:total_overtime] > 360 %>">
+            <%= @yearly_summary[:total_overtime].round(1) %>h
+          </span>
+          <% if @yearly_summary[:total_overtime] > 360 %>
+            <span class="badge bg-danger">年360h超</span>
+          <% end %>
+        </div>
+        <div>
+          <span class="text-muted small">有休取得:</span>
+          <span class="fw-bold text-success"><%= @yearly_summary[:total_paid_leave] %>日</span>
+        </div>
+        <div>
+          <span class="text-muted small">出勤日数:</span>
+          <span class="fw-bold"><%= @yearly_summary[:total_working_days] %>日</span>
+        </div>
+        <div>
+          <span class="text-muted small">深夜残業:</span>
+          <span class="fw-bold" style="color: #6f42c1;"><%= @yearly_summary[:total_late_night].round(1) %>h</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 給与情報 -->
+  <% if @salary_monthly %>
+    <div class="row g-3 mb-4">
+      <div class="col-md-3">
+        <div class="card card-lift border-primary">
+          <div class="card-body text-center py-3">
+            <div class="text-muted small">支給総額</div>
+            <div class="h5 mb-0 text-primary"><%= number_with_delimiter(@salary_monthly.gross_total) %><small class="text-muted">円</small></div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card card-lift">
+          <div class="card-body text-center py-3">
+            <div class="text-muted small">控除合計</div>
+            <div class="h5 mb-0 text-danger"><%= number_with_delimiter(@salary_monthly.deduction_total) %><small class="text-muted">円</small></div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card card-lift border-success">
+          <div class="card-body text-center py-3">
+            <div class="text-muted small">差引支給額</div>
+            <div class="h5 mb-0 text-success"><%= number_with_delimiter(@salary_monthly.net_total) %><small class="text-muted">円</small></div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card card-lift">
+          <div class="card-body text-center py-3">
+            <div class="text-muted small">控除率</div>
+            <div class="h5 mb-0"><%= @salary_monthly.total_deduction_rate %><small class="text-muted">%</small></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 年間給与累計 -->
+    <div class="alert alert-success mb-4">
+      <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div class="fw-bold"><i class="bi bi-currency-yen me-1"></i><%= @year %>年 給与累計</div>
+        <div class="d-flex gap-4 flex-wrap">
+          <div>
+            <span class="text-muted small">支給総額:</span>
+            <span class="fw-bold"><%= number_with_delimiter(@yearly_salary_summary[:total_gross]) %>円</span>
+          </div>
+          <div>
+            <span class="text-muted small">手取合計:</span>
+            <span class="fw-bold text-success"><%= number_with_delimiter(@yearly_salary_summary[:total_net]) %>円</span>
+          </div>
+          <div>
+            <span class="text-muted small">控除合計:</span>
+            <span class="fw-bold text-danger"><%= number_with_delimiter(@yearly_salary_summary[:total_deduction]) %>円</span>
+          </div>
+          <div>
+            <span class="text-muted small">月平均手取:</span>
+            <span class="fw-bold"><%= number_with_delimiter(@yearly_salary_summary[:avg_net]) %>円</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <!-- 賞与情報 -->
+  <% if @bonuses.any? %>
+    <div class="card card-lift mb-4 border-warning">
+      <div class="card-header bg-warning bg-opacity-10">
+        <h6 class="card-title mb-0"><i class="bi bi-gift text-warning me-1"></i><%= @year %>年 賞与</h6>
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+          <% @bonuses.each do |bonus| %>
+            <div class="col-md-6">
+              <div class="d-flex justify-content-between align-items-center p-3 bg-light rounded">
+                <div>
+                  <span class="badge bg-warning text-dark me-2"><%= bonus.payment_type_summer_bonus? ? '夏季' : '冬季' %></span>
+                  <span class="text-muted small">支給額</span>
+                </div>
+                <div>
+                  <span class="h5 mb-0 text-success"><%= number_with_delimiter(bonus.net_total) %></span>
+                  <span class="text-muted">円</span>
+                  <span class="text-muted small ms-2">(総額: <%= number_with_delimiter(bonus.gross_total) %>円)</span>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+<% end %>
+
+<% if @yearly_data.any? %>
+  <!-- 月次推移グラフ -->
+  <div class="row g-4 mb-4">
+    <!-- 残業時間推移 -->
+    <div class="col-lg-6">
+      <div class="card card-lift">
+        <div class="card-header bg-transparent">
+          <h6 class="card-title mb-0"><i class="bi bi-clock text-danger me-1"></i>残業時間推移</h6>
+        </div>
+        <div class="card-body">
+          <div style="height: 220px;">
+            <canvas id="overtimeChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 有休・代休推移 -->
+    <div class="col-lg-6">
+      <div class="card card-lift">
+        <div class="card-header bg-transparent">
+          <h6 class="card-title mb-0"><i class="bi bi-calendar-heart text-success me-1"></i>有休・代休取得推移</h6>
+        </div>
+        <div class="card-body">
+          <div style="height: 220px;">
+            <canvas id="leaveChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 出勤日数・拘束時間推移 -->
+    <div class="col-lg-6">
+      <div class="card card-lift">
+        <div class="card-header bg-transparent">
+          <h6 class="card-title mb-0"><i class="bi bi-calendar-check text-primary me-1"></i>出勤日数推移</h6>
+        </div>
+        <div class="card-body">
+          <div style="height: 220px;">
+            <canvas id="workingDaysChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 深夜残業推移 -->
+    <div class="col-lg-6">
+      <div class="card card-lift">
+        <div class="card-header bg-transparent">
+          <h6 class="card-title mb-0"><i class="bi bi-moon-stars me-1" style="color: #6f42c1;"></i>深夜残業推移</h6>
+        </div>
+        <div class="card-body">
+          <div style="height: 220px;">
+            <canvas id="lateNightChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 給与推移グラフ -->
+  <% if @yearly_salary_data.any? %>
+    <div class="row g-4 mb-4">
+      <div class="col-lg-6">
+        <div class="card card-lift">
+          <div class="card-header bg-transparent">
+            <h6 class="card-title mb-0"><i class="bi bi-currency-yen text-success me-1"></i>手取額推移</h6>
+          </div>
+          <div class="card-body">
+            <div style="height: 220px;">
+              <canvas id="netSalaryChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <div class="card card-lift">
+          <div class="card-header bg-transparent">
+            <h6 class="card-title mb-0"><i class="bi bi-pie-chart text-primary me-1"></i>支給・控除内訳</h6>
+          </div>
+          <div class="card-body">
+            <div style="height: 220px;">
+              <canvas id="salaryBreakdownChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 給与項目推移表（PLスタイル） -->
+    <div class="card card-lift mb-4">
+      <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+        <h6 class="card-title mb-0"><i class="bi bi-table text-primary me-1"></i><%= @year %>年 給与項目推移</h6>
+        <span class="badge bg-light text-muted">単位: 円</span>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-sm table-bordered mb-0" style="font-size: 0.85rem;">
+            <thead class="table-light">
+              <tr>
+                <th class="sticky-col bg-light" style="min-width: 130px;">項目</th>
+                <% (1..12).each do |m| %>
+                  <th class="text-end <%= 'table-primary' if m == @month %>" style="min-width: 85px;"><%= m %>月</th>
+                <% end %>
+                <th class="text-end table-dark" style="min-width: 100px;">合計</th>
+              </tr>
+            </thead>
+            <tbody>
+              <%
+                # 月ごとのデータをマップ化
+                salary_by_month = @yearly_salary_data.index_by(&:month)
+
+                # 支給項目の定義
+                payment_items = [
+                  { key: :basic_salary, label: '基本給', class: '' },
+                  { key: :city_allowance, label: '大都市加算', class: '' },
+                  { key: :basic_salary_2, label: '基本給2', class: '' },
+                  { key: :executive_salary, label: '役員報酬', class: '' },
+                  { key: :paid_leave_pay, label: '有給休暇手当', class: '' },
+                  { key: :taxable_total, label: '課税支給合計', class: 'table-light fw-bold' },
+                  { key: :commuting_allowance, label: '非課税通勤費', class: 'text-muted' },
+                  { key: :gross_total, label: '支給合計', class: 'table-primary fw-bold' },
+                ]
+
+                # 控除項目の定義
+                deduction_items = [
+                  { key: :health_insurance, label: '健康保険料', class: '' },
+                  { key: :nursing_insurance, label: '介護保険料', class: '' },
+                  { key: :pension_insurance, label: '厚生年金保険', class: '' },
+                  { key: :employment_insurance, label: '雇用保険料', class: '' },
+                  { key: :social_insurance_total, label: '社会保険料計', class: 'table-light fw-bold' },
+                  { key: :income_tax, label: '所得税', class: '' },
+                  { key: :resident_tax, label: '住民税', class: '' },
+                  { key: :deduction_total, label: '控除合計', class: 'table-danger fw-bold' },
+                ]
+
+                # 結果項目
+                result_items = [
+                  { key: :net_total, label: '差引支給額', class: 'table-success fw-bold' },
+                ]
+
+                # 値があるかチェック（年間で1円以上のデータがあるか）
+                has_value = ->(key) {
+                  @yearly_salary_data.any? { |s| s.send(key).to_i > 0 }
+                }
+              %>
+
+              <!-- 支給項目 -->
+              <tr class="table-secondary">
+                <td colspan="14" class="fw-bold small text-primary"><i class="bi bi-plus-circle me-1"></i>支給項目</td>
+              </tr>
+              <% payment_items.each do |item| %>
+                <% next unless has_value.call(item[:key]) %>
+                <tr class="<%= item[:class] %>">
+                  <td class="sticky-col <%= item[:class] %>"><%= item[:label] %></td>
+                  <% yearly_total = 0 %>
+                  <% (1..12).each do |m| %>
+                    <% salary = salary_by_month[m] %>
+                    <% value = salary&.send(item[:key]).to_i %>
+                    <% yearly_total += value %>
+                    <td class="text-end <%= 'table-primary' if m == @month %> <%= item[:class] %>">
+                      <%= value > 0 ? number_with_delimiter(value) : '-' %>
+                    </td>
+                  <% end %>
+                  <td class="text-end table-dark fw-bold"><%= number_with_delimiter(yearly_total) %></td>
+                </tr>
+              <% end %>
+
+              <!-- 控除項目 -->
+              <tr class="table-secondary">
+                <td colspan="14" class="fw-bold small text-danger"><i class="bi bi-dash-circle me-1"></i>控除項目</td>
+              </tr>
+              <% deduction_items.each do |item| %>
+                <% next unless has_value.call(item[:key]) %>
+                <tr class="<%= item[:class] %>">
+                  <td class="sticky-col <%= item[:class] %>"><%= item[:label] %></td>
+                  <% yearly_total = 0 %>
+                  <% (1..12).each do |m| %>
+                    <% salary = salary_by_month[m] %>
+                    <% value = salary&.send(item[:key]).to_i %>
+                    <% yearly_total += value %>
+                    <td class="text-end <%= 'table-primary' if m == @month %> <%= item[:class] %>">
+                      <%= value > 0 ? number_with_delimiter(value) : '-' %>
+                    </td>
+                  <% end %>
+                  <td class="text-end table-dark fw-bold"><%= number_with_delimiter(yearly_total) %></td>
+                </tr>
+              <% end %>
+
+              <!-- 結果 -->
+              <tr class="table-secondary">
+                <td colspan="14" class="fw-bold small text-success"><i class="bi bi-wallet2 me-1"></i>手取り</td>
+              </tr>
+              <% result_items.each do |item| %>
+                <tr class="<%= item[:class] %>">
+                  <td class="sticky-col <%= item[:class] %>"><%= item[:label] %></td>
+                  <% yearly_total = 0 %>
+                  <% (1..12).each do |m| %>
+                    <% salary = salary_by_month[m] %>
+                    <% value = salary&.send(item[:key]).to_i %>
+                    <% yearly_total += value %>
+                    <td class="text-end <%= 'table-primary' if m == @month %> <%= item[:class] %>">
+                      <%= value > 0 ? number_with_delimiter(value) : '-' %>
+                    </td>
+                  <% end %>
+                  <td class="text-end table-dark fw-bold"><%= number_with_delimiter(yearly_total) %></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <!-- 月次サマリーテーブル -->
+  <div class="card card-lift mb-4">
+    <div class="card-header bg-transparent">
+      <h6 class="card-title mb-0"><i class="bi bi-table me-1"></i><%= @year %>年 月次サマリー</h6>
+    </div>
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle">
+          <thead class="table-light">
+            <tr>
+              <th>月</th>
+              <th class="text-end">出勤</th>
+              <th class="text-end">有休</th>
+              <th class="text-end">残業</th>
+              <th class="text-end">深夜</th>
+              <% if @yearly_salary_data.any? %>
+                <th class="text-end">支給額</th>
+                <th class="text-end">控除</th>
+                <th class="text-end">手取額</th>
+              <% end %>
+            </tr>
+          </thead>
+          <tbody>
+            <% @yearly_data.each do |m| %>
+              <% salary = @yearly_salary_data.find { |s| s.month == m.month } %>
+              <tr class="<%= 'table-primary' if m.month == @month %><%= 'table-danger' if m.overtime_critical? && m.month != @month %><%= 'table-warning' if m.overtime_warning? && !m.overtime_critical? && m.month != @month %>">
+                <td>
+                  <%= link_to "#{m.month}月", admin_attendance_path(@employee_code, year: @year, month: m.month), class: "text-decoration-none" %>
+                  <% if m.month == @month %><span class="badge bg-primary ms-1">表示中</span><% end %>
+                </td>
+                <td class="text-end"><%= m.working_days %></td>
+                <td class="text-end text-success"><%= m.paid_leave_days %></td>
+                <td class="text-end">
+                  <% if m.overtime_critical? %>
+                    <span class="badge bg-danger"><%= m.total_overtime.round(1) %></span>
+                  <% elsif m.overtime_warning? %>
+                    <span class="badge bg-warning text-dark"><%= m.total_overtime.round(1) %></span>
+                  <% else %>
+                    <%= m.total_overtime.round(1) %>
+                  <% end %>
+                </td>
+                <td class="text-end" style="color: #6f42c1;"><%= m.late_night_hours %></td>
+                <% if @yearly_salary_data.any? %>
+                  <td class="text-end"><%= salary ? number_with_delimiter(salary.gross_total) : '-' %></td>
+                  <td class="text-end text-danger"><%= salary ? number_with_delimiter(salary.deduction_total) : '-' %></td>
+                  <td class="text-end text-success fw-bold"><%= salary ? number_with_delimiter(salary.net_total) : '-' %></td>
+                <% end %>
+              </tr>
+            <% end %>
+          </tbody>
+          <tfoot class="table-light fw-bold">
+            <tr>
+              <td>合計</td>
+              <td class="text-end"><%= @yearly_summary[:total_working_days] %></td>
+              <td class="text-end text-success"><%= @yearly_summary[:total_paid_leave] %></td>
+              <td class="text-end"><%= @yearly_summary[:total_overtime].round(1) %></td>
+              <td class="text-end" style="color: #6f42c1;"><%= @yearly_summary[:total_late_night].round(1) %></td>
+              <% if @yearly_salary_data.any? %>
+                <td class="text-end"><%= number_with_delimiter(@yearly_salary_summary[:total_gross]) %></td>
+                <td class="text-end text-danger"><%= number_with_delimiter(@yearly_salary_summary[:total_deduction]) %></td>
+                <td class="text-end text-success"><%= number_with_delimiter(@yearly_salary_summary[:total_net]) %></td>
+              <% end %>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <%
+    months = @yearly_data.map { |d| "#{d.month}月" }
+    overtime_data = @yearly_data.map(&:total_overtime)
+    paid_leave_data = @yearly_data.map { |d| d.paid_leave_days || 0 }
+    substitute_data = @yearly_data.map { |d| d.substitute_days || 0 }
+    working_days_data = @yearly_data.map { |d| d.working_days || 0 }
+    total_hours_data = @yearly_data.map { |d| d.total_hours || 0 }
+    late_night_data = @yearly_data.map { |d| d.late_night_hours || 0 }
+
+    # 給与データ（月次勤怠データと連動）
+    salary_months = @yearly_salary_data.map { |s| "#{s.month}月" }
+    net_salary_data = @yearly_salary_data.map { |s| s.net_total || 0 }
+    gross_salary_data = @yearly_salary_data.map { |s| s.gross_total || 0 }
+    deduction_data = @yearly_salary_data.map { |s| s.deduction_total || 0 }
+  %>
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const months = <%= raw months.to_json %>;
+
+      // 残業時間グラフ
+      new Chart(document.getElementById('overtimeChart'), {
+        type: 'bar',
+        data: {
+          labels: months,
+          datasets: [
+            {
+              label: '残業時間',
+              data: <%= raw overtime_data.to_json %>,
+              backgroundColor: <%= raw overtime_data.map { |v| v.to_f > 60 ? 'rgba(220, 53, 69, 0.8)' : v.to_f > 45 ? 'rgba(255, 193, 7, 0.8)' : 'rgba(13, 110, 253, 0.8)' }.to_json %>,
+              borderWidth: 0
+            },
+            {
+              label: '45hライン',
+              data: Array(months.length).fill(45),
+              type: 'line',
+              borderColor: 'rgba(255, 193, 7, 0.6)',
+              borderWidth: 2,
+              borderDash: [5, 5],
+              fill: false,
+              pointRadius: 0
+            },
+            {
+              label: '60hライン',
+              data: Array(months.length).fill(60),
+              type: 'line',
+              borderColor: 'rgba(220, 53, 69, 0.6)',
+              borderWidth: 2,
+              borderDash: [5, 5],
+              fill: false,
+              pointRadius: 0
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: { beginAtZero: true, ticks: { callback: v => v + 'h' } }
+          },
+          plugins: { legend: { display: false } }
+        }
+      });
+
+      // 有休・代休グラフ
+      new Chart(document.getElementById('leaveChart'), {
+        type: 'bar',
+        data: {
+          labels: months,
+          datasets: [
+            {
+              label: '有休',
+              data: <%= raw paid_leave_data.to_json %>,
+              backgroundColor: 'rgba(25, 135, 84, 0.8)',
+              borderWidth: 0
+            },
+            {
+              label: '代休',
+              data: <%= raw substitute_data.to_json %>,
+              backgroundColor: 'rgba(13, 202, 240, 0.8)',
+              borderWidth: 0
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { stacked: true },
+            y: { stacked: true, beginAtZero: true, ticks: { callback: v => v + '日' } }
+          },
+          plugins: { legend: { position: 'bottom' } }
+        }
+      });
+
+      // 出勤日数グラフ
+      new Chart(document.getElementById('workingDaysChart'), {
+        type: 'line',
+        data: {
+          labels: months,
+          datasets: [
+            {
+              label: '出勤日数',
+              data: <%= raw working_days_data.to_json %>,
+              borderColor: 'rgba(13, 110, 253, 1)',
+              backgroundColor: 'rgba(13, 110, 253, 0.1)',
+              fill: true,
+              tension: 0.3
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: { beginAtZero: true, ticks: { callback: v => v + '日' } }
+          },
+          plugins: { legend: { display: false } }
+        }
+      });
+
+      // 深夜残業グラフ
+      new Chart(document.getElementById('lateNightChart'), {
+        type: 'bar',
+        data: {
+          labels: months,
+          datasets: [
+            {
+              label: '深夜残業',
+              data: <%= raw late_night_data.to_json %>,
+              backgroundColor: 'rgba(111, 66, 193, 0.8)',
+              borderWidth: 0
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: { beginAtZero: true, ticks: { callback: v => v + 'h' } }
+          },
+          plugins: { legend: { display: false } }
+        }
+      });
+
+      <% if @yearly_salary_data.any? %>
+      // 手取額推移グラフ
+      const salaryMonths = <%= raw salary_months.to_json %>;
+      new Chart(document.getElementById('netSalaryChart'), {
+        type: 'line',
+        data: {
+          labels: salaryMonths,
+          datasets: [
+            {
+              label: '手取額',
+              data: <%= raw net_salary_data.to_json %>,
+              borderColor: 'rgba(25, 135, 84, 1)',
+              backgroundColor: 'rgba(25, 135, 84, 0.1)',
+              fill: true,
+              tension: 0.3
+            },
+            {
+              label: '支給総額',
+              data: <%= raw gross_salary_data.to_json %>,
+              borderColor: 'rgba(13, 110, 253, 0.6)',
+              backgroundColor: 'transparent',
+              borderDash: [5, 5],
+              fill: false,
+              tension: 0.3
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            y: {
+              beginAtZero: false,
+              ticks: { callback: v => (v / 10000).toFixed(0) + '万' }
+            }
+          },
+          plugins: { legend: { position: 'bottom' } }
+        }
+      });
+
+      // 支給・控除内訳グラフ（積み上げ棒グラフ）
+      new Chart(document.getElementById('salaryBreakdownChart'), {
+        type: 'bar',
+        data: {
+          labels: salaryMonths,
+          datasets: [
+            {
+              label: '手取額',
+              data: <%= raw net_salary_data.to_json %>,
+              backgroundColor: 'rgba(25, 135, 84, 0.8)',
+              borderWidth: 0
+            },
+            {
+              label: '控除額',
+              data: <%= raw deduction_data.to_json %>,
+              backgroundColor: 'rgba(220, 53, 69, 0.6)',
+              borderWidth: 0
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { stacked: true },
+            y: {
+              stacked: true,
+              ticks: { callback: v => (v / 10000).toFixed(0) + '万' }
+            }
+          },
+          plugins: { legend: { position: 'bottom' } }
+        }
+      });
+      <% end %>
+    });
+  </script>
+<% end %>
+
+<% if @monthly %>
+  <!-- 当月内訳 -->
+  <div class="row g-4 mb-4">
+    <div class="col-lg-6">
+      <div class="card card-lift">
+        <div class="card-header bg-transparent">
+          <h6 class="card-title mb-0">残業時間内訳（<%= @month %>月）</h6>
+        </div>
+        <div class="card-body">
+          <table class="table table-sm">
+            <tbody>
+              <tr>
+                <td>平日残業</td>
+                <td class="text-end"><%= @monthly.overtime_hours %> h</td>
+              </tr>
+              <tr>
+                <td>法定休日勤務</td>
+                <td class="text-end"><%= @monthly.holiday_hours %> h</td>
+              </tr>
+              <tr>
+                <td>法定外休日勤務</td>
+                <td class="text-end"><%= @monthly.extra_holiday_hours %> h</td>
+              </tr>
+              <tr>
+                <td>深夜残業</td>
+                <td class="text-end"><%= @monthly.late_night_hours %> h</td>
+              </tr>
+              <tr class="table-light fw-bold">
+                <td>合計</td>
+                <td class="text-end"><%= @monthly.total_overtime.round(1) %> h</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-6">
+      <div class="card card-lift">
+        <div class="card-header bg-transparent">
+          <h6 class="card-title mb-0">勤怠内訳（<%= @month %>月）</h6>
+        </div>
+        <div class="card-body">
+          <table class="table table-sm">
+            <tbody>
+              <tr>
+                <td>平日出勤</td>
+                <td class="text-end"><%= @monthly.working_days %> 日</td>
+              </tr>
+              <tr>
+                <td>法定休日出勤</td>
+                <td class="text-end"><%= @monthly.holiday_working_days %> 日</td>
+              </tr>
+              <tr>
+                <td>法定外休日出勤</td>
+                <td class="text-end"><%= @monthly.extra_holiday_days %> 日</td>
+              </tr>
+              <tr class="text-success">
+                <td>有給休暇</td>
+                <td class="text-end"><%= @monthly.paid_leave_days %> 日</td>
+              </tr>
+              <tr>
+                <td>代休取得</td>
+                <td class="text-end"><%= @monthly.substitute_days %> 日</td>
+              </tr>
+              <tr>
+                <td>欠勤</td>
+                <td class="text-end"><%= @monthly.absent_days %> 日</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 給与内訳 -->
+  <% if @salary_monthly %>
+    <div class="row g-4 mb-4">
+      <div class="col-lg-6">
+        <div class="card card-lift border-primary">
+          <div class="card-header bg-primary bg-opacity-10">
+            <h6 class="card-title mb-0"><i class="bi bi-cash-stack text-primary me-1"></i>支給内訳（<%= @month %>月）</h6>
+          </div>
+          <div class="card-body">
+            <table class="table table-sm">
+              <tbody>
+                <% if @salary_monthly.basic_salary.to_i > 0 %>
+                  <tr>
+                    <td>基本給</td>
+                    <td class="text-end"><%= number_with_delimiter(@salary_monthly.basic_salary) %> 円</td>
+                  </tr>
+                <% end %>
+                <% if @salary_monthly.city_allowance.to_i > 0 %>
+                  <tr>
+                    <td>大都市加算</td>
+                    <td class="text-end"><%= number_with_delimiter(@salary_monthly.city_allowance) %> 円</td>
+                  </tr>
+                <% end %>
+                <% if @salary_monthly.basic_salary_2.to_i > 0 %>
+                  <tr>
+                    <td>基本給2</td>
+                    <td class="text-end"><%= number_with_delimiter(@salary_monthly.basic_salary_2) %> 円</td>
+                  </tr>
+                <% end %>
+                <% if @salary_monthly.executive_salary.to_i > 0 %>
+                  <tr>
+                    <td>役員報酬</td>
+                    <td class="text-end"><%= number_with_delimiter(@salary_monthly.executive_salary) %> 円</td>
+                  </tr>
+                <% end %>
+                <% if @salary_monthly.paid_leave_pay.to_i > 0 %>
+                  <tr>
+                    <td>有給休暇手当</td>
+                    <td class="text-end"><%= number_with_delimiter(@salary_monthly.paid_leave_pay) %> 円</td>
+                  </tr>
+                <% end %>
+                <tr class="table-light">
+                  <td>課税支給合計</td>
+                  <td class="text-end fw-bold"><%= number_with_delimiter(@salary_monthly.taxable_total) %> 円</td>
+                </tr>
+                <% if @salary_monthly.commuting_allowance.to_i > 0 %>
+                  <tr class="text-muted">
+                    <td>非課税通勤費</td>
+                    <td class="text-end"><%= number_with_delimiter(@salary_monthly.commuting_allowance) %> 円</td>
+                  </tr>
+                <% end %>
+                <tr class="table-primary fw-bold">
+                  <td>支給合計</td>
+                  <td class="text-end"><%= number_with_delimiter(@salary_monthly.gross_total) %> 円</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-lg-6">
+        <div class="card card-lift border-danger">
+          <div class="card-header bg-danger bg-opacity-10">
+            <h6 class="card-title mb-0"><i class="bi bi-dash-circle text-danger me-1"></i>控除内訳（<%= @month %>月）</h6>
+          </div>
+          <div class="card-body">
+            <table class="table table-sm">
+              <tbody>
+                <% if @salary_monthly.health_insurance.to_i > 0 %>
+                  <tr>
+                    <td>健康保険料</td>
+                    <td class="text-end"><%= number_with_delimiter(@salary_monthly.health_insurance) %> 円</td>
+                  </tr>
+                <% end %>
+                <% if @salary_monthly.nursing_insurance.to_i > 0 %>
+                  <tr>
+                    <td>介護保険料</td>
+                    <td class="text-end"><%= number_with_delimiter(@salary_monthly.nursing_insurance) %> 円</td>
+                  </tr>
+                <% end %>
+                <% if @salary_monthly.pension_insurance.to_i > 0 %>
+                  <tr>
+                    <td>厚生年金保険</td>
+                    <td class="text-end"><%= number_with_delimiter(@salary_monthly.pension_insurance) %> 円</td>
+                  </tr>
+                <% end %>
+                <% if @salary_monthly.employment_insurance.to_i > 0 %>
+                  <tr>
+                    <td>雇用保険料</td>
+                    <td class="text-end"><%= number_with_delimiter(@salary_monthly.employment_insurance) %> 円</td>
+                  </tr>
+                <% end %>
+                <tr class="table-light">
+                  <td>社会保険料計</td>
+                  <td class="text-end fw-bold"><%= number_with_delimiter(@salary_monthly.social_insurance_total) %> 円</td>
+                </tr>
+                <% if @salary_monthly.income_tax.to_i > 0 %>
+                  <tr>
+                    <td>所得税</td>
+                    <td class="text-end"><%= number_with_delimiter(@salary_monthly.income_tax) %> 円</td>
+                  </tr>
+                <% end %>
+                <% if @salary_monthly.resident_tax.to_i > 0 %>
+                  <tr>
+                    <td>住民税</td>
+                    <td class="text-end"><%= number_with_delimiter(@salary_monthly.resident_tax) %> 円</td>
+                  </tr>
+                <% end %>
+                <tr class="table-danger fw-bold">
+                  <td>控除合計</td>
+                  <td class="text-end"><%= number_with_delimiter(@salary_monthly.deduction_total) %> 円</td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="mt-3 p-3 bg-success bg-opacity-10 rounded">
+              <div class="d-flex justify-content-between align-items-center">
+                <span class="fw-bold">差引支給額（手取り）</span>
+                <span class="h4 mb-0 text-success"><%= number_with_delimiter(@salary_monthly.net_total) %> 円</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+<% end %>
+
+<% if @daily_records.any? %>
+  <!-- 日次勤怠 -->
+  <div class="card card-lift">
+    <div class="card-header bg-transparent">
+      <h6 class="card-title mb-0">日次勤怠記録（<%= @month %>月）</h6>
+    </div>
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-sm table-hover">
+          <thead class="table-light">
+            <tr>
+              <th>日付</th>
+              <th>曜日</th>
+              <th>勤務種別</th>
+              <th>出勤</th>
+              <th>退勤</th>
+              <th>休憩</th>
+              <th>備考</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @daily_records.each do |rec| %>
+              <%
+                row_class = case rec.day_type
+                            when '法定休日' then 'table-danger'
+                            when '法定外休日' then 'table-secondary'
+                            else ''
+                            end
+              %>
+              <tr class="<%= row_class %>">
+                <td><%= rec.work_date.strftime('%m/%d') %></td>
+                <td><%= %w[日 月 火 水 木 金 土][rec.work_date.wday] %></td>
+                <td><%= rec.day_type %></td>
+                <td><%= rec.clock_in&.strftime('%H:%M') %></td>
+                <td><%= rec.clock_out&.strftime('%H:%M') %></td>
+                <td><%= rec.break_hours %></td>
+                <td><span class="badge bg-light text-dark"><%= rec.work_location %></span></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+<% elsif @monthly %>
+  <div class="alert alert-info">
+    <i class="bi bi-info-circle me-1"></i>
+    日次勤怠データがありません。日次CSVをインポートすると、ここに詳細が表示されます。
+  </div>
+<% end %>
+
+<% unless @monthly %>
+  <div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle me-1"></i>
+    <%= @year %>年<%= @month %>月のデータがありません。
+    <% if @available_years.any? %>
+      他の期間を選択してください。
+    <% end %>
+  </div>
+<% end %>

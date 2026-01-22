@@ -1,0 +1,115 @@
+<%
+faults = (defined?(maintenance_faults) && maintenance_faults) ? maintenance_faults : []
+rows = maintenance_events.to_a.map { |ev| { type: :event, record: ev } } +
+       faults.to_a.map { |ft| { type: :fault, record: ft } }
+
+rows.sort_by! do |row|
+  rec = row[:record]
+  start_time =
+    case row[:type]
+    when :event then rec.start_at
+    else rec.started_on
+    end
+  start_time || Time.zone.at(0)
+end
+rows.reverse!
+%>
+
+<% if rows.any? %>
+  <div class="table-responsive">
+    <table class="table table-sm align-middle">
+      <thead>
+        <tr>
+          <th>種別</th>
+          <th>開始</th>
+          <th>終了</th>
+          <th>ステータス</th>
+          <th>メモ</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% rows.each do |row| %>
+          <% if row[:type] == :fault %>
+            <% fault = row[:record] %>
+            <tr class="table-warning">
+              <td>故障（休車）</td>
+              <td><%= fault.started_on %></td>
+              <td><%= fault.resolved_on || "（継続中）" %></td>
+              <td><span class="badge text-bg-warning">故障中</span></td>
+              <td class="text-truncate" style="max-width: 220px;"><%= fault.summary.presence || "-" %></td>
+              <td class="text-end text-muted small">休車の履歴</td>
+            </tr>
+            <% next %>
+          <% end %>
+          <% event = row[:record] %>
+          <tr>
+            <td><%= maintenance_category_label(event.category) %></td>
+            <td><%= l(event.start_at, format: :long) if event.start_at.present? %></td>
+            <td><%= l(event.end_at, format: :long) if event.end_at.present? %></td>
+            <td><span class="badge text-bg-light text-dark"><%= event.status %></span></td>
+            <td class="text-truncate" style="max-width: 220px;"><%= event.notes.presence || "-" %></td>
+            <td class="text-end">
+              <div class="btn-group btn-group-sm" role="group">
+                <button type="button"
+                        class="btn btn-outline-secondary"
+                        data-bs-toggle="modal"
+                        data-bs-target="#maintenanceEventEditModal-<%= event.id %>">
+                  編集
+                </button>
+                <button type="button"
+                        class="btn btn-outline-danger"
+                        data-bs-toggle="modal"
+                        data-bs-target="#maintenanceEventDeleteModal-<%= event.id %>">
+                  削除
+                </button>
+              </div>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+<% else %>
+  <p class="text-muted small mb-0">メンテナンスの記録はまだ登録されていません。</p>
+<% end %>
+
+<%# モーダルはテーブル外に配置 %>
+<% maintenance_events.each do |event| %>
+  <div class="modal fade" id="maintenanceEventEditModal-<%= event.id %>" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">メンテナンス記録を編集</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <%= render "vehicles/maintenance_events/form",
+                     vehicle: @vehicle,
+                     maintenance_event: event %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="maintenanceEventDeleteModal-<%= event.id %>" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">削除確認</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p class="mb-0">「<%= maintenance_category_label(event.category) %>」の記録を削除してよろしいですか？</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+          <%= link_to "削除する",
+                      vehicle_maintenance_event_path(@vehicle, event),
+                      class: "btn btn-danger",
+                      data: { turbo_method: :delete } %>
+        </div>
+      </div>
+    </div>
+  </div>
+<% end %>

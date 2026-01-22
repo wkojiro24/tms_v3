@@ -1,0 +1,151 @@
+<% content_for :title, "給与計算編集" %>
+<% content_for :section_label, "人事管理" %>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h2 class="h4 mb-1"><%= @simulation.employee&.full_name || @simulation.employee_code %>の給与計算を編集</h2>
+    <p class="text-muted small mb-0"><%= @simulation.year %>年<%= @simulation.month %>月分</p>
+  </div>
+  <%= link_to "戻る", admin_payroll_simulation_path(@simulation), class: "btn btn-outline-secondary btn-sm" %>
+</div>
+
+<%= form_with model: @simulation, url: admin_payroll_simulation_path(@simulation), method: :patch do |f| %>
+  <div class="row g-4">
+    <!-- 支給項目 -->
+    <div class="col-lg-6">
+      <div class="card card-lift">
+        <div class="card-header bg-primary text-white">
+          <h6 class="card-title mb-0">支給項目</h6>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-6">
+              <%= f.label :calc_basic_salary, "基本給", class: "form-label" %>
+              <div class="input-group">
+                <%= f.number_field :calc_basic_salary, class: "form-control", min: 0 %>
+                <span class="input-group-text">円</span>
+              </div>
+            </div>
+            <div class="col-6">
+              <%= f.label :calc_other_allowances, "その他手当", class: "form-label" %>
+              <div class="input-group">
+                <%= f.number_field :calc_other_allowances, class: "form-control", min: 0 %>
+                <span class="input-group-text">円</span>
+              </div>
+              <small class="text-muted">大都市・職位・職責・家族</small>
+            </div>
+            <div class="col-6">
+              <%= f.label :calc_overtime_pay, "平日残業", class: "form-label" %>
+              <div class="input-group">
+                <%= f.number_field :calc_overtime_pay, class: "form-control", min: 0 %>
+                <span class="input-group-text">円</span>
+              </div>
+            </div>
+            <div class="col-6">
+              <%= f.label :calc_holiday_pay, "休日出勤", class: "form-label" %>
+              <div class="input-group">
+                <%= f.number_field :calc_holiday_pay, class: "form-control", min: 0 %>
+                <span class="input-group-text">円</span>
+              </div>
+            </div>
+            <div class="col-6">
+              <%= f.label :calc_late_night_pay, "深夜残業", class: "form-label" %>
+              <div class="input-group">
+                <%= f.number_field :calc_late_night_pay, class: "form-control", min: 0 %>
+                <span class="input-group-text">円</span>
+              </div>
+            </div>
+            <div class="col-6">
+              <%= f.label :calc_safety_bonus, "無事故加算", class: "form-label" %>
+              <div class="input-group">
+                <%= f.number_field :calc_safety_bonus, class: "form-control", min: 0 %>
+                <span class="input-group-text">円</span>
+              </div>
+            </div>
+            <div class="col-6">
+              <%= f.label :calc_paid_leave_pay, "有給休暇手当", class: "form-label" %>
+              <div class="input-group">
+                <%= f.number_field :calc_paid_leave_pay, class: "form-control", min: 0 %>
+                <span class="input-group-text">円</span>
+              </div>
+            </div>
+            <div class="col-6">
+              <%= f.label :calc_commuting_allowance, "通勤手当", class: "form-label" %>
+              <div class="input-group">
+                <%= f.number_field :calc_commuting_allowance, class: "form-control", min: 0 %>
+                <span class="input-group-text">円</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 控除項目 -->
+    <div class="col-lg-6">
+      <div class="card card-lift">
+        <div class="card-header bg-danger text-white">
+          <h6 class="card-title mb-0">控除項目</h6>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-6">
+              <%= f.label :calc_health_insurance, "健康保険料", class: "form-label" %>
+              <div class="input-group">
+                <%= f.number_field :calc_health_insurance, class: "form-control", min: 0 %>
+                <span class="input-group-text">円</span>
+              </div>
+            </div>
+            <div class="col-6">
+              <%= f.label :calc_nursing_insurance, "介護保険料", class: "form-label" %>
+              <div class="input-group">
+                <%= f.number_field :calc_nursing_insurance, class: "form-control", min: 0 %>
+                <span class="input-group-text">円</span>
+              </div>
+            </div>
+            <div class="col-6">
+              <%= f.label :calc_pension, "厚生年金", class: "form-label" %>
+              <div class="input-group">
+                <%= f.number_field :calc_pension, class: "form-control", min: 0 %>
+                <span class="input-group-text">円</span>
+              </div>
+            </div>
+            <div class="col-6">
+              <%= f.label :calc_employment_insurance, "雇用保険料", class: "form-label" %>
+              <div class="input-group">
+                <%= f.number_field :calc_employment_insurance, class: "form-control", min: 0 %>
+                <span class="input-group-text">円</span>
+              </div>
+            </div>
+            <div class="col-6">
+              <%= f.label :calc_income_tax, "所得税", class: "form-label" %>
+              <div class="input-group">
+                <%= f.number_field :calc_income_tax, class: "form-control", min: 0 %>
+                <span class="input-group-text">円</span>
+              </div>
+            </div>
+            <div class="col-6">
+              <%= f.label :calc_union_fee, "組合費", class: "form-label" %>
+              <div class="input-group">
+                <%= f.number_field :calc_union_fee, class: "form-control", min: 0 %>
+                <span class="input-group-text">円</span>
+              </div>
+            </div>
+            <div class="col-6">
+              <%= f.label :calc_resident_tax, "住民税", class: "form-label" %>
+              <div class="input-group">
+                <%= f.number_field :calc_resident_tax, class: "form-control", min: 0 %>
+                <span class="input-group-text">円</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-4">
+    <%= f.submit "更新", class: "btn btn-primary" %>
+    <small class="text-muted ms-3">※支給合計・控除合計・差引支給額は自動計算されます</small>
+  </div>
+<% end %>

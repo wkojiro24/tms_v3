@@ -1,0 +1,293 @@
+# 車両収支グリッドのExcelエクスポート
+wb = xlsx_package.workbook
+
+# スタイル定義
+styles = wb.styles
+header_style = styles.add_style(
+  bg_color: "F5F7FB",
+  b: true,
+  sz: 10,
+  border: { style: :thin, color: "DDDDDD" },
+  alignment: { horizontal: :center, vertical: :center }
+)
+label_style = styles.add_style(
+  b: true,
+  sz: 10,
+  border: { style: :thin, color: "DDDDDD" },
+  alignment: { horizontal: :left }
+)
+number_style = styles.add_style(
+  sz: 10,
+  border: { style: :thin, color: "DDDDDD" },
+  alignment: { horizontal: :right },
+  format_code: "#,##0"
+)
+negative_style = styles.add_style(
+  sz: 10,
+  border: { style: :thin, color: "DDDDDD" },
+  alignment: { horizontal: :right },
+  format_code: "#,##0",
+  fg_color: "DC3545"
+)
+subtotal_style = styles.add_style(
+  bg_color: "F8F9FB",
+  b: true,
+  sz: 10,
+  border: { style: :thin, color: "DDDDDD" },
+  alignment: { horizontal: :right },
+  format_code: "#,##0"
+)
+text_style = styles.add_style(
+  sz: 10,
+  border: { style: :thin, color: "DDDDDD" },
+  alignment: { horizontal: :left }
+)
+
+# グループ情報があれば表示
+group_info = if @selected_vehicle_group.present?
+  "#{@selected_vehicle_group.name} (#{@selected_vehicle_group.vehicle_codes&.size || 0}台)"
+elsif @selected_vehicle_codes.present?
+  "#{@selected_vehicle_codes.size}台選択"
+else
+  nil
+end
+
+# 期間情報
+period_info = if @start_month.present? && @end_month.present?
+  "#{@start_month.strftime('%Y年%m月')} 〜 #{@end_month.strftime('%Y年%m月')}"
+elsif @selected_month.present?
+  @selected_month.strftime('%Y年%m月')
+else
+  nil
+end
+
+# output_type が "category" の場合はカテゴリ別シートのみ出力
+unless @output_type == "category"
+wb.add_worksheet(name: "車両収支") do |sheet|
+  # タイトル行
+  if group_info || period_info
+    sheet.add_row [[group_info, period_info].compact.join(" / ")], style: styles.add_style(b: true, sz: 12)
+    sheet.add_row []
+  end
+
+  # ヘッダー行
+  header_row = ["区分", "項目名"]
+  @header_window.each do |header|
+    next if header[:key].to_s.start_with?("placeholder-")
+    header_row << header[:title]
+  end
+  header_row += ["合計", "平均"]
+  sheet.add_row header_row, style: header_style
+
+  # データ行
+  current_section = nil
+  @rows.each do |row|
+    section_label = vehicle_financial_section_label(row)
+    display_section = section_label.present? && section_label != current_section ? section_label : nil
+    current_section = section_label if section_label.present?
+
+    summary = vehicle_financial_row_summary(row)
+    is_subtotal = [:subtotal, :grand_total].include?(row[:row_type])
+    is_vehicle_header = row[:row_type] == :vehicle_header
+
+    data_row = [display_section, row[:label]]
+
+    row[:values].each_with_index do |value, idx|
+      header = @header_window[idx]
+      next if header.nil? || header[:key].to_s.start_with?("placeholder-")
+
+      if value.is_a?(Numeric)
+        data_row << value.round(0)
+      else
+        data_row << value
+      end
+    end
+
+    # 合計・平均
+    data_row << (summary[:total].is_a?(Numeric) ? summary[:total].round(0) : summary[:total])
+    data_row << (summary[:average].is_a?(Numeric) ? summary[:average].round(0) : summary[:average])
+
+    # スタイル適用
+    row_styles = [label_style, label_style]
+    (data_row.length - 2).times do
+      row_styles << (is_subtotal ? subtotal_style : (is_vehicle_header ? text_style : number_style))
+    end
+
+    sheet.add_row data_row, style: row_styles
+  end
+
+  # 列幅調整
+  sheet.column_widths 8, 14, *Array.new(@header_window.reject { |h| h[:key].to_s.start_with?("placeholder-") }.length + 2, 12)
+end
+end # unless @output_type == "category"
+
+# カテゴリ別アウトプットシート（グループ表示時）
+if @category_table.present?
+  category_header_style = styles.add_style(
+    bg_color: "E8F5E9",
+    b: true,
+    sz: 10,
+    border: { style: :thin, color: "DDDDDD" },
+    alignment: { horizontal: :center, vertical: :center }
+  )
+  category_label_style = styles.add_style(
+    bg_color: "F1F8E9",
+    b: true,
+    sz: 10,
+    border: { style: :thin, color: "DDDDDD" },
+    alignment: { horizontal: :left }
+  )
+
+  wb.add_worksheet(name: "カテゴリ別") do |sheet|
+    # タイトル行
+    if group_info || period_info
+      sheet.add_row [[group_info, period_info].compact.join(" / ")], style: styles.add_style(b: true, sz: 12)
+      sheet.add_row []
+    end
+
+    # ヘッダー行
+    cat_header_row = ["カテゴリ", "項目名"]
+    @category_headers.each do |header|
+      cat_header_row << header[:title]
+    end
+    cat_header_row += ["合計", "平均"]
+    sheet.add_row cat_header_row, style: category_header_style
+
+    # データ行
+    current_category_id = nil
+    @category_table.rows.each do |row|
+      next if row.type == :section
+
+      display_category = nil
+      if row.category&.id != current_category_id
+        current_category_id = row.category&.id
+        display_category = row.category&.display_label
+      end
+
+      summary = vehicle_financial_row_summary(row)
+      data_row = [display_category, row.label]
+
+      row.values.each do |value|
+        if value.is_a?(Numeric)
+          data_row << value.round(0)
+        else
+          data_row << value
+        end
+      end
+
+      data_row << (summary[:total].is_a?(Numeric) ? summary[:total].round(0) : summary[:total])
+      data_row << (summary[:average].is_a?(Numeric) ? summary[:average].round(0) : summary[:average])
+
+      row_styles = [category_label_style, label_style]
+      (data_row.length - 2).times { row_styles << number_style }
+      sheet.add_row data_row, style: row_styles
+    end
+
+    # 検算行
+    if @profit_check && @profit_check[:missing_labels].blank?
+      sheet.add_row []
+
+      # 検算損益
+      calc_row = ["", @profit_check[:calc_label]]
+      @profit_check[:calc_values].each { |v| calc_row << (v.is_a?(Numeric) ? v.round(0) : v) }
+      calc_row << (@profit_check[:calc_values]&.compact&.sum&.round(0))
+      calc_row << ""
+      sheet.add_row calc_row, style: [label_style, label_style] + Array.new(calc_row.length - 2, subtotal_style)
+
+      # 記録損益
+      rec_row = ["", @profit_check[:profit_label]]
+      @profit_check[:recorded_values].each { |v| rec_row << (v.is_a?(Numeric) ? v.round(0) : v) }
+      rec_row << (@profit_check[:recorded_values]&.compact&.sum&.round(0))
+      rec_row << ""
+      sheet.add_row rec_row, style: [label_style, label_style] + Array.new(rec_row.length - 2, subtotal_style)
+
+      # 差額
+      diff_row = ["", "差額(検算-損益)"]
+      @profit_check[:diff_values].each { |v| diff_row << (v.is_a?(Numeric) ? v.round(0) : v) }
+      diff_row << (@profit_check[:diff_values]&.compact&.sum&.round(0))
+      diff_row << ""
+      sheet.add_row diff_row, style: [label_style, label_style] + Array.new(diff_row.length - 2, subtotal_style)
+    end
+
+    # 合計・平均行
+    sheet.add_row []
+    blank_columns = Array.new(@category_table.column_count, "")
+    total_row = ["", "合計"] + blank_columns + [@category_table.total_values_sum&.round(0), @category_table.total_average_value&.round(0)]
+    sheet.add_row total_row, style: [label_style, label_style] + Array.new(total_row.length - 2, subtotal_style)
+
+    avg_row = ["", "平均"] + blank_columns + ["", @category_table.average_summary_value&.round(0)]
+    sheet.add_row avg_row, style: [label_style, label_style] + Array.new(avg_row.length - 2, subtotal_style)
+
+    # 列幅調整
+    sheet.column_widths 12, 14, *Array.new(@category_headers.length + 2, 12)
+  end
+end
+
+# 年次サマリシート
+if @yearly_view && @yearly_headers.present? && @yearly_rows.present?
+  yearly_header_style = styles.add_style(
+    bg_color: "E3F2FD",
+    b: true,
+    sz: 10,
+    border: { style: :thin, color: "DDDDDD" },
+    alignment: { horizontal: :center, vertical: :center }
+  )
+  yearly_label_style = styles.add_style(
+    b: true,
+    sz: 10,
+    border: { style: :thin, color: "DDDDDD" },
+    alignment: { horizontal: :left }
+  )
+  yearly_number_style = styles.add_style(
+    sz: 10,
+    border: { style: :thin, color: "DDDDDD" },
+    alignment: { horizontal: :right },
+    format_code: "#,##0"
+  )
+  yearly_negative_style = styles.add_style(
+    sz: 10,
+    border: { style: :thin, color: "DDDDDD" },
+    alignment: { horizontal: :right },
+    format_code: "#,##0",
+    fg_color: "DC3545"
+  )
+
+  wb.add_worksheet(name: "年次サマリ") do |sheet|
+    # タイトル行
+    if group_info || period_info
+      sheet.add_row [[group_info, period_info].compact.join(" / ")], style: styles.add_style(b: true, sz: 12)
+      sheet.add_row []
+    end
+
+    sheet.add_row ["年次サマリ（損益合計）"], style: styles.add_style(b: true, sz: 11)
+    sheet.add_row []
+
+    # ヘッダー行
+    yearly_header_row = ["項目名"]
+    @yearly_headers.each do |header|
+      yearly_header_row << header[:title]
+    end
+    sheet.add_row yearly_header_row, style: yearly_header_style
+
+    # データ行
+    @yearly_rows.each do |row|
+      data_row = [row[:label]]
+      row_styles = [yearly_label_style]
+
+      row[:values].each do |value|
+        if value.is_a?(Numeric)
+          data_row << value.round(0)
+          row_styles << (value < 0 ? yearly_negative_style : yearly_number_style)
+        else
+          data_row << value
+          row_styles << yearly_number_style
+        end
+      end
+
+      sheet.add_row data_row, style: row_styles
+    end
+
+    # 列幅調整
+    sheet.column_widths 20, *Array.new(@yearly_headers.length, 14)
+  end
+end

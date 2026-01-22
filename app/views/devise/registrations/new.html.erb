@@ -1,0 +1,38 @@
+<h2>アカウント登録</h2>
+
+<%= form_for(resource, as: resource_name, url: registration_path(resource_name)) do |f| %>
+  <%= render "devise/shared/error_messages", resource: resource %>
+
+  <% if current_tenant.blank? %>
+    <div class="field">
+      <%= f.label :tenant_name, "会社名" %><br />
+      <%= f.text_field :tenant_name, autofocus: true, autocomplete: "organization" %>
+    </div>
+  <% else %>
+    <p class="hint">新規ユーザーは <strong><%= current_tenant.name %></strong> に紐づきます。</p>
+  <% end %>
+
+  <div class="field">
+    <%= f.label :email %><br />
+    <%= f.email_field :email, autocomplete: "email" %>
+  </div>
+
+  <div class="field">
+    <%= f.label :password %>
+    <% if @minimum_password_length %>
+      <em>(<%= @minimum_password_length %>文字以上)</em>
+    <% end %><br />
+    <%= f.password_field :password, autocomplete: "new-password" %>
+  </div>
+
+  <div class="field">
+    <%= f.label :password_confirmation %><br />
+    <%= f.password_field :password_confirmation, autocomplete: "new-password" %>
+  </div>
+
+  <div class="actions">
+    <%= f.submit "登録する" %>
+  </div>
+<% end %>
+
+<%= render "devise/shared/links" %>

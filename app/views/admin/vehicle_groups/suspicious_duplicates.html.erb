@@ -1,0 +1,111 @@
+<% content_for :title, "疑わしい重複候補" %>
+<% content_for :section_label, "マスタ管理" %>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <p class="text-muted mb-0">
+      自動検出された「同じ車両かもしれない」コードの組み合わせです。<br>
+      確認して、同じ車両であれば「統合」を押してください。
+    </p>
+  </div>
+  <div>
+    <%= link_to "車両グループ設定に戻る", admin_vehicle_groups_path, class: "btn btn-outline-secondary btn-sm" %>
+  </div>
+</div>
+
+<% if @candidates.present? %>
+  <div class="card card-lift">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="h5 mb-0">疑わしい重複候補</h2>
+        <span class="badge bg-warning text-dark"><%= @candidates.size %>件</span>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead>
+            <tr>
+              <th>信頼度</th>
+              <th>コード1</th>
+              <th></th>
+              <th>コード2</th>
+              <th>理由</th>
+              <th style="width: 200px;">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @candidates.each do |candidate| %>
+              <tr>
+                <td>
+                  <% case candidate[:confidence] %>
+                  <% when :high %>
+                    <span class="badge bg-danger">高</span>
+                  <% when :medium %>
+                    <span class="badge bg-warning text-dark">中</span>
+                  <% when :low %>
+                    <span class="badge bg-secondary">低</span>
+                  <% end %>
+                </td>
+                <td>
+                  <code class="fs-6"><%= candidate[:code1] %></code>
+                  <% if candidate[:metadata] && candidate[:metadata][:code1_period] %>
+                    <br><small class="text-muted"><%= candidate[:metadata][:code1_period] %></small>
+                  <% end %>
+                </td>
+                <td class="text-center text-muted">
+                  <i class="bi bi-arrow-left-right"></i>
+                </td>
+                <td>
+                  <code class="fs-6"><%= candidate[:code2] %></code>
+                  <% if candidate[:metadata] && candidate[:metadata][:code2_period] %>
+                    <br><small class="text-muted"><%= candidate[:metadata][:code2_period] %></small>
+                  <% end %>
+                </td>
+                <td>
+                  <small><%= candidate[:reason] %></small>
+                </td>
+                <td>
+                  <div class="btn-group btn-group-sm">
+                    <%= button_to "#{candidate[:code1]} → #{candidate[:code2]}",
+                        merge_suspicious_admin_vehicle_groups_path(from_code: candidate[:code1], to_code: candidate[:code2]),
+                        method: :post,
+                        class: "btn btn-outline-primary",
+                        data: { turbo_confirm: "「#{candidate[:code1]}」を「#{candidate[:code2]}」に統合しますか？\nこの操作は取り消せません。" } %>
+                    <%= button_to "#{candidate[:code2]} → #{candidate[:code1]}",
+                        merge_suspicious_admin_vehicle_groups_path(from_code: candidate[:code2], to_code: candidate[:code1]),
+                        method: :post,
+                        class: "btn btn-outline-primary",
+                        data: { turbo_confirm: "「#{candidate[:code2]}」を「#{candidate[:code1]}」に統合しますか？\nこの操作は取り消せません。" } %>
+                    <%= button_to "無視",
+                        ignore_suspicious_admin_vehicle_groups_path(from_code: candidate[:code1], to_code: candidate[:code2]),
+                        method: :post,
+                        class: "btn btn-outline-secondary",
+                        title: "この組み合わせを今後検出しない" %>
+                  </div>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+<% else %>
+  <div class="card card-lift">
+    <div class="card-body text-center py-5">
+      <i class="bi bi-check-circle text-success fs-1 mb-3 d-block"></i>
+      <p class="text-muted mb-0">疑わしい重複候補は見つかりませんでした。</p>
+    </div>
+  </div>
+<% end %>
+
+<div class="card card-lift mt-4">
+  <div class="card-body">
+    <h3 class="h6 mb-3">検出パターンについて</h3>
+    <ul class="small text-muted mb-0">
+      <li><strong>ハイフン抜け</strong>: 「18625846」と「1862-5846」のように、ハイフンの有無だけが異なるケース</li>
+      <li><strong>末尾ゼロ追加</strong>: 「1136」と「11360」のように、末尾に0が追加されているケース</li>
+      <li><strong>期間連続</strong>: コードAのデータが終わった翌月からコードBのデータが始まる、類似したコード</li>
+    </ul>
+  </div>
+</div>

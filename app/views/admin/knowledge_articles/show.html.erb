@@ -1,0 +1,20 @@
+<% content_for :title, @article.title %>
+<% content_for :section_label, "管理者" %>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h4 class="mb-0"><%= @article.title %></h4>
+  <div class="btn-group">
+    <%= link_to edit_admin_knowledge_article_path(@article), class: "btn btn-outline-primary" do %>
+      <i class="bi bi-pencil me-1"></i>編集
+    <% end %>
+    <%= link_to admin_knowledge_articles_path, class: "btn btn-outline-secondary" do %>
+      <i class="bi bi-arrow-left me-1"></i>戻る
+    <% end %>
+  </div>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-body">
+    <%= simple_format(@article.body) %>
+  </div>
+</div>

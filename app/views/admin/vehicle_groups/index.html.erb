@@ -1,0 +1,125 @@
+<% content_for :title, "車両グループ設定" %>
+<% content_for :section_label, "マスタ管理" %>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <p class="text-muted mb-0">車両をグループ化して、収支分析を効率的に行えます。</p>
+  </div>
+  <div class="d-flex gap-2">
+    <%= link_to data_audit_admin_vehicle_groups_path, class: "btn btn-outline-info btn-sm" do %>
+      <i class="bi bi-clipboard-check"></i> データ整合性チェック
+    <% end %>
+    <div class="dropdown">
+      <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+        自動生成
+      </button>
+      <ul class="dropdown-menu dropdown-menu-end">
+        <li>
+          <%= link_to "荷主別グループを生成", auto_generate_admin_vehicle_groups_path(type: "shipper"), method: :post, class: "dropdown-item", data: { turbo_method: :post } %>
+        </li>
+        <li>
+          <%= link_to "営業所別グループを生成", auto_generate_admin_vehicle_groups_path(type: "depot"), method: :post, class: "dropdown-item", data: { turbo_method: :post } %>
+        </li>
+      </ul>
+    </div>
+    <%= link_to "新規グループ作成", new_admin_vehicle_group_path, class: "btn btn-primary btn-sm" %>
+  </div>
+</div>
+
+<% suspicious_count = VehicleSuspiciousDetector.new(ActsAsTenant.current_tenant).detect_all.size rescue 0 %>
+<% if suspicious_count > 0 %>
+  <div class="alert alert-warning d-flex align-items-center mb-4" role="alert">
+    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+    <div class="flex-grow-1">
+      <strong>疑わしい重複が <%= suspicious_count %>件</strong> 検出されました。同じ車両の可能性があるコードを確認してください。
+    </div>
+    <%= link_to "確認する", suspicious_duplicates_admin_vehicle_groups_path, class: "btn btn-warning btn-sm" %>
+  </div>
+<% end %>
+
+<% if @ungrouped_codes.present? %>
+  <div class="card card-lift mb-4">
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2 class="h5 mb-0">未グループ化の車両コード</h2>
+        <span class="badge bg-warning text-dark"><%= @ungrouped_codes.size %>件</span>
+      </div>
+      <div class="vehicle-codes-list" style="max-height: 200px; overflow-y: auto;">
+        <div class="d-flex flex-wrap gap-1">
+          <% @ungrouped_codes.each do |code| %>
+            <span class="badge bg-light text-dark border"><%= code %></span>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+<% end %>
+
+<div class="card card-lift">
+  <div class="card-body">
+    <h2 class="h5 mb-3">車両グループ一覧</h2>
+
+    <% if @vehicle_groups.present? %>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead>
+            <tr>
+              <th style="width: 30px;"></th>
+              <th>グループ名</th>
+              <th>タイプ</th>
+              <th>車両数</th>
+              <th>車両コード</th>
+              <th style="width: 120px;"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @vehicle_groups.group_by(&:group_type).each do |type, groups| %>
+              <tr class="table-light">
+                <td colspan="6" class="fw-semibold small text-muted py-2">
+                  <%= VehicleGroup.new(group_type: type).group_type_label %>
+                </td>
+              </tr>
+              <% groups.each do |group| %>
+                <tr>
+                  <td class="text-muted small"><%= group.position %></td>
+                  <td class="fw-semibold"><%= group.name %></td>
+                  <td>
+                    <span class="badge bg-secondary"><%= group.group_type_label %></span>
+                  </td>
+                  <td>
+                    <span class="badge bg-primary"><%= group.vehicle_codes&.size || 0 %>台</span>
+                  </td>
+                  <td>
+                    <div class="d-flex flex-wrap gap-1" style="max-width: 400px;">
+                      <% (group.vehicle_codes || []).first(10).each do |code| %>
+                        <span class="badge bg-light text-dark border small"><%= code %></span>
+                      <% end %>
+                      <% if (group.vehicle_codes || []).size > 10 %>
+                        <span class="badge bg-light text-muted border small">他<%= group.vehicle_codes.size - 10 %>件</span>
+                      <% end %>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="btn-group btn-group-sm">
+                      <%= link_to "編集", edit_admin_vehicle_group_path(group), class: "btn btn-outline-primary" %>
+                      <%= link_to "削除", admin_vehicle_group_path(group), method: :delete, class: "btn btn-outline-danger", data: { turbo_method: :delete, turbo_confirm: "「#{group.name}」を削除しますか？" } %>
+                    </div>
+                  </td>
+                </tr>
+              <% end %>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <div class="text-center py-5">
+        <p class="text-muted mb-3">車両グループがまだありません。</p>
+        <div class="d-flex justify-content-center gap-2">
+          <%= link_to "荷主別グループを自動生成", auto_generate_admin_vehicle_groups_path(type: "shipper"), method: :post, class: "btn btn-outline-primary", data: { turbo_method: :post } %>
+          <%= link_to "営業所別グループを自動生成", auto_generate_admin_vehicle_groups_path(type: "depot"), method: :post, class: "btn btn-outline-primary", data: { turbo_method: :post } %>
+          <%= link_to "カスタムグループを作成", new_admin_vehicle_group_path, class: "btn btn-primary" %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>

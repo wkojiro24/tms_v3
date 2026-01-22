@@ -1,0 +1,10 @@
+<% content_for :title, "部署編集" %>
+<% content_for :section_label, "マスタ管理" %>
+
+<div class="card card-lift">
+  <div class="card-body">
+    <h2 class="h5 mb-3">部署を編集</h2>
+    <%= render "form", department: @department %>
+    <%= link_to "一覧へ戻る", admin_departments_path, class: "btn btn-link mt-3" %>
+  </div>
+</div>

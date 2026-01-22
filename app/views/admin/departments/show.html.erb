@@ -1,0 +1,33 @@
+<% content_for :title, "部署詳細" %>
+<% content_for :section_label, "マスタ管理" %>
+
+<div class="card card-lift">
+  <div class="card-body">
+    <h2 class="h5 mb-3">部署詳細</h2>
+
+    <dl class="row">
+      <dt class="col-sm-3">コード</dt>
+      <dd class="col-sm-9"><%= @department.code %></dd>
+
+      <dt class="col-sm-3">名称</dt>
+      <dd class="col-sm-9"><%= @department.name %></dd>
+
+      <dt class="col-sm-3">説明</dt>
+      <dd class="col-sm-9"><%= @department.description.presence || "-" %></dd>
+
+      <dt class="col-sm-3">ステータス</dt>
+      <dd class="col-sm-9">
+        <% if @department.active? %>
+          <span class="badge bg-success">有効</span>
+        <% else %>
+          <span class="badge bg-secondary">無効</span>
+        <% end %>
+      </dd>
+    </dl>
+
+    <div class="d-flex gap-2">
+      <%= link_to "編集", edit_admin_department_path(@department), class: "btn btn-primary" %>
+      <%= link_to "一覧へ戻る", admin_departments_path, class: "btn btn-outline-secondary" %>
+    </div>
+  </div>
+</div>

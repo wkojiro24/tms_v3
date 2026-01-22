@@ -1,0 +1,829 @@
+<% content_for :title, "給与シミュレーション詳細" %>
+<% content_for :section_label, "人事管理" %>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h2 class="h4 mb-1">
+      <%= @simulation.employee&.full_name || @simulation.employee_code %>の給与シミュレーション
+      <% if @simulation.status == 'approved' %>
+        <span class="badge bg-success ms-2"><i class="bi bi-check-circle me-1"></i>承認済</span>
+      <% end %>
+    </h2>
+    <p class="text-muted small mb-0">
+      <%= @simulation.period_label %> / 従業員コード: <%= @simulation.employee_code %>
+      <% if @simulation.approved_at %>
+        <span class="ms-2">承認: <%= l(@simulation.approved_at, format: :short) %></span>
+      <% end %>
+    </p>
+  </div>
+  <div class="d-flex gap-2">
+    <% if @simulation.status == 'approved' %>
+      <%= button_to '<i class="bi bi-x-circle me-1"></i>承認取消'.html_safe,
+          unapprove_admin_payroll_simulation_path(@simulation),
+          method: :post,
+          class: "btn btn-outline-warning btn-sm",
+          data: { turbo_confirm: "承認を取り消しますか？" } %>
+    <% else %>
+      <%= button_to '<i class="bi bi-check-circle me-1"></i>承認'.html_safe,
+          approve_admin_payroll_simulation_path(@simulation),
+          method: :post,
+          class: "btn btn-success btn-sm",
+          data: { turbo_confirm: "この給与を承認しますか？" } %>
+    <% end %>
+    <%= link_to '<i class="bi bi-pencil me-1"></i>編集'.html_safe, edit_admin_payroll_simulation_path(@simulation), class: "btn btn-primary btn-sm" %>
+    <%= link_to "一覧に戻る", admin_payroll_simulations_path(year: @simulation.year, month: @simulation.month), class: "btn btn-outline-secondary btn-sm" %>
+  </div>
+</div>
+
+<%
+# 比較用ヘルパー
+
+# 差異の状態を判定
+# :match     - 完全一致（緑）
+# :minor     - 軽微な差異（黄色）- 計算誤差の可能性
+# :major     - 大きな差異（赤）- 設定漏れの可能性
+# :missing   - 予測が0で実績に値あり（オレンジ）- 実装/設定漏れ
+# :extra     - 予測に値があり実績が0（青）- 過剰計上
+def diff_status(calc, actual)
+  calc_val = calc.to_i
+  actual_val = actual.to_i
+  diff = calc_val - actual_val
+
+  return :match if diff == 0
+  return :missing if calc_val == 0 && actual_val > 0
+  return :extra if calc_val > 0 && actual_val == 0
+
+  # 差異率で判定
+  base = [calc_val.abs, actual_val.abs].max
+  rate = (diff.abs.to_f / base * 100).round(1) if base > 0
+
+  return :minor if rate && rate <= 5
+  :major
+end
+
+def diff_class(calc, actual)
+  status = diff_status(calc, actual)
+  case status
+  when :match then 'text-success'
+  when :minor then 'text-warning'
+  when :major then 'text-danger'
+  when :missing then 'text-danger'
+  when :extra then 'text-primary'
+  else ''
+  end
+end
+
+def diff_row_class(calc, actual)
+  status = diff_status(calc, actual)
+  case status
+  when :match then ''
+  when :minor then ''
+  when :major then 'table-danger'
+  when :missing then 'table-warning'
+  when :extra then 'table-info'
+  else ''
+  end
+end
+
+def diff_badge(calc, actual, tooltip: nil)
+  calc_val = calc.to_i
+  actual_val = actual.to_i
+  diff = calc_val - actual_val
+  status = diff_status(calc, actual)
+
+  case status
+  when :match
+    '<span class="badge bg-success"><i class="bi bi-check"></i></span>'.html_safe
+  when :missing
+    tooltip_attr = tooltip ? "data-bs-toggle=\"tooltip\" data-bs-placement=\"top\" title=\"#{tooltip}\"" : ''
+    "<span class=\"badge bg-danger\" #{tooltip_attr}><i class=\"bi bi-exclamation-triangle me-1\"></i>未実装/未設定</span>".html_safe
+  when :extra
+    sign = diff > 0 ? '+' : ''
+    "<span class=\"text-primary\">#{sign}#{number_with_delimiter(diff)}</span> <span class=\"badge bg-info text-dark\">過剰？</span>".html_safe
+  when :minor
+    sign = diff > 0 ? '+' : ''
+    "<span class=\"text-warning\">#{sign}#{number_with_delimiter(diff)}</span> <small class=\"text-muted\">計算誤差</small>".html_safe
+  when :major
+    sign = diff > 0 ? '+' : ''
+    "<span class=\"text-danger fw-bold\">#{sign}#{number_with_delimiter(diff)}</span> <span class=\"badge bg-danger\">要確認</span>".html_safe
+  else
+    ''
+  end
+end
+
+def missing_badge
+  '<span class="badge bg-warning text-dark"><i class="bi bi-exclamation-triangle me-1"></i>未登録</span>'.html_safe
+end
+
+def not_implemented_badge(tooltip = nil)
+  tooltip_attr = tooltip ? "data-bs-toggle=\"tooltip\" data-bs-placement=\"top\" title=\"#{tooltip}\"" : ''
+  "<span class=\"badge bg-secondary\" #{tooltip_attr}><i class=\"bi bi-code-slash me-1\"></i>未実装</span>".html_safe
+end
+%>
+
+<% if @actual_salary %>
+  <% target_date = Date.new(@simulation.year, @simulation.month, 1) %>
+
+  <!-- 給与設定の状態チェックと修正フォーム -->
+  <% if @setting %>
+    <%# 給与設定はあるが、項目が未入力または適用開始日が不正な場合 %>
+    <% needs_update = @setting.effective_from > target_date ||
+                      @setting.adjustment_salary.to_i != @actual_salary.adjustment_salary.to_i ||
+                      @setting.adjustment_allowance.to_i != @actual_salary.adjustment_allowance.to_i ||
+                      @setting.housing_allowance.to_i != @actual_salary.city_allowance.to_i ||
+                      @setting.position_allowance.to_i != @actual_salary.position_allowance.to_i ||
+                      @setting.role_allowance.to_i != @actual_salary.role_allowance.to_i ||
+                      @setting.safety_bonus.to_i != @actual_salary.safety_bonus.to_i ||
+                      @setting.resident_tax.to_i != @actual_salary.resident_tax.to_i %>
+
+    <% if needs_update %>
+      <div class="card card-lift mb-4 border-primary">
+        <div class="card-header bg-primary text-white">
+          <h6 class="card-title mb-0"><i class="bi bi-gear me-1"></i>給与設定の確認</h6>
+        </div>
+        <div class="card-body">
+          <p class="mb-3">
+            <strong>この従業員の給与設定を実績データから自動入力します。</strong>
+            <br>
+            <small class="text-muted">毎月固定の項目（職位加算、大都市加算、調整給など）は一度設定すれば翌月以降も自動的に使われます。</small>
+          </p>
+
+          <%= form_with model: @setting, url: update_salary_setting_admin_payroll_simulation_path(@setting, return_to_simulation: @simulation.id), method: :patch, local: true do |f| %>
+            <%= f.hidden_field :employee_id %>
+
+            <table class="table table-sm table-bordered mb-3">
+              <thead class="table-light">
+                <tr>
+                  <th>項目</th>
+                  <th class="text-end">現在の設定値</th>
+                  <th class="text-end">実績値</th>
+                  <th class="text-center">更新後の値</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% if @setting.effective_from > target_date %>
+                  <tr class="table-danger">
+                    <td>適用開始日</td>
+                    <td class="text-end"><%= @setting.effective_from.strftime('%Y/%m/%d') %></td>
+                    <td class="text-end">-</td>
+                    <td class="text-center">
+                      <%= f.date_field :effective_from, class: "form-control form-control-sm", value: target_date, style: "width: 150px; display: inline-block;" %>
+                    </td>
+                  </tr>
+                <% else %>
+                  <%= f.hidden_field :effective_from %>
+                <% end %>
+
+                <% [
+                  [:adjustment_salary, '調整給', @setting.adjustment_salary.to_i, @actual_salary.adjustment_salary.to_i],
+                  [:adjustment_allowance, '調整加算', @setting.adjustment_allowance.to_i, @actual_salary.adjustment_allowance.to_i],
+                  [:housing_allowance, '大都市加算', @setting.housing_allowance.to_i, @actual_salary.city_allowance.to_i],
+                  [:position_allowance, '職位加算', @setting.position_allowance.to_i, @actual_salary.position_allowance.to_i],
+                  [:role_allowance, '職責加算', @setting.role_allowance.to_i, @actual_salary.role_allowance.to_i],
+                  [:safety_bonus, '無事故加算（月額）', @setting.safety_bonus.to_i, @actual_salary.safety_bonus.to_i],
+                  [:resident_tax, '住民税', @setting.resident_tax.to_i, @actual_salary.resident_tax.to_i],
+                ].each do |field, label, current, actual| %>
+                  <% if current != actual %>
+                    <tr class="<%= actual > 0 && current == 0 ? 'table-warning' : '' %>">
+                      <td><%= label %></td>
+                      <td class="text-end"><%= number_with_delimiter(current) %>円</td>
+                      <td class="text-end"><%= number_with_delimiter(actual) %>円</td>
+                      <td class="text-center">
+                        <div class="input-group input-group-sm" style="width: 150px; display: inline-flex;">
+                          <%= f.number_field field, class: "form-control form-control-sm", value: actual %>
+                          <span class="input-group-text">円</span>
+                        </div>
+                      </td>
+                    </tr>
+                  <% end %>
+                <% end %>
+              </tbody>
+            </table>
+
+            <div class="d-flex justify-content-between align-items-center">
+              <%= f.submit "実績値で給与設定を更新", class: "btn btn-primary" %>
+              <small class="text-muted">クリックすると給与設定が更新され、予測値が自動的に再計算されます</small>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  <% end %>
+
+  <!-- 凡例 -->
+  <div class="alert alert-light border mb-4 py-2">
+    <div class="d-flex flex-wrap gap-3 small">
+      <span><span class="badge bg-success"><i class="bi bi-check"></i></span> 一致</span>
+      <span class="text-warning"><i class="bi bi-square-fill me-1"></i>軽微な差異（5%以内）</span>
+      <span class="text-danger"><i class="bi bi-square-fill me-1"></i>大きな差異（要確認）</span>
+      <span><span class="badge bg-danger"><i class="bi bi-exclamation-triangle"></i></span> 未実装/未設定（予測0、実績に値あり）</span>
+      <span><span class="badge bg-secondary"><i class="bi bi-code-slash"></i></span> 計算対象外</span>
+      <span><i class="bi bi-info-circle text-muted"></i> 計算式をホバーで表示</span>
+    </div>
+  </div>
+
+  <!-- 項目別比較表（メイン） -->
+  <div class="card card-lift mb-4">
+    <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+      <h6 class="card-title mb-0"><i class="bi bi-table text-primary me-1"></i>項目別比較表</h6>
+      <small class="text-muted">予測値と実績値の差額を確認できます</small>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th style="width: 35%">項目</th>
+              <th class="text-end" style="width: 20%">予測値</th>
+              <th class="text-end" style="width: 20%">実績値</th>
+              <th class="text-end" style="width: 25%">差額</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- 支給項目 -->
+            <tr class="table-primary">
+              <td colspan="4" class="fw-bold small">【支給】基準内賃金</td>
+            </tr>
+            <tr class="<%= diff_row_class(@simulation.calc_basic_salary, @actual_salary.basic_salary) %>">
+              <td>基本給</td>
+              <td class="text-end"><%= number_with_delimiter(@simulation.calc_basic_salary) %></td>
+              <td class="text-end"><%= number_with_delimiter(@actual_salary.basic_salary) %></td>
+              <td class="text-end"><%= diff_badge(@simulation.calc_basic_salary, @actual_salary.basic_salary) %></td>
+            </tr>
+            <%
+              calc_city = @simulation.calculation_details&.dig('payment', 'city_allowance').to_i
+              calc_position = @simulation.calculation_details&.dig('payment', 'position_allowance').to_i
+              calc_role = @simulation.calculation_details&.dig('payment', 'role_allowance').to_i
+              calc_adjustment_salary = @simulation.calculation_details&.dig('payment', 'adjustment_salary').to_i
+              calc_adjustment_allowance = @simulation.calculation_details&.dig('payment', 'adjustment_allowance').to_i
+              calc_basic_salary_2 = @simulation.calculation_details&.dig('payment', 'basic_salary_2').to_i
+              calc_executive_salary = @simulation.calculation_details&.dig('payment', 'executive_salary').to_i
+              calc_absence_deduction = @simulation.calculation_details&.dig('payment', 'absence_deduction').to_i
+            %>
+            <tr>
+              <td>職位加算</td>
+              <td class="text-end"><%= number_with_delimiter(calc_position) %></td>
+              <td class="text-end"><%= number_with_delimiter(@actual_salary.position_allowance.to_i) %></td>
+              <td class="text-end"><%= diff_badge(calc_position, @actual_salary.position_allowance) %></td>
+            </tr>
+            <tr>
+              <td>職責加算</td>
+              <td class="text-end"><%= number_with_delimiter(calc_role) %></td>
+              <td class="text-end"><%= number_with_delimiter(@actual_salary.role_allowance.to_i) %></td>
+              <td class="text-end"><%= diff_badge(calc_role, @actual_salary.role_allowance) %></td>
+            </tr>
+            <tr>
+              <td>大都市加算</td>
+              <td class="text-end"><%= number_with_delimiter(calc_city) %></td>
+              <td class="text-end"><%= number_with_delimiter(@actual_salary.city_allowance) %></td>
+              <td class="text-end"><%= diff_badge(calc_city, @actual_salary.city_allowance) %></td>
+            </tr>
+            <tr>
+              <td>調整給</td>
+              <td class="text-end"><%= number_with_delimiter(calc_adjustment_salary) %></td>
+              <td class="text-end"><%= number_with_delimiter(@actual_salary.adjustment_salary.to_i) %></td>
+              <td class="text-end">
+                <% if calc_adjustment_salary != @actual_salary.adjustment_salary.to_i && @setting %>
+                  <span class="badge bg-warning text-dark">差異</span>
+                <% else %>
+                  <%= diff_badge(calc_adjustment_salary, @actual_salary.adjustment_salary) %>
+                <% end %>
+              </td>
+            </tr>
+            <tr>
+              <td>基本給2</td>
+              <td class="text-end"><%= number_with_delimiter(calc_basic_salary_2) %></td>
+              <td class="text-end"><%= number_with_delimiter(@actual_salary.basic_salary_2.to_i) %></td>
+              <td class="text-end">
+                <% if calc_basic_salary_2 != @actual_salary.basic_salary_2.to_i && @setting %>
+                  <span class="badge bg-warning text-dark">差異</span>
+                <% else %>
+                  <%= diff_badge(calc_basic_salary_2, @actual_salary.basic_salary_2) %>
+                <% end %>
+              </td>
+            </tr>
+            <tr>
+              <td>役員報酬</td>
+              <td class="text-end"><%= number_with_delimiter(calc_executive_salary) %></td>
+              <td class="text-end"><%= number_with_delimiter(@actual_salary.executive_salary.to_i) %></td>
+              <td class="text-end">
+                <% if calc_executive_salary != @actual_salary.executive_salary.to_i && @setting %>
+                  <span class="badge bg-warning text-dark">差異</span>
+                <% else %>
+                  <%= diff_badge(calc_executive_salary, @actual_salary.executive_salary) %>
+                <% end %>
+              </td>
+            </tr>
+
+            <!-- 支給項目：基準外賃金 -->
+            <tr class="table-primary">
+              <td colspan="4" class="fw-bold small">【支給】基準外賃金・手当</td>
+            </tr>
+            <tr>
+              <td>無事故加算</td>
+              <td class="text-end"><%= number_with_delimiter(@simulation.calc_safety_bonus) %></td>
+              <td class="text-end"><%= number_with_delimiter(@actual_salary.safety_bonus) %></td>
+              <td class="text-end"><%= diff_badge(@simulation.calc_safety_bonus, @actual_salary.safety_bonus) %></td>
+            </tr>
+            <tr>
+              <td>調整加算</td>
+              <td class="text-end"><%= number_with_delimiter(calc_adjustment_allowance) %></td>
+              <td class="text-end"><%= number_with_delimiter(@actual_salary.adjustment_allowance.to_i) %></td>
+              <td class="text-end">
+                <% if calc_adjustment_allowance != @actual_salary.adjustment_allowance.to_i && @setting %>
+                  <span class="badge bg-warning text-dark">差異</span>
+                <% else %>
+                  <%= diff_badge(calc_adjustment_allowance, @actual_salary.adjustment_allowance) %>
+                <% end %>
+              </td>
+            </tr>
+            <tr>
+              <td>有給休暇手当</td>
+              <td class="text-end"><%= number_with_delimiter(@simulation.calc_paid_leave_pay) %></td>
+              <td class="text-end"><%= number_with_delimiter(@actual_salary.paid_leave_pay) %></td>
+              <td class="text-end"><%= diff_badge(@simulation.calc_paid_leave_pay, @actual_salary.paid_leave_pay) %></td>
+            </tr>
+            <tr>
+              <td>欠勤控除</td>
+              <td class="text-end"><%= number_with_delimiter(calc_absence_deduction) %></td>
+              <td class="text-end"><%= number_with_delimiter(@actual_salary.absence_deduction.to_i) %></td>
+              <td class="text-end">
+                <% if calc_absence_deduction != @actual_salary.absence_deduction.to_i && @setting %>
+                  <span class="badge bg-warning text-dark">差異</span>
+                <% else %>
+                  <%= diff_badge(calc_absence_deduction, @actual_salary.absence_deduction) %>
+                <% end %>
+              </td>
+            </tr>
+
+            <!-- 残業関連項目 -->
+            <tr class="table-primary">
+              <td colspan="4" class="fw-bold small">【支給】残業手当</td>
+            </tr>
+            <tr class="<%= diff_row_class(@simulation.calc_overtime_pay, @actual_salary.weekday_overtime_pay) %>">
+              <td>
+                平日残業
+                <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" data-bs-placement="top" title="計算式: <%= @simulation.calculation_details&.dig('payment', 'overtime_hours') %>h × <%= number_with_delimiter(@simulation.calculation_details&.dig('payment', 'hourly_rate')) %>円 × 125%"></i>
+              </td>
+              <td class="text-end"><%= number_with_delimiter(@simulation.calc_overtime_pay) %></td>
+              <td class="text-end"><%= number_with_delimiter(@actual_salary.weekday_overtime_pay) %></td>
+              <td class="text-end"><%= diff_badge(@simulation.calc_overtime_pay, @actual_salary.weekday_overtime_pay) %></td>
+            </tr>
+            <tr class="<%= diff_row_class(@simulation.calculation_details&.dig('payment', 'statutory_holiday_pay').to_i, @actual_salary.statutory_holiday_pay) %>">
+              <td>
+                法定休日残業
+                <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" data-bs-placement="top" title="計算式: <%= @simulation.calculation_details&.dig('payment', 'legal_holiday_hours') %>h × <%= number_with_delimiter(@simulation.calculation_details&.dig('payment', 'hourly_rate')) %>円 × 135%"></i>
+              </td>
+              <td class="text-end"><%= number_with_delimiter(@simulation.calculation_details&.dig('payment', 'statutory_holiday_pay').to_i) %></td>
+              <td class="text-end"><%= number_with_delimiter(@actual_salary.statutory_holiday_pay) %></td>
+              <td class="text-end"><%= diff_badge(@simulation.calculation_details&.dig('payment', 'statutory_holiday_pay').to_i, @actual_salary.statutory_holiday_pay) %></td>
+            </tr>
+            <tr class="<%= diff_row_class(@simulation.calculation_details&.dig('payment', 'non_statutory_holiday_pay').to_i, @actual_salary.non_statutory_holiday_pay) %>">
+              <td>
+                法定外休日残業
+                <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" data-bs-placement="top" title="計算式: <%= @simulation.calculation_details&.dig('payment', 'extra_holiday_hours') %>h × <%= number_with_delimiter(@simulation.calculation_details&.dig('payment', 'hourly_rate')) %>円 × 135%"></i>
+              </td>
+              <td class="text-end"><%= number_with_delimiter(@simulation.calculation_details&.dig('payment', 'non_statutory_holiday_pay').to_i) %></td>
+              <td class="text-end"><%= number_with_delimiter(@actual_salary.non_statutory_holiday_pay) %></td>
+              <td class="text-end"><%= diff_badge(@simulation.calculation_details&.dig('payment', 'non_statutory_holiday_pay').to_i, @actual_salary.non_statutory_holiday_pay) %></td>
+            </tr>
+            <tr class="<%= diff_row_class(@simulation.calc_substitute_holiday_pay, @actual_salary.substitute_holiday_pay) %>">
+              <td>
+                代休残業
+                <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" data-bs-placement="top" title="計算式: <%= @simulation.calculation_details&.dig('payment', 'substitute_holiday_hours') %>h × <%= number_with_delimiter(@simulation.calculation_details&.dig('payment', 'hourly_rate')) %>円 × 35%（割増分のみ）"></i>
+              </td>
+              <td class="text-end"><%= number_with_delimiter(@simulation.calc_substitute_holiday_pay) %></td>
+              <td class="text-end"><%= number_with_delimiter(@actual_salary.substitute_holiday_pay.to_i) %></td>
+              <td class="text-end"><%= diff_badge(@simulation.calc_substitute_holiday_pay, @actual_salary.substitute_holiday_pay) %></td>
+            </tr>
+            <tr class="<%= @actual_salary.premium_overtime_pay.to_i > 0 ? 'table-warning' : '' %>">
+              <td>
+                割増残業（60h超）
+                <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" data-bs-placement="top" title="月60時間を超える残業に対する追加割増（+25%）。KingOfTimeに項目がないため未実装。"></i>
+              </td>
+              <td class="text-end"><%= not_implemented_badge("60h超残業の計算は未実装") %></td>
+              <td class="text-end"><%= number_with_delimiter(@actual_salary.premium_overtime_pay.to_i) %></td>
+              <td class="text-end">
+                <% if @actual_salary.premium_overtime_pay.to_i > 0 %>
+                  <span class="badge bg-secondary"><i class="bi bi-code-slash me-1"></i>計算対象外</span>
+                <% else %>
+                  <span class="text-muted">-</span>
+                <% end %>
+              </td>
+            </tr>
+            <tr class="<%= diff_row_class(@simulation.calc_late_night_pay, @actual_salary.late_night_pay) %>">
+              <td>
+                深夜残業
+                <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" data-bs-placement="top" title="計算式: <%= @simulation.calculation_details&.dig('payment', 'late_night_hours') %>h × <%= number_with_delimiter(@simulation.calculation_details&.dig('payment', 'hourly_rate')) %>円 × 25%"></i>
+              </td>
+              <td class="text-end"><%= number_with_delimiter(@simulation.calc_late_night_pay) %></td>
+              <td class="text-end"><%= number_with_delimiter(@actual_salary.late_night_pay) %></td>
+              <td class="text-end"><%= diff_badge(@simulation.calc_late_night_pay, @actual_salary.late_night_pay) %></td>
+            </tr>
+
+            <!-- 通勤手当 -->
+            <tr class="table-primary">
+              <td colspan="4" class="fw-bold small">【支給】非課税</td>
+            </tr>
+            <tr class="<%= diff_row_class(@simulation.calc_commuting_allowance, @actual_salary.commuting_allowance) %>">
+              <td>
+                通勤手当（非課税）
+                <i class="bi bi-info-circle text-muted" data-bs-toggle="tooltip" data-bs-placement="top" title="給与設定の通勤手当設定に基づいて計算"></i>
+              </td>
+              <td class="text-end"><%= number_with_delimiter(@simulation.calc_commuting_allowance) %></td>
+              <td class="text-end"><%= number_with_delimiter(@actual_salary.commuting_allowance) %></td>
+              <td class="text-end"><%= diff_badge(@simulation.calc_commuting_allowance, @actual_salary.commuting_allowance) %></td>
+            </tr>
+            <tr class="fw-bold table-light">
+              <td>支給合計</td>
+              <td class="text-end"><%= number_with_delimiter(@simulation.calc_gross_total) %></td>
+              <td class="text-end"><%= number_with_delimiter(@actual_salary.gross_total) %></td>
+              <td class="text-end <%= diff_class(@simulation.calc_gross_total, @actual_salary.gross_total) %>">
+                <% diff = @simulation.calc_gross_total.to_i - @actual_salary.gross_total.to_i %>
+                <%= diff > 0 ? '+' : '' %><%= number_with_delimiter(diff) %>
+                <small>(<%= @simulation.gross_diff_rate %>%)</small>
+              </td>
+            </tr>
+
+            <!-- 控除項目 -->
+            <tr class="table-danger">
+              <td colspan="4" class="fw-bold small">【控除】</td>
+            </tr>
+            <tr>
+              <td>健康保険料</td>
+              <td class="text-end"><%= number_with_delimiter(@simulation.calc_health_insurance) %></td>
+              <td class="text-end"><%= number_with_delimiter(@actual_salary.health_insurance) %></td>
+              <td class="text-end"><%= diff_badge(@simulation.calc_health_insurance, @actual_salary.health_insurance) %></td>
+            </tr>
+            <tr>
+              <td>介護保険料</td>
+              <td class="text-end"><%= number_with_delimiter(@simulation.calc_nursing_insurance) %></td>
+              <td class="text-end"><%= number_with_delimiter(@actual_salary.nursing_insurance) %></td>
+              <td class="text-end"><%= diff_badge(@simulation.calc_nursing_insurance, @actual_salary.nursing_insurance) %></td>
+            </tr>
+            <tr>
+              <td>厚生年金保険</td>
+              <td class="text-end"><%= number_with_delimiter(@simulation.calc_pension) %></td>
+              <td class="text-end"><%= number_with_delimiter(@actual_salary.pension_insurance) %></td>
+              <td class="text-end"><%= diff_badge(@simulation.calc_pension, @actual_salary.pension_insurance) %></td>
+            </tr>
+            <tr>
+              <td>雇用保険料</td>
+              <td class="text-end"><%= number_with_delimiter(@simulation.calc_employment_insurance) %></td>
+              <td class="text-end"><%= number_with_delimiter(@actual_salary.employment_insurance) %></td>
+              <td class="text-end"><%= diff_badge(@simulation.calc_employment_insurance, @actual_salary.employment_insurance) %></td>
+            </tr>
+            <tr>
+              <td>所得税</td>
+              <td class="text-end"><%= number_with_delimiter(@simulation.calc_income_tax) %></td>
+              <td class="text-end"><%= number_with_delimiter(@actual_salary.income_tax) %></td>
+              <td class="text-end"><%= diff_badge(@simulation.calc_income_tax, @actual_salary.income_tax) %></td>
+            </tr>
+            <% if @simulation.calc_union_fee.to_i > 0 || @actual_salary.union_fee.to_i > 0 %>
+              <tr>
+                <td>組合費</td>
+                <td class="text-end"><%= number_with_delimiter(@simulation.calc_union_fee) %></td>
+                <td class="text-end"><%= number_with_delimiter(@actual_salary.union_fee) %></td>
+                <td class="text-end"><%= diff_badge(@simulation.calc_union_fee, @actual_salary.union_fee) %></td>
+              </tr>
+            <% end %>
+            <tr>
+              <td>住民税</td>
+              <td class="text-end"><%= number_with_delimiter(@simulation.calc_resident_tax) %></td>
+              <td class="text-end"><%= number_with_delimiter(@actual_salary.resident_tax) %></td>
+              <td class="text-end">
+                <% if @simulation.calc_resident_tax.to_i == 0 && @actual_salary.resident_tax.to_i > 0 %>
+                  <%= missing_badge %>
+                <% else %>
+                  <%= diff_badge(@simulation.calc_resident_tax, @actual_salary.resident_tax) %>
+                <% end %>
+              </td>
+            </tr>
+            <tr class="fw-bold table-light">
+              <td>控除合計</td>
+              <td class="text-end"><%= number_with_delimiter(@simulation.calc_deduction_total) %></td>
+              <td class="text-end"><%= number_with_delimiter(@actual_salary.deduction_total) %></td>
+              <td class="text-end">
+                <% deduct_diff = @simulation.calc_deduction_total.to_i - @actual_salary.deduction_total.to_i %>
+                <span class="<%= deduct_diff == 0 ? '' : (deduct_diff > 0 ? 'text-danger' : 'text-primary') %>">
+                  <%= deduct_diff > 0 ? '+' : '' %><%= number_with_delimiter(deduct_diff) %>
+                </span>
+              </td>
+            </tr>
+
+            <!-- 差引支給額 -->
+            <tr class="table-success fw-bold">
+              <td><i class="bi bi-cash-coin me-1"></i>差引支給額（手取り）</td>
+              <td class="text-end"><%= number_with_delimiter(@simulation.calc_net_total) %></td>
+              <td class="text-end"><%= number_with_delimiter(@actual_salary.net_total) %></td>
+              <td class="text-end <%= diff_class(@simulation.calc_net_total, @actual_salary.net_total) %>">
+                <% net_diff = @simulation.calc_net_total.to_i - @actual_salary.net_total.to_i %>
+                <%= net_diff > 0 ? '+' : '' %><%= number_with_delimiter(net_diff) %>
+                <small>(<%= @simulation.net_diff_rate %>%)</small>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 判定結果 -->
+  <% if @simulation.within_tolerance? %>
+    <div class="alert alert-success mb-4">
+      <i class="bi bi-check-circle me-2"></i>
+      <strong>一致</strong> - 予測と実績の差異は許容範囲内（5%以内）です。KingOfTimeデータから給与台帳を作成できます。
+    </div>
+  <% else %>
+    <div class="alert alert-warning mb-4">
+      <i class="bi bi-exclamation-triangle me-2"></i>
+      <strong>要確認</strong> - 差異が大きいため、「未登録」の項目を給与設定に追加してください。
+      <% if @setting %>
+        <%= link_to "設定を編集", edit_salary_setting_admin_payroll_simulation_path(@setting), class: "btn btn-sm btn-warning ms-2" %>
+      <% end %>
+    </div>
+  <% end %>
+<% else %>
+  <div class="alert alert-info mb-4">
+    <i class="bi bi-info-circle me-1"></i>
+    この期間の実績給与データがありません。予測値のみ表示しています。
+  </div>
+<% end %>
+
+<div class="row g-4">
+  <!-- 左側：勤怠データと計算詳細 -->
+  <div class="col-lg-6">
+    <!-- 勤怠入力データ -->
+    <div class="card card-lift mb-4">
+      <div class="card-header bg-transparent">
+        <h6 class="card-title mb-0"><i class="bi bi-clock text-primary me-1"></i>勤怠データ（KingOfTime）</h6>
+      </div>
+      <div class="card-body">
+        <table class="table table-sm mb-0">
+          <tbody>
+            <tr>
+              <td>出勤日数</td>
+              <td class="text-end"><%= @simulation.working_days %> 日</td>
+            </tr>
+            <tr>
+              <td>残業時間</td>
+              <td class="text-end"><%= @simulation.overtime_hours&.round(1) %> h</td>
+            </tr>
+            <tr>
+              <td>深夜残業</td>
+              <td class="text-end"><%= @simulation.late_night_hours&.round(1) %> h</td>
+            </tr>
+            <tr>
+              <td>休日勤務</td>
+              <td class="text-end"><%= @simulation.holiday_hours&.round(1) %> h</td>
+            </tr>
+            <tr>
+              <td>有給休暇</td>
+              <td class="text-end"><%= @simulation.paid_leave_days %> 日</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 給与設定 -->
+    <% if @setting %>
+      <div class="card card-lift">
+        <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+          <h6 class="card-title mb-0"><i class="bi bi-gear text-muted me-1"></i>適用中の給与設定</h6>
+          <%= link_to '<i class="bi bi-pencil"></i> 編集'.html_safe, edit_salary_setting_admin_payroll_simulation_path(@setting), class: "btn btn-outline-secondary btn-sm" %>
+        </div>
+        <div class="card-body">
+          <h6 class="small text-muted border-bottom pb-1 mb-2">基準内賃金（時給計算ベース）</h6>
+          <table class="table table-sm small mb-3">
+            <tbody>
+              <tr>
+                <td class="text-muted" style="width: 45%">等級</td>
+                <td><%= @setting.grade_salary_table&.grade_code || '未設定' %></td>
+              </tr>
+              <tr>
+                <td class="text-muted">基本給</td>
+                <td><%= number_with_delimiter(@setting.base_salary) %> 円</td>
+              </tr>
+              <tr>
+                <td class="text-muted">無事故継続加算（累計）</td>
+                <td><%= number_with_delimiter(@setting.safety_bonus_cumulative.to_i) %> 円</td>
+              </tr>
+              <tr>
+                <td class="text-muted">大都市加算</td>
+                <td>
+                  <%= number_with_delimiter(@setting.housing_allowance.to_i) %> 円
+                  <% if @actual_salary && @setting.housing_allowance.to_i == 0 && @actual_salary.city_allowance.to_i > 0 %>
+                    <span class="badge bg-warning text-dark ms-1">要登録: <%= number_with_delimiter(@actual_salary.city_allowance) %>円</span>
+                  <% end %>
+                </td>
+              </tr>
+              <tr>
+                <td class="text-muted">職位加算</td>
+                <td>
+                  <%= number_with_delimiter(@setting.position_allowance.to_i) %> 円
+                  <% if @actual_salary && @setting.position_allowance.to_i == 0 && @actual_salary.basic_salary_2.to_i > 0 %>
+                    <span class="badge bg-warning text-dark ms-1">要登録: <%= number_with_delimiter(@actual_salary.basic_salary_2) %>円</span>
+                  <% end %>
+                </td>
+              </tr>
+              <tr>
+                <td class="text-muted">職責加算</td>
+                <td>
+                  <%= number_with_delimiter(@setting.qualification_allowance.to_i) %> 円
+                  <% if @actual_salary && @setting.qualification_allowance.to_i == 0 && @actual_salary.executive_salary.to_i > 0 %>
+                    <span class="badge bg-warning text-dark ms-1">要登録: <%= number_with_delimiter(@actual_salary.executive_salary) %>円</span>
+                  <% end %>
+                </td>
+              </tr>
+              <tr class="fw-bold table-light">
+                <td class="text-muted">時給換算</td>
+                <td class="text-primary"><%= number_with_delimiter(@setting.hourly_rate) %> 円</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h6 class="small text-muted border-bottom pb-1 mb-2">基準外手当</h6>
+          <table class="table table-sm small mb-3">
+            <tbody>
+              <tr>
+                <td class="text-muted" style="width: 45%">通勤手当</td>
+                <td>
+                  <%= number_with_delimiter(@setting.commuting_allowance.to_i) %> 円
+                  <% if @setting.commuting_distance.to_f > 0 %>
+                    <small class="text-muted">（<%= @setting.commuting_distance %>km）</small>
+                  <% end %>
+                  <% if @actual_salary && @setting.commuting_allowance.to_i == 0 && @actual_salary.commuting_allowance.to_i > 0 %>
+                    <span class="badge bg-warning text-dark ms-1">要登録</span>
+                  <% end %>
+                </td>
+              </tr>
+              <tr>
+                <td class="text-muted">家族手当</td>
+                <td><%= number_with_delimiter(@setting.family_allowance.to_i) %> 円</td>
+              </tr>
+              <tr>
+                <td class="text-muted">無事故加算（月額）</td>
+                <td>
+                  <%= number_with_delimiter(@setting.safety_bonus.to_i) %> 円
+                  <% if @actual_salary && @setting.safety_bonus.to_i == 0 && @actual_salary.safety_bonus.to_i > 0 %>
+                    <span class="badge bg-warning text-dark ms-1">要登録: <%= number_with_delimiter(@actual_salary.safety_bonus) %>円</span>
+                  <% end %>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <h6 class="small text-muted border-bottom pb-1 mb-2">控除・税金</h6>
+          <table class="table table-sm small mb-0">
+            <tbody>
+              <tr>
+                <td class="text-muted" style="width: 45%">住民税</td>
+                <td>
+                  <%= number_with_delimiter(@setting.resident_tax.to_i) %> 円
+                  <% if @actual_salary && @setting.resident_tax.to_i == 0 && @actual_salary.resident_tax.to_i > 0 %>
+                    <span class="badge bg-warning text-dark ms-1">要登録: <%= number_with_delimiter(@actual_salary.resident_tax) %>円</span>
+                  <% end %>
+                </td>
+              </tr>
+              <tr>
+                <td class="text-muted">扶養人数</td>
+                <td><%= @setting.dependents_count %> 人</td>
+              </tr>
+              <tr>
+                <td class="text-muted">税額表</td>
+                <td><%= @setting.tax_table_type %>欄</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    <% else %>
+      <div class="alert alert-warning">
+        <i class="bi bi-exclamation-triangle me-1"></i>
+        この従業員の給与設定がありません。
+        <%= link_to "給与設定を登録", new_salary_setting_admin_payroll_simulations_path, class: "btn btn-sm btn-warning ms-2" %>
+      </div>
+    <% end %>
+  </div>
+
+  <!-- 右側：計算式詳細 -->
+  <div class="col-lg-6">
+    <div class="card card-lift">
+      <div class="card-header bg-transparent">
+        <h6 class="card-title mb-0"><i class="bi bi-calculator text-info me-1"></i>計算式詳細</h6>
+      </div>
+      <div class="card-body">
+        <% if @setting %>
+          <h6 class="small text-muted mb-2">時給計算（基準内賃金 ÷ 163.8）</h6>
+          <div class="bg-light p-3 rounded small mb-3">
+            <table class="table table-sm table-borderless mb-2">
+              <tbody>
+                <tr>
+                  <td class="text-muted" style="width: 50%">基本給</td>
+                  <td class="text-end"><%= number_with_delimiter(@setting.base_salary) %> 円</td>
+                </tr>
+                <tr>
+                  <td class="text-muted">＋ 無事故継続加算（累計）</td>
+                  <td class="text-end"><%= number_with_delimiter(@setting.safety_bonus_cumulative.to_i) %> 円</td>
+                </tr>
+                <tr>
+                  <td class="text-muted">＋ 大都市加算</td>
+                  <td class="text-end"><%= number_with_delimiter(@setting.housing_allowance.to_i) %> 円</td>
+                </tr>
+                <tr>
+                  <td class="text-muted">＋ 職位加算</td>
+                  <td class="text-end"><%= number_with_delimiter(@setting.position_allowance.to_i) %> 円</td>
+                </tr>
+                <tr>
+                  <td class="text-muted">＋ 職責加算</td>
+                  <td class="text-end"><%= number_with_delimiter(@setting.qualification_allowance.to_i) %> 円</td>
+                </tr>
+                <tr class="border-top">
+                  <td class="fw-bold">基準内賃金 合計</td>
+                  <td class="text-end fw-bold"><%= number_with_delimiter(@setting.hourly_rate_base) %> 円</td>
+                </tr>
+              </tbody>
+            </table>
+            <div class="text-center">
+              <code><%= number_with_delimiter(@setting.hourly_rate_base) %> ÷ 163.8 = <strong class="text-primary fs-6"><%= number_with_delimiter(@setting.hourly_rate) %>円/時</strong></code>
+            </div>
+          </div>
+
+          <h6 class="small text-muted mb-2">残業手当の計算</h6>
+          <div class="bg-light p-2 rounded small mb-3">
+            <code>
+              時給 <%= number_with_delimiter(@setting.hourly_rate) %>円 × 残業 <%= @simulation.overtime_hours&.round(1) %>h × <%= (@setting.overtime_rate * 100).to_i %>%
+              = <%= number_with_delimiter(@simulation.calc_overtime_pay) %>円
+            </code>
+          </div>
+
+          <% if @simulation.calc_late_night_pay.to_i > 0 %>
+            <h6 class="small text-muted mb-2">深夜手当の計算</h6>
+            <div class="bg-light p-2 rounded small mb-3">
+              <code>
+                時給 <%= number_with_delimiter(@setting.hourly_rate) %>円 × 深夜 <%= @simulation.late_night_hours&.round(1) %>h × <%= (@setting.late_night_rate * 100).to_i %>%
+                = <%= number_with_delimiter(@simulation.calc_late_night_pay) %>円
+              </code>
+            </div>
+          <% end %>
+
+          <% if @simulation.calc_holiday_pay.to_i > 0 %>
+            <h6 class="small text-muted mb-2">休日手当の計算</h6>
+            <div class="bg-light p-2 rounded small mb-3">
+              <code>
+                時給 <%= number_with_delimiter(@setting.hourly_rate) %>円 × 休日 <%= @simulation.holiday_hours&.round(1) %>h × <%= (@setting.holiday_rate * 100).to_i %>%
+                = <%= number_with_delimiter(@simulation.calc_holiday_pay) %>円
+              </code>
+            </div>
+          <% end %>
+        <% end %>
+
+        <h6 class="small text-muted mb-2">社会保険料</h6>
+        <table class="table table-sm small mb-0">
+          <tbody>
+            <tr>
+              <td>健康保険</td>
+              <td class="text-end"><%= number_with_delimiter(@simulation.calc_health_insurance) %> 円</td>
+            </tr>
+            <tr>
+              <td>介護保険</td>
+              <td class="text-end"><%= number_with_delimiter(@simulation.calc_nursing_insurance) %> 円</td>
+            </tr>
+            <tr>
+              <td>厚生年金</td>
+              <td class="text-end"><%= number_with_delimiter(@simulation.calc_pension) %> 円</td>
+            </tr>
+            <tr>
+              <td>雇用保険</td>
+              <td class="text-end"><%= number_with_delimiter(@simulation.calc_employment_insurance) %> 円</td>
+            </tr>
+            <tr class="fw-bold">
+              <td>計</td>
+              <td class="text-end">
+                <%= number_with_delimiter(
+                  @simulation.calc_health_insurance.to_i +
+                  @simulation.calc_nursing_insurance.to_i +
+                  @simulation.calc_pension.to_i +
+                  @simulation.calc_employment_insurance.to_i
+                ) %> 円
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<% content_for :javascript do %>
+<script>
+  // Bootstrap tooltips の初期化
+  document.addEventListener('DOMContentLoaded', function() {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.forEach(function(tooltipTriggerEl) {
+      new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+  });
+</script>
+<% end %>

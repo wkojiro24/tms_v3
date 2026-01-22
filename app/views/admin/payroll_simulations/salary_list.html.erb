@@ -1,0 +1,176 @@
+<% content_for :title, "給与明細一覧" %>
+<% content_for :section_label, "人事管理" %>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h2 class="h4 mb-1">給与明細一覧（実績データ）</h2>
+    <p class="text-muted small mb-0"><%= @year %>年<%= @month %>月 - インポート済み給与データ</p>
+  </div>
+  <div class="d-flex gap-2 align-items-center">
+    <form action="<%= salary_list_admin_payroll_simulations_path %>" method="get" class="d-flex gap-2">
+      <select name="year" class="form-select form-select-sm" onchange="this.form.submit()">
+        <% @available_periods.map(&:first).uniq.each do |y| %>
+          <option value="<%= y %>" <%= 'selected' if y == @year %>><%= y %>年</option>
+        <% end %>
+      </select>
+      <select name="month" class="form-select form-select-sm" onchange="this.form.submit()">
+        <% (1..12).each do |m| %>
+          <option value="<%= m %>" <%= 'selected' if m == @month %>><%= m %>月</option>
+        <% end %>
+      </select>
+    </form>
+    <%= link_to '<i class="bi bi-arrow-left me-1"></i>シミュレーション'.html_safe, admin_payroll_simulations_path(year: @year, month: @month), class: "btn btn-outline-secondary btn-sm" %>
+  </div>
+</div>
+
+<% if @salaries.any? %>
+  <div class="card card-lift">
+    <div class="card-header bg-transparent">
+      <h6 class="card-title mb-0"><i class="bi bi-table me-1"></i><%= @year %>年<%= @month %>月 給与明細一覧（<%= @salaries.count %>名）</h6>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle mb-0" style="font-size: 0.8rem;">
+          <thead class="table-light sticky-top">
+            <tr>
+              <th rowspan="2" class="align-middle">Code</th>
+              <th rowspan="2" class="align-middle">氏名</th>
+              <th rowspan="2" class="align-middle text-center">等級</th>
+              <th rowspan="2" class="align-middle text-center">評価</th>
+              <th colspan="8" class="text-center bg-primary-subtle">基準内賃金</th>
+              <th colspan="4" class="text-center bg-success-subtle">基準外賃金</th>
+              <th colspan="6" class="text-center bg-info-subtle">残業手当</th>
+              <th rowspan="2" class="align-middle text-end bg-warning-subtle">課税支給</th>
+            </tr>
+            <tr>
+              <th class="text-end bg-primary-subtle">基本給</th>
+              <th class="text-end bg-primary-subtle">職位</th>
+              <th class="text-end bg-primary-subtle">職責</th>
+              <th class="text-end bg-primary-subtle">大都市</th>
+              <th class="text-end bg-primary-subtle">調整給</th>
+              <th class="text-end bg-primary-subtle">基本2</th>
+              <th class="text-end bg-primary-subtle">役員</th>
+              <th class="text-end bg-primary-subtle">小計</th>
+              <th class="text-end bg-success-subtle">無事故</th>
+              <th class="text-end bg-success-subtle">調整加算</th>
+              <th class="text-end bg-success-subtle">有休手当</th>
+              <th class="text-end bg-success-subtle">欠勤控除</th>
+              <th class="text-end bg-info-subtle">平日</th>
+              <th class="text-end bg-info-subtle">法定休</th>
+              <th class="text-end bg-info-subtle">法外休</th>
+              <th class="text-end bg-info-subtle">代休</th>
+              <th class="text-end bg-info-subtle">60h超</th>
+              <th class="text-end bg-info-subtle">深夜</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @salaries.each do |s| %>
+              <% grade = @grades[s.employee_code] %>
+              <%
+                # 基準内小計
+                base_subtotal = s.basic_salary.to_i + s.position_allowance.to_i + s.role_allowance.to_i +
+                                s.city_allowance.to_i + s.adjustment_salary.to_i + s.basic_salary_2.to_i + s.executive_salary.to_i
+              %>
+              <tr>
+                <td><%= s.employee_code %></td>
+                <td class="text-nowrap"><%= s.employee_name %></td>
+                <%
+                  # 等級コードを分解: "運転職-M-2A" -> 等級="M", 評価="2A"
+                  if grade
+                    match = grade.grade_code.match(/^(運転職|専門職)-([GMHE])-(.+)$/)
+                    grade_level = match ? match[2] : '-'
+                    evaluation = match ? match[3] : '-'
+                  else
+                    grade_level = '-'
+                    evaluation = '-'
+                  end
+                  # 等級の色分け: G=緑, M=青, H=紫, E=赤
+                  grade_colors = { 'G' => 'bg-success', 'M' => 'bg-primary', 'H' => 'bg-purple', 'E' => 'bg-danger' }
+                  grade_color = grade_colors[grade_level] || 'bg-secondary'
+                  # 評価の色分け: S=金, A=緑, 2A=青, 3A=水色, B=灰
+                  eval_colors = { 'S' => 'bg-warning text-dark', 'A' => 'bg-success', '2A' => 'bg-primary', '3A' => 'bg-info', 'B' => 'bg-secondary' }
+                  eval_color = eval_colors[evaluation] || 'bg-secondary'
+                %>
+                <td class="text-center">
+                  <% if grade_level != '-' %>
+                    <span class="badge <%= grade_color %>" style="<%= 'background-color: #6f42c1 !important;' if grade_level == 'H' %>"><%= grade_level %></span>
+                  <% else %>
+                    <span class="text-muted">-</span>
+                  <% end %>
+                </td>
+                <td class="text-center">
+                  <% if evaluation != '-' %>
+                    <span class="badge <%= eval_color %>"><%= evaluation %></span>
+                  <% else %>
+                    <span class="text-muted">-</span>
+                  <% end %>
+                </td>
+                <!-- 基準内賃金 -->
+                <td class="text-end"><%= number_with_delimiter(s.basic_salary.to_i) if s.basic_salary.to_i > 0 %></td>
+                <td class="text-end"><%= number_with_delimiter(s.position_allowance.to_i) if s.position_allowance.to_i > 0 %></td>
+                <td class="text-end"><%= number_with_delimiter(s.role_allowance.to_i) if s.role_allowance.to_i > 0 %></td>
+                <td class="text-end"><%= number_with_delimiter(s.city_allowance.to_i) if s.city_allowance.to_i > 0 %></td>
+                <td class="text-end"><%= number_with_delimiter(s.adjustment_salary.to_i) if s.adjustment_salary.to_i > 0 %></td>
+                <td class="text-end"><%= number_with_delimiter(s.basic_salary_2.to_i) if s.basic_salary_2.to_i > 0 %></td>
+                <td class="text-end"><%= number_with_delimiter(s.executive_salary.to_i) if s.executive_salary.to_i > 0 %></td>
+                <td class="text-end fw-bold"><%= number_with_delimiter(base_subtotal) %></td>
+                <!-- 基準外賃金 -->
+                <td class="text-end"><%= number_with_delimiter(s.safety_bonus.to_i) if s.safety_bonus.to_i > 0 %></td>
+                <td class="text-end"><%= number_with_delimiter(s.adjustment_allowance.to_i) if s.adjustment_allowance.to_i > 0 %></td>
+                <td class="text-end"><%= number_with_delimiter(s.paid_leave_pay.to_i) if s.paid_leave_pay.to_i > 0 %></td>
+                <td class="text-end text-danger"><%= number_with_delimiter(s.absence_deduction.to_i) if s.absence_deduction.to_i > 0 %></td>
+                <!-- 残業手当 -->
+                <td class="text-end"><%= number_with_delimiter(s.weekday_overtime_pay.to_i) if s.weekday_overtime_pay.to_i > 0 %></td>
+                <td class="text-end"><%= number_with_delimiter(s.statutory_holiday_pay.to_i) if s.statutory_holiday_pay.to_i > 0 %></td>
+                <td class="text-end"><%= number_with_delimiter(s.non_statutory_holiday_pay.to_i) if s.non_statutory_holiday_pay.to_i > 0 %></td>
+                <td class="text-end"><%= number_with_delimiter(s.substitute_holiday_pay.to_i) if s.substitute_holiday_pay.to_i > 0 %></td>
+                <td class="text-end"><%= number_with_delimiter(s.premium_overtime_pay.to_i) if s.premium_overtime_pay.to_i > 0 %></td>
+                <td class="text-end"><%= number_with_delimiter(s.late_night_pay.to_i) if s.late_night_pay.to_i > 0 %></td>
+                <!-- 課税支給合計 -->
+                <td class="text-end fw-bold bg-warning-subtle"><%= number_with_delimiter(s.taxable_total.to_i) %></td>
+              </tr>
+            <% end %>
+          </tbody>
+          <tfoot class="table-secondary">
+            <tr>
+              <td colspan="4" class="text-end fw-bold">合計</td>
+              <td class="text-end fw-bold"><%= number_with_delimiter(@salaries.sum { |s| s.basic_salary.to_i }) %></td>
+              <td class="text-end fw-bold"><%= number_with_delimiter(@salaries.sum { |s| s.position_allowance.to_i }) %></td>
+              <td class="text-end fw-bold"><%= number_with_delimiter(@salaries.sum { |s| s.role_allowance.to_i }) %></td>
+              <td class="text-end fw-bold"><%= number_with_delimiter(@salaries.sum { |s| s.city_allowance.to_i }) %></td>
+              <td class="text-end fw-bold"><%= number_with_delimiter(@salaries.sum { |s| s.adjustment_salary.to_i }) %></td>
+              <td class="text-end fw-bold"><%= number_with_delimiter(@salaries.sum { |s| s.basic_salary_2.to_i }) %></td>
+              <td class="text-end fw-bold"><%= number_with_delimiter(@salaries.sum { |s| s.executive_salary.to_i }) %></td>
+              <td class="text-end fw-bold"><%= number_with_delimiter(@salaries.sum { |s| s.basic_salary.to_i + s.position_allowance.to_i + s.role_allowance.to_i + s.city_allowance.to_i + s.adjustment_salary.to_i + s.basic_salary_2.to_i + s.executive_salary.to_i }) %></td>
+              <td class="text-end fw-bold"><%= number_with_delimiter(@salaries.sum { |s| s.safety_bonus.to_i }) %></td>
+              <td class="text-end fw-bold"><%= number_with_delimiter(@salaries.sum { |s| s.adjustment_allowance.to_i }) %></td>
+              <td class="text-end fw-bold"><%= number_with_delimiter(@salaries.sum { |s| s.paid_leave_pay.to_i }) %></td>
+              <td class="text-end fw-bold text-danger"><%= number_with_delimiter(@salaries.sum { |s| s.absence_deduction.to_i }) %></td>
+              <td class="text-end fw-bold"><%= number_with_delimiter(@salaries.sum { |s| s.weekday_overtime_pay.to_i }) %></td>
+              <td class="text-end fw-bold"><%= number_with_delimiter(@salaries.sum { |s| s.statutory_holiday_pay.to_i }) %></td>
+              <td class="text-end fw-bold"><%= number_with_delimiter(@salaries.sum { |s| s.non_statutory_holiday_pay.to_i }) %></td>
+              <td class="text-end fw-bold"><%= number_with_delimiter(@salaries.sum { |s| s.substitute_holiday_pay.to_i }) %></td>
+              <td class="text-end fw-bold"><%= number_with_delimiter(@salaries.sum { |s| s.premium_overtime_pay.to_i }) %></td>
+              <td class="text-end fw-bold"><%= number_with_delimiter(@salaries.sum { |s| s.late_night_pay.to_i }) %></td>
+              <td class="text-end fw-bold bg-warning-subtle"><%= number_with_delimiter(@salaries.sum { |s| s.taxable_total.to_i }) %></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="card mt-3">
+    <div class="card-body py-2 small">
+      <strong>列の説明：</strong>
+      <span class="badge bg-primary-subtle text-dark">基準内賃金</span> = 時給計算のベースになる項目
+      <span class="badge bg-success-subtle text-dark">基準外賃金</span> = 時給計算に含まれない手当
+      <span class="badge bg-info-subtle text-dark">残業手当</span> = 勤怠データから計算される変動項目
+    </div>
+  </div>
+<% else %>
+  <div class="alert alert-info">
+    <i class="bi bi-info-circle me-1"></i>
+    <%= @year %>年<%= @month %>月の給与データがありません。
+  </div>
+<% end %>

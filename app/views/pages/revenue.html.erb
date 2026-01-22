@@ -1,0 +1,101 @@
+<% content_for :title, "収益管理" %>
+<% content_for :section_label, "ファイナンス" %>
+
+<div class="row g-4">
+  <div class="col-xl-4">
+    <div class="card card-lift shadow-sm h-100">
+      <div class="card-body">
+        <h2 class="h6 text-muted text-uppercase">今月のサマリー</h2>
+        <div class="display-6 fw-semibold text-primary mb-3">¥ 48,200,000</div>
+        <p class="text-muted small mb-4">
+          前年同月比 +12.4%。増便施策と中距離案件の拡大が寄与しています。
+        </p>
+        <ul class="list-unstyled small text-muted mb-0">
+          <li class="mb-2"><i class="bi bi-caret-up-fill text-success"></i> 利益率: 18.6%（+1.2pt）</li>
+          <li class="mb-2"><i class="bi bi-caret-up-fill text-success"></i> 平均単価: ¥21,800 / 1便</li>
+          <li><i class="bi bi-caret-down-fill text-danger"></i> 未回収: ¥1,280,000（2案件）</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="col-xl-8">
+    <div class="card card-lift shadow-sm h-100">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h2 class="h5 mb-0">部門別 売上内訳</h2>
+          <span class="badge rounded-pill text-bg-primary">四半期比較</span>
+        </div>
+        <div class="bg-body-secondary rounded-4 p-5 text-center text-muted">
+          <i class="bi bi-pie-chart fs-1 d-block mb-3 text-secondary"></i>
+          可視化エリア：BIツール連携予定
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4 mt-1">
+  <div class="col-lg-7">
+    <div class="card card-lift shadow-sm h-100">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h2 class="h5 mb-0">請求ステータス</h2>
+          <a href="#" class="btn btn-sm btn-outline-secondary">CSVエクスポート</a>
+        </div>
+        <div class="table-responsive">
+          <table class="table align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>顧客名</th>
+                <th>案件名</th>
+                <th>金額</th>
+                <th>ステータス</th>
+              </tr>
+            </thead>
+            <tbody class="small">
+              <tr>
+                <td>東北フレッシュ物流</td>
+                <td>冷凍便（仙台センター）</td>
+                <td>¥ 2,480,000</td>
+                <td><span class="badge rounded-pill text-bg-success">入金済</span></td>
+              </tr>
+              <tr>
+                <td>首都圏スーパーネット</td>
+                <td>共同配送（第3エリア）</td>
+                <td>¥ 3,850,000</td>
+                <td><span class="badge rounded-pill text-bg-warning">確認中</span></td>
+              </tr>
+              <tr>
+                <td>京浜工業団地組合</td>
+                <td>部材緊急輸送</td>
+                <td>¥ 1,280,000</td>
+                <td><span class="badge rounded-pill text-bg-danger">未回収 15日超</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card card-lift shadow-sm h-100">
+      <div class="card-body">
+        <h2 class="h5 mb-3">重点指標</h2>
+        <div class="d-flex flex-column gap-3 small text-muted">
+          <div>
+            <div class="fw-semibold text-dark">平均積載率</div>
+            <div>78.5%（先月比 +4.2pt）</div>
+          </div>
+          <div>
+            <div class="fw-semibold text-dark">燃料コスト / 売上</div>
+            <div>18.2%（ディーゼル単価高騰の影響）</div>
+          </div>
+          <div>
+            <div class="fw-semibold text-dark">固定費 / 便数</div>
+            <div>¥ 12,400（車両稼働率改善で削減余地あり）</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

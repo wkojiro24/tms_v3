@@ -1,0 +1,94 @@
+<% content_for :title, "ナレッジ共有" %>
+<% content_for :section_label, "情報共有" %>
+
+<div class="row">
+  <!-- サイドバー：カテゴリ -->
+  <div class="col-lg-3 mb-4">
+    <div class="card shadow-sm">
+      <div class="card-header bg-white">
+        <h6 class="mb-0"><i class="bi bi-folder me-2"></i>カテゴリ</h6>
+      </div>
+      <div class="list-group list-group-flush">
+        <%= link_to knowledge_articles_path, class: "list-group-item list-group-item-action d-flex justify-content-between align-items-center #{'active' if params[:category].blank?}" do %>
+          すべて
+          <span class="badge bg-secondary"><%= @articles.count %></span>
+        <% end %>
+        <% KnowledgeArticle::CATEGORIES.each do |key, label| %>
+          <% count = @articles_by_category[key]&.size || 0 %>
+          <%= link_to knowledge_articles_path(category: key), class: "list-group-item list-group-item-action d-flex justify-content-between align-items-center #{'active' if params[:category] == key}" do %>
+            <%= label %>
+            <span class="badge bg-secondary"><%= count %></span>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- 検索 -->
+    <div class="card shadow-sm mt-3">
+      <div class="card-body">
+        <%= form_with url: knowledge_articles_path, method: :get, local: true do |f| %>
+          <div class="input-group">
+            <%= f.text_field :q, value: params[:q], class: "form-control form-control-sm", placeholder: "検索..." %>
+            <button type="submit" class="btn btn-outline-secondary btn-sm">
+              <i class="bi bi-search"></i>
+            </button>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- メインコンテンツ -->
+  <div class="col-lg-9">
+    <% if @articles.any? %>
+      <div class="row">
+        <% @articles.each do |article| %>
+          <div class="col-md-6 mb-3">
+            <%= link_to knowledge_article_path(article), class: "card shadow-sm h-100 text-decoration-none card-hover" do %>
+              <div class="card-body">
+                <div class="d-flex align-items-start gap-3">
+                  <div class="rounded-circle bg-primary bg-opacity-10 p-2">
+                    <i class="bi bi-file-text text-primary"></i>
+                  </div>
+                  <div class="flex-grow-1">
+                    <h6 class="card-title mb-1 text-dark"><%= article.title %></h6>
+                    <span class="badge bg-light text-dark mb-2"><%= article.category_label %></span>
+                    <% if article.body.present? %>
+                      <p class="card-text text-muted small mb-0"><%= truncate(strip_tags(article.body), length: 80) %></p>
+                    <% end %>
+                  </div>
+                </div>
+              </div>
+              <div class="card-footer bg-white border-top-0 pt-0">
+                <small class="text-muted">
+                  <i class="bi bi-eye me-1"></i><%= article.view_count %>回閲覧
+                  <span class="mx-2">|</span>
+                  <i class="bi bi-calendar me-1"></i><%= article.published_at&.strftime("%Y/%m/%d") || article.updated_at.strftime("%Y/%m/%d") %>
+                </small>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="card shadow-sm">
+        <div class="card-body text-center text-muted py-5">
+          <i class="bi bi-book fs-1 d-block mb-3 opacity-50"></i>
+          <% if params[:q].present? %>
+            「<%= params[:q] %>」に一致する記事が見つかりませんでした
+          <% else %>
+            まだ記事がありません
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<style>
+  .card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 .5rem 1rem rgba(0,0,0,.1) !important;
+    transition: all 0.2s ease;
+  }
+</style>

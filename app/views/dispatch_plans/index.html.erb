@@ -1,0 +1,2201 @@
+<% content_for :title, "配車管理" %>
+<% content_for :section_label, "オペレーション" %>
+<% content_for :header_actions do %>
+  <% if @dispatch_plan.confirmed? %>
+    <button class="btn btn-warning btn-sm" onclick="unlockDispatchPlan()">
+      <i class="bi bi-unlock"></i> ロック解除
+    </button>
+  <% else %>
+    <button class="btn btn-primary btn-sm" onclick="saveDispatchPlan()">
+      <i class="bi bi-save"></i> 保存
+    </button>
+    <button class="btn btn-success btn-sm" onclick="confirmDispatchPlan()">
+      <i class="bi bi-check-circle"></i> 確定
+    </button>
+  <% end %>
+<% end %>
+
+<div class="card shadow-sm">
+  <div class="card-body p-0">
+    <!-- 表形式ビュー -->
+    <div id="table-view" style="display: none;">
+      <!-- 表形式用ヘッダー -->
+      <div class="d-flex align-items-center justify-content-between px-3 py-2 border-bottom bg-light">
+        <div class="d-flex align-items-center gap-2">
+          <button type="button" class="btn btn-outline-secondary btn-sm px-2" onclick="goToPreviousDay()">
+            <i class="bi bi-chevron-left"></i>
+          </button>
+          <div class="d-flex align-items-center border rounded bg-white px-2 py-1">
+            <input type="date" id="dispatch-date-table" class="border-0 bg-transparent" style="width: 130px; outline: none;"
+                   value="<%= @date.strftime('%Y-%m-%d') %>" onchange="changeDate(this.value)">
+          </div>
+          <button type="button" class="btn btn-outline-secondary btn-sm px-2" onclick="goToNextDay()">
+            <i class="bi bi-chevron-right"></i>
+          </button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" onclick="goToToday()">今日</button>
+          <span class="badge <%= @dispatch_plan.draft? ? 'bg-warning' : 'bg-success' %>">
+            <%= @dispatch_plan.draft? ? '下書き' : '確定' %>
+          </span>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <select id="depot-filter-table" class="form-select form-select-sm" style="width: 100px;" onchange="changeDepot(this.value)">
+            <option value="">全営業所</option>
+            <% @depots.each do |depot| %>
+              <option value="<%= depot %>" <%= @depot == depot ? 'selected' : '' %>><%= depot %></option>
+            <% end %>
+          </select>
+          <span class="text-muted small"><%= @assignments.count %>件</span>
+          <div class="btn-group btn-group-sm">
+            <button type="button" class="btn btn-outline-secondary active" data-view="table" onclick="switchView('table')">
+              <i class="bi bi-table"></i>
+            </button>
+            <button type="button" class="btn btn-outline-secondary" data-view="timeline" onclick="switchView('timeline')">
+              <i class="bi bi-bar-chart-steps"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div id="dispatch-spreadsheet" style="width: 100%; height: 560px; overflow: hidden;"></div>
+    </div>
+
+    <!-- タイムラインビュー -->
+    <div id="timeline-view">
+      <!-- 日付ナビゲーション（タイムライン直上） -->
+      <div class="d-flex align-items-center justify-content-between px-3 py-2 border-bottom bg-light">
+        <div class="d-flex align-items-center gap-2">
+          <button type="button" class="btn btn-outline-secondary btn-sm px-2" onclick="goToPreviousDay()">
+            <i class="bi bi-chevron-left"></i>
+          </button>
+          <div class="d-flex align-items-center border rounded bg-white px-2 py-1">
+            <input type="date" id="dispatch-date" class="border-0 bg-transparent" style="width: 130px; outline: none;"
+                   value="<%= @date.strftime('%Y-%m-%d') %>" onchange="changeDate(this.value)">
+          </div>
+          <button type="button" class="btn btn-outline-secondary btn-sm px-2" onclick="goToNextDay()">
+            <i class="bi bi-chevron-right"></i>
+          </button>
+          <button type="button" class="btn btn-outline-secondary btn-sm" onclick="goToToday()">今日</button>
+          <% if @date.saturday? || @date.sunday? %>
+            <span class="badge bg-danger">休日</span>
+          <% end %>
+          <span class="badge <%= @dispatch_plan.draft? ? 'bg-warning' : 'bg-success' %>">
+            <%= @dispatch_plan.draft? ? '下書き' : '確定' %>
+          </span>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <select id="depot-filter-inline" class="form-select form-select-sm" style="width: 100px;" onchange="changeDepot(this.value)">
+            <option value="">全営業所</option>
+            <% @depots.each do |depot| %>
+              <option value="<%= depot %>" <%= @depot == depot ? 'selected' : '' %>><%= depot %></option>
+            <% end %>
+          </select>
+          <span class="text-muted small"><%= @vehicles.count %>台</span>
+          <div class="btn-group btn-group-sm">
+            <button type="button" class="btn btn-outline-secondary" data-view="table" onclick="switchView('table')">
+              <i class="bi bi-table"></i>
+            </button>
+            <button type="button" class="btn btn-outline-secondary active" data-view="timeline" onclick="switchView('timeline')">
+              <i class="bi bi-bar-chart-steps"></i>
+            </button>
+          </div>
+          <button type="button" class="btn btn-outline-secondary btn-sm" onclick="toggleFullscreen()" title="拡大表示">
+            <i class="bi bi-arrows-fullscreen"></i>
+          </button>
+          <button type="button" class="btn btn-outline-info btn-sm" onclick="generateShareUrl()" title="共有URLを発行">
+            <i class="bi bi-share"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="timeline-wrapper d-flex" id="timeline-wrapper" style="height: 560px; overflow: hidden;">
+        <!-- 左側：車両ラベル（固定） -->
+        <div class="timeline-labels-container" style="width: 150px; flex-shrink: 0; overflow: hidden; border-right: 1px solid #dee2e6;">
+          <!-- ラベル用ヘッダー（時間軸ヘッダーと高さを合わせる） -->
+          <div class="d-flex align-items-center justify-content-center bg-light" style="height: 25px; border-bottom: 1px solid #dee2e6;">
+            <span class="small text-muted fw-semibold">車両</span>
+          </div>
+          <!-- 車両ラベル一覧 -->
+          <div class="timeline-labels-scroll" id="timeline-labels-scroll" style="overflow-y: auto; height: calc(100% - 25px);">
+            <% @vehicles.each_with_index do |vehicle, idx| %>
+              <% plate = vehicle_plate_parts(vehicle)
+                 is_maintenance = vehicle.maintenance_status == "maintenance"
+                 is_faulted = vehicle.maintenance_status == "faulted" || vehicle.maintenance_status == "suspended"
+                 is_inspection = vehicle.maintenance_status == "inspection"
+                 has_alert = is_maintenance || is_faulted || is_inspection
+                 default_driver = vehicle.default_employee
+                 has_default_driver = default_driver.present?
+                 # 背景色の優先順位: 故障 > 整備 > 点検 > デフォルトドライバーあり > 通常（交互）
+                 row_bg = if is_faulted
+                            "#fff0f0"
+                          elsif is_maintenance
+                            "#fff8e6"
+                          elsif is_inspection
+                            "#e8f4ff"
+                          elsif has_default_driver
+                            "#e8f5e9"  # 薄い緑（ドライバー設定済み）
+                          else
+                            idx.even? ? "#ffffff" : "#f8f9fa"
+                          end
+              %>
+              <div class="timeline-label d-flex align-items-center justify-content-between px-2 vehicle-label-row" style="height: 49px; border-bottom: 1px solid #999; background: <%= row_bg %>;"
+                   data-vehicle-id="<%= vehicle.id %>"
+                   data-has-default-driver="<%= has_default_driver %>"
+                   ondragover="event.preventDefault(); this.classList.add('driver-drop-target');"
+                   ondragleave="this.classList.remove('driver-drop-target');"
+                   ondrop="handleDriverDropOnLabel(event, <%= vehicle.id %>);">
+                <span style="font-size: 0.85rem; font-weight: bold; font-family: 'Consolas', monospace;">
+                  <% if is_faulted %><i class="bi bi-exclamation-triangle-fill text-danger me-1" title="休車"></i><% end %>
+                  <%= plate[:number] || vehicle.registration_number&.gsub(/\D/, '')&.last(4) || "----" %>
+                </span>
+                <span class="driver-name-display" style="font-size: 0.75rem; color: <%= has_default_driver ? '#333' : '#999' %>;">
+                  <%= has_default_driver ? default_driver.last_name : '未設定' %><% if has_default_driver %><span class="clear-default-driver" onclick="clearDefaultDriver(event, <%= vehicle.id %>)" title="デフォルトドライバーを解除"><i class="bi bi-x-circle-fill"></i></span><% end %>
+                </span>
+              </div>
+            <% end %>
+          </div>
+        </div>
+
+        <!-- 中央：タイムライン本体（水平スクロール可能） -->
+        <div class="timeline-container" id="timeline-scroll-container" style="flex: 1; min-width: 0; overflow: auto; padding: 0;">
+        <!-- 時間軸ヘッダー（0:00〜24:00の24時間を表示） -->
+        <div class="timeline-header d-flex" style="height: 25px; border-bottom: 1px solid #dee2e6; position: sticky; top: 0; background: white; z-index: 20;">
+          <% (0..23).each do |hour| %>
+            <div class="timeline-hour text-center text-muted small" style="width: 40px; flex-shrink: 0; border-left: 1px solid #eee; height: 25px; line-height: 25px;">
+              <%= sprintf("%02d", hour) %>
+            </div>
+          <% end %>
+        </div>
+
+        <!-- 車両基準タイムライン -->
+        <div class="timeline-body" id="timeline-rows-vehicle" style="border-collapse: collapse;">
+          <% @vehicles.each_with_index do |vehicle, idx| %>
+            <% # 車両の状態を判定
+               is_maintenance = vehicle.maintenance_status == "maintenance"
+               is_faulted = vehicle.maintenance_status == "faulted" || vehicle.maintenance_status == "suspended"
+               is_inspection = vehicle.maintenance_status == "inspection"
+               has_default_driver = vehicle.default_employee_id.present?
+               # 背景色の優先順位: 故障 > 整備 > 点検 > デフォルトドライバーあり > 通常（交互）
+               row_bg = if is_faulted
+                          "#fff0f0"
+                        elsif is_maintenance
+                          "#fff8e6"
+                        elsif is_inspection
+                          "#e8f4ff"
+                        elsif has_default_driver
+                          "#e8f5e9"  # 薄い緑（ドライバー設定済み）
+                        else
+                          idx.even? ? "#ffffff" : "#f8f9fa"
+                        end
+            %>
+            <div class="timeline-row d-flex" style="height: 49px; background: <%= row_bg %>; border-bottom: 1px solid #999;" data-vehicle-id="<%= vehicle.id %>" data-default-employee-id="<%= vehicle.default_employee_id %>">
+              <div class="timeline-bars position-relative" style="width: 960px; flex-shrink: 0; height: 100%; background: repeating-linear-gradient(90deg, transparent 0px, transparent 39px, #ddd 39px, #ddd 40px);"
+                   data-vehicle-id="<%= vehicle.id %>" data-default-employee-id="<%= vehicle.default_employee_id %>">
+                <% if is_faulted %>
+                  <div class="position-absolute d-flex align-items-center justify-content-center text-muted" style="left: 0; right: 0; top: 0; bottom: 0; font-size: 0.75rem;">
+                    <i class="bi bi-x-circle me-1"></i> 休車
+                  </div>
+                <% elsif is_maintenance %>
+                  <div class="position-absolute d-flex align-items-center justify-content-center text-warning" style="left: 0; right: 0; top: 0; bottom: 0; font-size: 0.75rem;">
+                    <i class="bi bi-tools me-1"></i> 整備中
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+        </div>
+
+        <!-- ドライバー基準タイムライン -->
+        <div class="timeline-body" id="timeline-rows-driver" style="display: none;">
+          <% @employees.each do |employee| %>
+            <div class="timeline-row d-flex align-items-stretch" style="min-height: 36px; border-bottom: 1px solid #dee2e6;" data-employee-id="<%= employee.id %>">
+              <div class="timeline-label d-flex align-items-center bg-light px-2"
+                   style="width: 150px; flex-shrink: 0; border-right: 1px solid #dee2e6;">
+                <!-- シンプル：ドライバー名 -->
+                <span style="font-weight: 600; font-size: 0.8rem; color: #333;"><%= employee.last_name %> <%= employee.first_name&.first %></span>
+              </div>
+              <div class="timeline-bars position-relative" style="width: 960px; flex-shrink: 0; background: repeating-linear-gradient(90deg, #f8f9fa 0px, #f8f9fa 39px, #eee 39px, #eee 40px);"
+                   data-employee-id="<%= employee.id %>">
+              </div>
+            </div>
+          <% end %>
+        </div>
+
+        <!-- 現在時刻ライン -->
+        <div id="current-time-line" class="position-absolute bg-danger" style="width: 2px; top: 0; bottom: 0; z-index: 10; display: none;"></div>
+      </div>
+
+        <!-- 右側：オーダー＆卸場サイドバー -->
+        <div id="right-sidebar" class="bg-light border-start" style="width: 200px; flex-shrink: 0; overflow-y: auto;">
+          <!-- 当日のオーダー -->
+          <div class="p-2 bg-primary text-white small fw-semibold">
+            <i class="bi bi-box-seam"></i> 当日のオーダー
+            <span class="badge bg-white text-primary ms-1"><%= @transport_orders.count %></span>
+          </div>
+          <div class="p-2" id="order-list" style="max-height: 250px; overflow-y: auto;">
+            <% if @transport_orders.any? %>
+              <% @transport_orders.each do |order| %>
+                <div class="order-card card card-body p-2 mb-2 small <%= order.assigned? ? 'opacity-50' : '' %>"
+                     draggable="<%= !order.assigned? %>"
+                     data-order-id="<%= order.id %>"
+                     data-shipper-id="<%= order.shipper_id %>"
+                     data-origin-id="<%= order.origin_location_id %>"
+                     data-destination-id="<%= order.destination_location_id %>"
+                     data-vehicle-id="<%= order.vehicle_id %>"
+                     data-loading-time="<%= order.loading_time_str %>"
+                     data-departure-time="<%= order.departure_time_str %>"
+                     data-arrival-time="<%= order.arrival_time_str %>"
+                     style="cursor: <%= order.assigned? ? 'default' : 'grab' %>; border-left: 3px solid <%= order.assigned? ? '#6c757d' : '#0d6efd' %>;">
+                  <div class="d-flex justify-content-between align-items-start">
+                    <div class="fw-semibold text-truncate" title="<%= order.display_name %>">
+                      <%= order.short_name %>
+                    </div>
+                    <% if order.assigned? %>
+                      <span class="badge bg-secondary" style="font-size: 0.6rem;">配車済</span>
+                    <% end %>
+                  </div>
+                  <% if order.shipper %>
+                    <div class="text-muted" style="font-size: 0.7rem;"><%= order.shipper.name&.truncate(18) %></div>
+                  <% end %>
+                  <% if order.loading_time_str || order.arrival_time_str %>
+                    <div class="text-info mt-1" style="font-size: 0.65rem;">
+                      <% if order.loading_time_str %>
+                        <i class="bi bi-clock"></i> <%= order.loading_time_str %>
+                      <% end %>
+                      <% if order.arrival_time_str %>
+                        → <%= order.arrival_time_str %>
+                      <% end %>
+                    </div>
+                  <% end %>
+                </div>
+              <% end %>
+            <% else %>
+              <div class="text-center text-muted small py-2">
+                <i class="bi bi-inbox"></i> オーダーなし
+              </div>
+            <% end %>
+          </div>
+
+          <!-- 積み場・卸場（グルーピング表示） -->
+          <div class="p-2 bg-success text-white small fw-semibold border-top">
+            <i class="bi bi-geo-alt-fill"></i> 積み場・卸場
+            <span class="badge bg-white text-success ms-1"><%= @destinations.count %></span>
+          </div>
+          <div class="p-2 pb-1">
+            <input type="text" class="form-control form-control-sm" placeholder="検索..." id="destination-search" onkeyup="filterDestinations(this.value)">
+          </div>
+          <div class="p-2 pt-1" id="destination-panel-list" style="max-height: calc(100% - 350px); overflow-y: auto;">
+            <% # 積み場（Lで始まるコード）と卸場（Dで始まるコード）に分ける
+               loading_points = @destinations.select { |d| d.code&.start_with?("L") }
+               unloading_points = @destinations.reject { |d| d.code&.start_with?("L") }
+            %>
+
+            <% if loading_points.any? %>
+              <div class="fw-semibold small text-muted mb-1" style="font-size: 0.7rem;">
+                <i class="bi bi-box-arrow-up text-primary"></i> 積み場
+              </div>
+              <% loading_points.each do |dest| %>
+                <div class="destination-item card card-body p-2 mb-1 small"
+                     draggable="true"
+                     data-destination-id="<%= dest.id %>"
+                     data-destination-name="<%= dest.name || dest.code %>"
+                     data-destination-address="<%= dest.address %>"
+                     data-destination-type="loading"
+                     style="cursor: grab; border-left: 3px solid #0d6efd;">
+                  <div class="fw-semibold text-truncate" title="<%= dest.name || dest.code %>">
+                    <%= dest.name || dest.code %>
+                  </div>
+                </div>
+              <% end %>
+            <% end %>
+
+            <% if unloading_points.any? %>
+              <div class="fw-semibold small text-muted mb-1 mt-2" style="font-size: 0.7rem;">
+                <i class="bi bi-box-arrow-down text-success"></i> 卸場・納品先
+              </div>
+              <% unloading_points.each do |dest| %>
+                <div class="destination-item card card-body p-2 mb-1 small"
+                     draggable="true"
+                     data-destination-id="<%= dest.id %>"
+                     data-destination-name="<%= dest.name || dest.code %>"
+                     data-destination-address="<%= dest.address %>"
+                     data-destination-type="unloading"
+                     style="cursor: grab; border-left: 3px solid #198754;">
+                  <div class="fw-semibold text-truncate" title="<%= dest.name || dest.code %>">
+                    <%= dest.name || dest.code %>
+                  </div>
+                </div>
+              <% end %>
+            <% end %>
+
+            <% if @destinations.empty? %>
+              <div class="text-center text-muted small py-2">
+                <i class="bi bi-inbox"></i> 場所なし
+              </div>
+            <% end %>
+          </div>
+
+          <!-- ドライバーリスト -->
+          <div class="p-2 bg-info text-white small fw-semibold border-top">
+            <i class="bi bi-person-fill"></i> ドライバー
+            <span class="badge bg-white text-info ms-1"><%= @employees.count %></span>
+          </div>
+          <div class="p-2 pb-1">
+            <input type="text" class="form-control form-control-sm" placeholder="検索..." id="driver-search" onkeyup="filterDrivers(this.value)">
+          </div>
+          <div class="p-2 pt-1" id="driver-panel-list" style="max-height: 200px; overflow-y: auto;">
+            <% @employees.each do |employee| %>
+              <% # ドライバーが既にどの車両に割り当てられているか確認
+                 assigned_vehicle = @assignments.find { |a| a.employee_id == employee.id }&.vehicle
+              %>
+              <div class="driver-item card card-body p-2 mb-1 small <%= assigned_vehicle ? 'opacity-50' : '' %>"
+                   draggable="<%= !assigned_vehicle %>"
+                   data-employee-id="<%= employee.id %>"
+                   data-employee-name="<%= employee.last_name %> <%= employee.first_name %>"
+                   style="cursor: <%= assigned_vehicle ? 'default' : 'grab' %>; border-left: 3px solid <%= assigned_vehicle ? '#6c757d' : '#0dcaf0' %>;">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div class="fw-semibold">
+                    <i class="bi bi-person-circle me-1"></i>
+                    <%= employee.last_name %> <%= employee.first_name&.first %>
+                  </div>
+                  <% if assigned_vehicle %>
+                    <span class="badge bg-secondary" style="font-size: 0.55rem;">
+                      <%= assigned_vehicle.registration_number&.gsub(/\D/, '')&.last(4) %>
+                    </span>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+
+      <!-- タイムライン用凡例 -->
+      <div class="p-3 border-top bg-light">
+        <div class="d-flex justify-content-between align-items-center">
+          <div class="d-flex gap-4 small">
+            <span><span class="badge bg-primary">&nbsp;</span> 配送中</span>
+            <span><span class="badge bg-success">&nbsp;</span> 完了</span>
+            <span><span class="badge text-dark" style="background-color: #ffe4b5;">&nbsp;</span> 未出発</span>
+            <span><span class="badge bg-secondary">&nbsp;</span> 休車</span>
+          </div>
+          <div class="small text-muted">
+            <i class="bi bi-info-circle"></i> バーをクリックで編集
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4 mt-3">
+  <div class="col-lg-8">
+    <div class="card shadow-sm">
+      <div class="card-header bg-white">
+        <h2 class="h6 mb-0"><i class="bi bi-exclamation-triangle text-warning"></i> 本日の注意事項</h2>
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <div class="alert alert-warning mb-0 small">
+              <strong><i class="bi bi-clock"></i> 労働時間警告</strong>
+              <p class="mb-0 mt-1">田中さん: 今週累計38時間（残り2時間）</p>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="alert alert-info mb-0 small">
+              <strong><i class="bi bi-cloud-rain"></i> 天候情報</strong>
+              <p class="mb-0 mt-1">午後から雨の予報。首都高渋滞注意。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card shadow-sm">
+      <div class="card-header bg-white">
+        <h2 class="h6 mb-0"><i class="bi bi-person-x text-danger"></i> 本日休み</h2>
+      </div>
+      <div class="card-body">
+        <ul class="list-unstyled mb-0 small">
+          <li class="mb-2"><i class="bi bi-person"></i> 佐藤（有給）</li>
+          <li class="mb-2"><i class="bi bi-person"></i> 山田（公休）</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 週間表示モーダル -->
+<div class="modal fade" id="weeklyViewModal" tabindex="-1">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">週間配車表</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-muted">週間表示は今後実装予定です。</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 配車バー編集モーダル -->
+<div class="modal fade" id="assignmentModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">配車編集</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form id="assignment-form">
+          <input type="hidden" id="modal-assignment-id">
+          <input type="hidden" id="modal-vehicle-id">
+          <div class="mb-3">
+            <label class="form-label">乗務員</label>
+            <select class="form-select" id="modal-employee">
+              <option value="">-- 選択 --</option>
+              <% @employees.each do |e| %>
+                <option value="<%= e.id %>"><%= "#{e.last_name} #{e.first_name}" %></option>
+              <% end %>
+            </select>
+          </div>
+          <div class="row mb-3">
+            <div class="col">
+              <label class="form-label">出勤時間</label>
+              <input type="time" class="form-control" id="modal-departure">
+            </div>
+            <div class="col">
+              <label class="form-label">指定時間</label>
+              <input type="time" class="form-control" id="modal-arrival">
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">納品先</label>
+            <select class="form-select" id="modal-destination">
+              <option value="">-- 選択 --</option>
+              <% @destinations.each do |d| %>
+                <option value="<%= d.id %>"><%= d.name || d.code %></option>
+              <% end %>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">品名</label>
+            <input type="text" class="form-control" id="modal-product">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">指示</label>
+            <select class="form-select" id="modal-instruction">
+              <option value="">-- 選択 --</option>
+              <option value="積発">積発</option>
+              <option value="宵積み">宵積み</option>
+              <option value="整備">整備</option>
+              <option value="点検">点検</option>
+              <option value="休車">休車</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <div class="form-check">
+              <input type="checkbox" class="form-check-input" id="modal-alert-flag">
+              <label class="form-check-label text-danger" for="modal-alert-flag">
+                <i class="bi bi-exclamation-triangle-fill"></i> 注意喚起（赤枠で強調表示）
+              </label>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer justify-content-between">
+        <button type="button" class="btn btn-danger" id="modal-delete-btn">
+          <i class="bi bi-trash"></i> 削除
+        </button>
+        <div>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">キャンセル</button>
+          <button type="button" class="btn btn-primary" id="modal-save-btn">保存</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.css">
+<script src="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.js"></script>
+<!-- interact.js for drag & resize -->
+<script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+
+<script>
+// Turbo対応: DOMContentLoadedとturbo:loadの両方に対応
+function initDispatchPage() {
+  // 既に初期化済みならスキップ
+  if (window.dispatchPageInitialized) return;
+  window.dispatchPageInitialized = true;
+
+  console.log('Dispatch page initializing...');
+
+  // 既存データ（タイムラインとテーブル両方で使用）- 最初に定義
+  window.existingData = <%= raw @assignments.map { |a| {
+    id: a.id,
+    vehicle_id: a.vehicle_id,
+    employee_id: a.employee_id,
+    sequence: a.sequence,
+    scheduled_departure: a.formatted_departure,
+    scheduled_arrival: a.formatted_arrival,
+    estimated_return: a.estimated_return&.strftime("%H:%M"),
+    destination_location_id: a.destination_location_id,
+    origin_location_id: a.origin_location_id,
+    shipper_id: a.shipper_id,
+    product_name: a.product_name,
+    instruction: a.instruction,
+    route_instruction: a.route_instruction,
+    status: a.status,
+    alert_flag: a.alert_flag,
+    has_anomaly: a.has_anomaly?,
+    anomaly_alerts: a.anomaly_alerts,
+    is_relay: a.is_relay?
+  } }.to_json %>;
+
+  initTableView();
+  initTimelineView();
+
+  // モーダルボタンのイベントリスナー設定
+  const saveBtn = document.getElementById('modal-save-btn');
+  const deleteBtn = document.getElementById('modal-delete-btn');
+  if (saveBtn) {
+    saveBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      console.log('Save button clicked');
+      saveAssignmentFromModal();
+    });
+  }
+  if (deleteBtn) {
+    deleteBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      deleteAssignmentFromModal();
+    });
+  }
+
+  // URLパラメータからビュー状態を復元
+  const urlParams = new URLSearchParams(window.location.search);
+  const viewParam = urlParams.get('view');
+  if (viewParam === 'table') {
+    switchView('table');
+  } else {
+    // デフォルトはタイムライン - 必ずswitchViewを呼んで表示を切り替える
+    switchView('timeline');
+  }
+
+  console.log('Dispatch page initialized, view:', viewParam || 'timeline');
+}
+
+// Turbo対応（turbo:loadのみを使用して重複初期化を防止）
+document.addEventListener('turbo:load', function() {
+  window.dispatchPageInitialized = false;
+  window.assignmentModalInstance = null;  // モーダルインスタンスもリセット
+  window.isDeleting = false;  // 削除フラグもリセット
+  initDispatchPage();
+});
+// Turboがない場合のフォールバック
+if (typeof Turbo === 'undefined') {
+  document.addEventListener('DOMContentLoaded', initDispatchPage);
+}
+
+// 現在のビュー（デフォルトはタイムライン）- 重複宣言防止
+if (typeof window.currentView === 'undefined') {
+  window.currentView = 'timeline';
+}
+if (typeof window.currentTimelineBasis === 'undefined') {
+  window.currentTimelineBasis = 'vehicle'; // 'vehicle' or 'driver'
+}
+var currentView = window.currentView;
+var currentTimelineBasis = window.currentTimelineBasis;
+
+function switchView(view) {
+  currentView = view;
+  window.currentView = view;
+  const tableView = document.getElementById('table-view');
+  const timelineView = document.getElementById('timeline-view');
+  // ビュー切り替えボタンのactiveクラス更新
+  const buttons = document.querySelectorAll('[data-view]');
+
+  buttons.forEach(btn => {
+    btn.classList.remove('active');
+    if (btn.dataset.view === view) {
+      btn.classList.add('active');
+    }
+  });
+
+  if (view === 'table') {
+    tableView.style.display = 'block';
+    timelineView.style.display = 'none';
+  } else {
+    tableView.style.display = 'none';
+    timelineView.style.display = 'block';
+    renderTimelineBars();
+  }
+}
+
+function switchTimelineBasis(basis) {
+  currentTimelineBasis = basis;
+  const vehicleRows = document.getElementById('timeline-rows-vehicle');
+  const driverRows = document.getElementById('timeline-rows-driver');
+  const buttons = document.querySelectorAll('#timeline-basis-toggle button');
+
+  buttons.forEach(btn => {
+    btn.classList.remove('active');
+    if (btn.dataset.basis === basis) {
+      btn.classList.add('active');
+    }
+  });
+
+  if (basis === 'vehicle') {
+    vehicleRows.style.display = 'block';
+    driverRows.style.display = 'none';
+  } else {
+    vehicleRows.style.display = 'none';
+    driverRows.style.display = 'block';
+  }
+
+  renderTimelineBars();
+}
+
+// ===============================
+// 表形式ビュー
+// ===============================
+function initTableView() {
+  const container = document.getElementById('dispatch-spreadsheet');
+
+  // Handsontableがまだ読み込まれていない場合は待機
+  if (typeof Handsontable === 'undefined') {
+    console.log('Waiting for Handsontable to load...');
+    setTimeout(initTableView, 100);
+    return;
+  }
+
+  // ロック状態
+  const isLocked = <%= @dispatch_plan.confirmed? %>;
+
+  // マスターデータ
+  const vehicles = <%= raw @vehicles.map { |v| { id: v.id, label: v.registration_number } }.to_json %>;
+  const employees = <%= raw @employees.map { |e| { id: e.id, label: "#{e.last_name} #{e.first_name}" } }.to_json %>;
+  const shippers = <%= raw @shippers.map { |s| { id: s.id, label: s.name || s.code } }.to_json %>;
+  const destinations = <%= raw @destinations.map { |d| { id: d.id, label: d.name || d.code } }.to_json %>;
+
+  // マッピング作成
+  window.vehicleMap = {};
+  vehicles.forEach(v => window.vehicleMap[v.id] = v.label);
+  window.vehicleLabels = vehicles.map(v => v.label);
+
+  window.employeeMap = {};
+  employees.forEach(e => window.employeeMap[e.id] = e.label);
+  window.employeeLabels = employees.map(e => e.label);
+
+  window.destinationMap = {};
+  destinations.forEach(d => window.destinationMap[d.id] = d.label);
+  window.destinationLabels = destinations.map(d => d.label);
+
+  // 逆引きマップ
+  window.vehicleLabelToId = {};
+  vehicles.forEach(v => window.vehicleLabelToId[v.label] = v.id);
+  window.employeeLabelToId = {};
+  employees.forEach(e => window.employeeLabelToId[e.label] = e.id);
+  window.destinationLabelToId = {};
+  destinations.forEach(d => window.destinationLabelToId[d.label] = d.id);
+
+  // データを行形式に変換（existingDataはinitDispatchPageで定義済み）
+  let data = window.existingData.map(a => [
+    a.id,
+    window.vehicleMap[a.vehicle_id] || '',
+    window.employeeMap[a.employee_id] || '',
+    a.scheduled_departure || '',
+    a.scheduled_arrival || '',
+    window.destinationMap[a.destination_location_id] || '',
+    a.product_name || '',
+    a.instruction || '',
+    a.route_instruction || '',
+    a.status || 'pending'
+  ]);
+
+  // 空行を追加
+  const emptyRowCount = data.length === 0 ? 20 : 10;
+  for (let i = 0; i < emptyRowCount; i++) {
+    data.push([null, '', '', '', '', '', '', '', '', 'pending']);
+  }
+
+  const hot = new Handsontable(container, {
+    data: data,
+    colHeaders: ['ID', '車番', '乗務員', '出勤時間', '指定時間', '納品先', '品名', '指示', '高速ルート等', 'ステータス'],
+    columns: [
+      { data: 0, type: 'numeric', readOnly: true, width: 50 },
+      { data: 1, type: 'dropdown', source: window.vehicleLabels, width: 80 },
+      { data: 2, type: 'dropdown', source: window.employeeLabels, width: 100 },
+      { data: 3, type: 'time', timeFormat: 'HH:mm', correctFormat: true, width: 80 },
+      { data: 4, type: 'time', timeFormat: 'HH:mm', correctFormat: true, width: 80 },
+      { data: 5, type: 'dropdown', source: window.destinationLabels, width: 150 },
+      { data: 6, type: 'text', width: 100 },
+      { data: 7, type: 'dropdown', source: ['', '積発', '宵積み', '整備', '点検', '休車'], width: 80 },
+      { data: 8, type: 'text', width: 200 },
+      { data: 9, type: 'dropdown', source: ['pending', 'in_progress', 'completed', 'cancelled'], width: 100 }
+    ],
+    rowHeaders: true,
+    height: 580,
+    licenseKey: 'non-commercial-and-evaluation',
+    stretchH: 'all',
+    autoWrapRow: true,
+    contextMenu: !isLocked,  // ロック時は右クリックメニュー無効
+    readOnly: isLocked,       // ロック時は読み取り専用
+    manualRowResize: true,
+    manualColumnResize: true,
+    filters: true,
+    dropdownMenu: !isLocked,  // ロック時はドロップダウン無効
+    afterChange: function(changes, source) {
+      if (source === 'loadData' || isLocked) return;
+      window.dispatchDataChanged = true;
+    },
+    cells: function(row, col) {
+      const cellProperties = {};
+      // ロック時は全てread-only
+      if (isLocked) {
+        cellProperties.readOnly = true;
+      }
+      if (col === 9) {
+        const status = this.instance.getDataAtCell(row, 9);
+        if (status === 'completed') cellProperties.className = 'bg-success-subtle';
+        else if (status === 'in_progress') cellProperties.className = 'bg-info-subtle';
+        else if (status === 'cancelled') cellProperties.className = 'bg-secondary-subtle';
+      }
+      return cellProperties;
+    }
+  });
+
+  window.dispatchHot = hot;
+  window.dispatchDataChanged = false;
+}
+
+// ===============================
+// タイムラインビュー
+// ===============================
+
+// 車両のデフォルト荷物紐付け設定
+window.vehicleCargoBindings = <%= raw @vehicle_cargo_bindings.transform_values { |b|
+  {
+    cargo_name: b.cargo_name,
+    cargo_category: b.cargo_category,
+    shipper_id: b.shipper_id,
+    default_origin_id: b.default_origin_id,
+    default_destination_id: b.default_destination_id
+  }
+}.to_json %>;
+
+// 車両のデフォルトドライバー設定
+window.vehicleDefaultDrivers = <%= raw @vehicles.map { |v| [v.id, {
+  id: v.default_employee_id,
+  name: v.default_employee&.then { |e| "#{e.last_name} #{e.first_name&.first}" }
+}] }.to_h.to_json %>;
+
+function initTimelineView() {
+  // 現在時刻ライン表示
+  updateCurrentTimeLine();
+  setInterval(updateCurrentTimeLine, 60000); // 1分ごと更新
+
+  // ドラッグ&ドロップ設定
+  initDragAndDrop();
+}
+
+function initDragAndDrop() {
+  // オーダーカードのドラッグ開始
+  document.querySelectorAll('.order-card[draggable="true"]').forEach(card => {
+    card.addEventListener('dragstart', (e) => {
+      e.dataTransfer.setData('type', 'order');
+      e.dataTransfer.setData('orderId', card.dataset.orderId);
+      e.dataTransfer.setData('shipperId', card.dataset.shipperId || '');
+      e.dataTransfer.setData('originId', card.dataset.originId || '');
+      e.dataTransfer.setData('destinationId', card.dataset.destinationId || '');
+      e.dataTransfer.setData('vehicleId', card.dataset.vehicleId || '');
+      e.dataTransfer.setData('loadingTime', card.dataset.loadingTime || '');
+      e.dataTransfer.setData('departureTime', card.dataset.departureTime || '');
+      e.dataTransfer.setData('arrivalTime', card.dataset.arrivalTime || '');
+      card.classList.add('dragging');
+    });
+    card.addEventListener('dragend', (e) => {
+      card.classList.remove('dragging');
+    });
+  });
+
+  // 卸場カードのドラッグ開始（destination-itemに変更）
+  document.querySelectorAll('.destination-item').forEach(card => {
+    card.addEventListener('dragstart', (e) => {
+      e.dataTransfer.setData('type', 'destination');
+      e.dataTransfer.setData('destinationId', card.dataset.destinationId);
+      e.dataTransfer.setData('destinationName', card.dataset.destinationName);
+      card.classList.add('dragging');
+    });
+    card.addEventListener('dragend', (e) => {
+      card.classList.remove('dragging');
+    });
+  });
+
+  // ドライバーカードのドラッグ開始
+  document.querySelectorAll('.driver-item[draggable="true"]').forEach(card => {
+    card.addEventListener('dragstart', (e) => {
+      e.dataTransfer.setData('type', 'driver');
+      e.dataTransfer.setData('employeeId', card.dataset.employeeId);
+      e.dataTransfer.setData('employeeName', card.dataset.employeeName);
+      card.classList.add('dragging');
+    });
+    card.addEventListener('dragend', (e) => {
+      card.classList.remove('dragging');
+    });
+  });
+
+  // タイムライン行へのドロップ
+  document.querySelectorAll('.timeline-bars').forEach(row => {
+    // 既存のイベントリスナーを削除して再設定（重複防止）
+    row.ondragover = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      row.classList.add('drop-target');
+    };
+    row.ondragleave = (e) => {
+      row.classList.remove('drop-target');
+    };
+    row.ondrop = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      row.classList.remove('drop-target');
+
+      const vehicleId = row.dataset.vehicleId;
+      const type = e.dataTransfer.getData('type');
+
+      console.log('Drop event:', type, 'on vehicle:', vehicleId);
+
+      // ドロップ位置から時間を計算
+      const rect = row.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const dropTime = pixelsToTime(x);
+
+      if (type === 'order') {
+        createAssignmentFromOrder(e.dataTransfer, vehicleId, null, dropTime);
+      } else if (type === 'destination') {
+        createAssignmentFromDestination(e.dataTransfer, vehicleId, null, dropTime);
+      } else if (type === 'driver') {
+        // ドライバーを車両行にドロップ → 既存の配車にドライバーを割り当て or 通知
+        assignDriverToVehicle(e.dataTransfer, vehicleId);
+      }
+    };
+  });
+}
+
+function pixelsToTime(pixels) {
+  // 50px = 1時間、4:00始まり
+  const hours = Math.floor(pixels / TIMELINE_PIXELS_PER_HOUR) + TIMELINE_START_HOUR;
+  const minutes = Math.round((pixels % TIMELINE_PIXELS_PER_HOUR) / TIMELINE_PIXELS_PER_HOUR * 60);
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+}
+
+function createAssignmentFromOrder(dataTransfer, vehicleId, employeeId, dropTime) {
+  const orderId = dataTransfer.getData('orderId');
+  const shipperId = dataTransfer.getData('shipperId');
+  const originId = dataTransfer.getData('originId');
+  const destinationId = dataTransfer.getData('destinationId');
+  const orderVehicleId = dataTransfer.getData('vehicleId');
+  const loadingTime = dataTransfer.getData('loadingTime');
+  const departureTime = dataTransfer.getData('departureTime');
+  const arrivalTime = dataTransfer.getData('arrivalTime');
+
+  // オーダーに車両が紐付いている場合、その車両を優先
+  const targetVehicleId = orderVehicleId || vehicleId;
+
+  // デフォルトドライバーを取得
+  const defaultDriver = window.vehicleDefaultDrivers[targetVehicleId];
+
+  const assignment = {
+    vehicle_id: targetVehicleId,
+    employee_id: employeeId || (defaultDriver?.id || null), // デフォルトドライバーを自動設定
+    transport_order_id: orderId,
+    shipper_id: shipperId || null,
+    origin_location_id: originId || null,
+    destination_location_id: destinationId || null,
+    scheduled_departure: departureTime || loadingTime || dropTime,
+    scheduled_arrival: arrivalTime || null,
+    sequence: 1,
+    status: 'pending'
+  };
+
+  // モーダルを開かずに保存してリロード
+  saveNewAssignment(assignment, false);
+}
+
+function createAssignmentFromDestination(dataTransfer, vehicleId, employeeId, dropTime) {
+  const destinationId = dataTransfer.getData('destinationId');
+
+  // 車両にデフォルト荷物紐付けがあるか確認
+  const binding = window.vehicleCargoBindings[vehicleId];
+
+  // デフォルトドライバーを取得
+  const defaultDriver = window.vehicleDefaultDrivers[vehicleId];
+
+  const assignment = {
+    vehicle_id: vehicleId,
+    employee_id: employeeId || (defaultDriver?.id || null), // デフォルトドライバーを自動設定
+    destination_location_id: destinationId,
+    scheduled_departure: dropTime,
+    sequence: 1,
+    status: 'pending'
+  };
+
+  // デフォルト紐付けがあれば適用
+  if (binding) {
+    assignment.product_name = binding.cargo_name;
+    assignment.cargo_type = binding.cargo_category;
+    if (binding.shipper_id) assignment.shipper_id = binding.shipper_id;
+    if (binding.default_origin_id) assignment.origin_location_id = binding.default_origin_id;
+  }
+
+  // モーダルを開かずに保存してリロード
+  saveNewAssignment(assignment, false);
+}
+
+function saveNewAssignment(assignment, openModalAfter = true) {
+  const dateStr = document.getElementById('dispatch-date').value;
+
+  fetch('/dispatch_plans/create_assignment?date=' + dateStr, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+    },
+    body: JSON.stringify(assignment)
+  })
+  .then(response => response.json())
+  .then(result => {
+    if (result.id) {
+      // 新規作成成功 - モーダルを開いてドライバー等を設定
+      if (openModalAfter) {
+        // 作成されたassignmentでモーダルを開く
+        const newAssignment = {
+          id: result.id,
+          vehicle_id: result.vehicle_id,
+          employee_id: result.employee_id,
+          scheduled_departure: result.scheduled_departure ? result.scheduled_departure.substring(11, 16) : assignment.scheduled_departure,
+          scheduled_arrival: result.scheduled_arrival ? result.scheduled_arrival.substring(11, 16) : assignment.scheduled_arrival,
+          destination_location_id: result.destination_location_id,
+          product_name: result.product_name,
+          instruction: result.instruction
+        };
+        // existingDataに追加してバーを描画
+        window.existingData.push(newAssignment);
+        renderTimelineBars();
+        // モーダルを開く
+        openAssignmentModal(newAssignment);
+      } else {
+        reloadKeepingView();
+      }
+    } else {
+      alert('配車の登録に失敗しました: ' + (result.errors || []).join(', '));
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('エラーが発生しました');
+  });
+}
+
+// ビューの状態を維持してリロード
+function reloadKeepingView() {
+  const currentViewState = currentView;
+  const url = new URL(window.location.href);
+  url.searchParams.set('view', currentViewState);
+
+  // Turboがある場合はTurboでナビゲート、なければ通常のリロード
+  if (typeof Turbo !== 'undefined') {
+    Turbo.visit(url.toString(), { action: 'replace' });
+  } else {
+    window.location.href = url.toString();
+  }
+}
+
+// 卸場検索フィルター
+function filterDestinations(query) {
+  const items = document.querySelectorAll('#destination-panel-list .destination-item');
+  const normalizedQuery = query.toLowerCase().trim();
+
+  items.forEach(item => {
+    const name = (item.dataset.destinationName || '').toLowerCase();
+    const address = (item.dataset.destinationAddress || '').toLowerCase();
+
+    if (normalizedQuery === '' || name.includes(normalizedQuery) || address.includes(normalizedQuery)) {
+      item.style.display = '';
+    } else {
+      item.style.display = 'none';
+    }
+  });
+}
+
+// ドライバー検索フィルター
+function filterDrivers(query) {
+  const items = document.querySelectorAll('#driver-panel-list .driver-item');
+  const normalizedQuery = query.toLowerCase().trim();
+
+  items.forEach(item => {
+    const name = (item.dataset.employeeName || '').toLowerCase();
+
+    if (normalizedQuery === '' || name.includes(normalizedQuery)) {
+      item.style.display = '';
+    } else {
+      item.style.display = 'none';
+    }
+  });
+}
+
+// ドライバーを特定の配車（バー）に割り当て
+function assignDriverToAssignment(assignmentId, employeeId, employeeName) {
+  const dateStr = getDateInputValue();
+
+  fetch('/dispatch_plans/batch_update?date=' + dateStr, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+    },
+    body: JSON.stringify({
+      assignments: [{
+        id: assignmentId,
+        employee_id: employeeId
+      }]
+    })
+  })
+  .then(response => response.json())
+  .then(result => {
+    if (result.success) {
+      showToast(`${employeeName}を割り当てました`, 'success');
+      reloadKeepingView();
+    } else {
+      alert('ドライバーの割り当てに失敗しました');
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('エラーが発生しました');
+  });
+}
+
+// ドライバーを車両の配車に割り当て
+function assignDriverToVehicle(dataTransfer, vehicleId) {
+  const employeeId = dataTransfer.getData('employeeId');
+  const employeeName = dataTransfer.getData('employeeName');
+
+  // この車両の配車を取得
+  const vehicleAssignments = window.existingData.filter(a => a.vehicle_id == vehicleId);
+
+  if (vehicleAssignments.length === 0) {
+    // 配車がない場合はデフォルトドライバーを設定するか確認
+    if (confirm(`この車両には配車がありません。\n${employeeName}をデフォルトドライバーとして設定しますか？`)) {
+      updateDefaultDriver(vehicleId, employeeId, employeeName);
+    }
+    return;
+  }
+
+  // 複数の配車がある場合は全てに同じドライバーを割り当てるか確認
+  if (vehicleAssignments.length > 1) {
+    if (!confirm(`この車両には${vehicleAssignments.length}件の配車があります。\n全ての配車に ${employeeName} を割り当てますか？`)) {
+      return;
+    }
+  }
+
+  const dateStr = getDateInputValue();
+
+  // 全ての配車にドライバーを割り当て
+  const updates = vehicleAssignments.map(a => ({
+    id: a.id,
+    employee_id: employeeId
+  }));
+
+  fetch('/dispatch_plans/batch_update?date=' + dateStr, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+    },
+    body: JSON.stringify({ assignments: updates })
+  })
+  .then(response => response.json())
+  .then(result => {
+    if (result.success) {
+      reloadKeepingView();
+    } else {
+      alert('ドライバーの割り当てに失敗しました');
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('エラーが発生しました');
+  });
+}
+
+// 車両ラベルへのドライバードロップ処理（デフォルトドライバー設定）
+function handleDriverDropOnLabel(event, vehicleId) {
+  event.preventDefault();
+  event.stopPropagation();
+  event.currentTarget.classList.remove('driver-drop-target');
+
+  const type = event.dataTransfer.getData('type');
+  if (type !== 'driver') return;
+
+  const employeeId = event.dataTransfer.getData('employeeId');
+  const employeeName = event.dataTransfer.getData('employeeName');
+
+  if (confirm(`${employeeName}を車両 ${vehicleId} のデフォルトドライバーとして設定しますか？`)) {
+    updateDefaultDriver(vehicleId, employeeId, employeeName);
+  }
+}
+
+// デフォルトドライバーを更新
+function updateDefaultDriver(vehicleId, employeeId, employeeName) {
+  console.log('updateDefaultDriver called:', { vehicleId, employeeId, employeeName });
+  fetch('/dispatch_plans/update_default_driver', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+    },
+    body: JSON.stringify({ vehicle_id: vehicleId, employee_id: employeeId })
+  })
+  .then(response => {
+    console.log('Response status:', response.status);
+    return response.json();
+  })
+  .then(result => {
+    console.log('Result:', result);
+    if (result.success) {
+      showToast('デフォルトドライバーを設定しました', 'success');
+      // ページをリロードして背景色を反映
+      console.log('Reloading in 500ms...');
+      setTimeout(() => reloadKeepingView(), 500);
+    } else {
+      alert('デフォルトドライバーの設定に失敗しました');
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('エラーが発生しました');
+  });
+}
+
+// デフォルトドライバーを解除
+function clearDefaultDriver(event, vehicleId) {
+  event.preventDefault();
+  event.stopPropagation();
+
+  if (!confirm('このトラックのデフォルトドライバーを解除しますか？')) {
+    return;
+  }
+
+  fetch('/dispatch_plans/update_default_driver', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+    },
+    body: JSON.stringify({ vehicle_id: vehicleId, employee_id: null })
+  })
+  .then(response => response.json())
+  .then(result => {
+    if (result.success) {
+      showToast('デフォルトドライバーを解除しました', 'success');
+      setTimeout(() => reloadKeepingView(), 500);
+    } else {
+      alert('デフォルトドライバーの解除に失敗しました');
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('エラーが発生しました');
+  });
+}
+
+// デフォルトドライバー表示を更新
+function updateDefaultDriverDisplay(vehicleId, employeeId, employeeName) {
+  const display = document.querySelector(`.default-driver-display[data-vehicle-id="${vehicleId}"]`);
+  if (display) {
+    if (employeeId && employeeName) {
+      display.innerHTML = `<i class="bi bi-person-fill text-info"></i> ${employeeName}`;
+    } else {
+      display.innerHTML = `<i class="bi bi-person text-muted"></i> <span class="text-muted">ドライバー未設定</span>`;
+    }
+  }
+}
+
+// デフォルトドライバーを編集（クリック時）
+function editDefaultDriver(vehicleId) {
+  const currentDriver = window.vehicleDefaultDrivers[vehicleId];
+  const employees = Object.entries(window.employeeMap);
+
+  // シンプルな選択プロンプト（本当はモーダルが良い）
+  let options = ['0: 未設定（クリア）'];
+  employees.forEach(([id, name]) => {
+    options.push(`${id}: ${name}`);
+  });
+
+  const currentText = currentDriver?.name || '未設定';
+  const input = prompt(`デフォルトドライバーを選択してください\n現在: ${currentText}\n\n選択肢:\n${options.join('\n')}\n\nIDを入力（0でクリア）:`);
+
+  if (input === null) return; // キャンセル
+
+  const selectedId = parseInt(input);
+  if (isNaN(selectedId)) {
+    alert('有効なIDを入力してください');
+    return;
+  }
+
+  if (selectedId === 0) {
+    // クリア
+    updateDefaultDriver(vehicleId, null, null);
+  } else {
+    const selectedName = window.employeeMap[selectedId];
+    if (!selectedName) {
+      alert('無効なIDです');
+      return;
+    }
+    updateDefaultDriver(vehicleId, selectedId, selectedName);
+  }
+}
+
+// トースト表示
+function showToast(message, type = 'info') {
+  const bgClass = type === 'success' ? 'bg-success' : (type === 'error' ? 'bg-danger' : 'bg-info');
+  const toast = document.createElement('div');
+  toast.className = 'position-fixed bottom-0 end-0 p-3';
+  toast.style.zIndex = '9999';
+  toast.innerHTML = `
+    <div class="toast show ${bgClass} text-white">
+      <div class="toast-body"><i class="bi bi-check-circle"></i> ${message}</div>
+    </div>
+  `;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
+}
+
+function renderTimelineBars() {
+  // 既存のバーをクリア
+  document.querySelectorAll('.timeline-bar').forEach(el => el.remove());
+
+  // 現在の基準に応じてバーを生成
+  window.existingData.forEach(assignment => {
+    if (!assignment.scheduled_departure) return;
+
+    let row;
+    if (currentTimelineBasis === 'vehicle') {
+      if (!assignment.vehicle_id) return;
+      row = document.querySelector(`#timeline-rows-vehicle .timeline-bars[data-vehicle-id="${assignment.vehicle_id}"]`);
+    } else {
+      if (!assignment.employee_id) return;
+      row = document.querySelector(`#timeline-rows-driver .timeline-bars[data-employee-id="${assignment.employee_id}"]`);
+    }
+
+    if (!row) return;
+
+    const bar = createTimelineBar(assignment);
+    row.appendChild(bar);
+  });
+}
+
+function createTimelineBar(assignment) {
+  const bar = document.createElement('div');
+  bar.className = 'timeline-bar position-absolute rounded';
+  bar.dataset.assignmentId = assignment.id;
+
+  // 時間からピクセル位置を計算（0:00始まり、1時間=40px）
+  const startPixels = timeToPixels(assignment.scheduled_departure);
+  const endPixels = assignment.scheduled_arrival
+    ? timeToPixels(assignment.scheduled_arrival)
+    : startPixels + 80; // デフォルト2時間 (2 * 40px)
+
+  const left = startPixels;
+  const width = Math.max(endPixels - startPixels, 25); // 最小25px
+
+  // ステータスと異常による色分け
+  let bgClass = 'bar-pending'; // 未出発は淡いオレンジ
+  let textColorClass = 'text-dark'; // 未出発は黒文字
+  let hasAnomaly = assignment.has_anomaly || false;
+  let isRelay = assignment.is_relay || false;
+  let hasAlertFlag = assignment.alert_flag || false;
+
+  if (assignment.status === 'completed') {
+    bgClass = 'bg-success';
+    textColorClass = 'text-white';
+  } else if (assignment.status === 'in_progress') {
+    bgClass = 'bg-primary';
+    textColorClass = 'text-white';
+  } else if (assignment.instruction === '休車') {
+    bgClass = 'bg-secondary';
+    textColorClass = 'text-white';
+  }
+
+  // 注意喚起フラグ、異常検知、乗り回しの場合は赤枠で強調
+  let borderStyle = 'none';
+  if (hasAlertFlag || hasAnomaly || isRelay) {
+    borderStyle = '3px solid #dc3545'; // 赤枠
+  }
+
+  bar.className += ` ${bgClass}`;
+  bar.style.cssText = `
+    left: ${left}px;
+    width: ${width}px;
+    top: 6px;
+    height: 36px;
+    cursor: pointer;
+    opacity: 0.95;
+    z-index: 5;
+    border: ${borderStyle};
+  `;
+
+  // バー内のテキスト（基準によって表示を変える）
+  const destination = window.destinationMap[assignment.destination_location_id] || '';
+  const employee = window.employeeMap[assignment.employee_id] || '';
+  const vehicle = window.vehicleMap[assignment.vehicle_id] || '';
+
+  let mainText = destination || assignment.instruction || '---';
+  let subText = '';
+  let alertIcon = '';
+
+  // アラートアイコン
+  if (hasAnomaly) {
+    alertIcon = '<i class="bi bi-exclamation-triangle-fill text-warning me-1" title="通常と異なる配車"></i>';
+  } else if (isRelay) {
+    alertIcon = '<i class="bi bi-arrow-repeat text-white me-1" title="乗り回し"></i>';
+  }
+
+  if (currentTimelineBasis === 'vehicle') {
+    // 車両基準: メイン=納品先、サブ=ドライバー名
+    subText = employee;
+  } else {
+    // ドライバー基準: メイン=納品先、サブ=車両番号
+    subText = vehicle ? `${vehicle}` : '';
+  }
+
+  bar.innerHTML = `
+    <div class="bar-content px-1 py-0 ${textColorClass} small text-truncate" style="line-height: 1.1; pointer-events: none;">
+      <div class="fw-semibold" style="font-size: 0.7rem;">${alertIcon}${mainText}</div>
+      <div class="opacity-75" style="font-size: 0.6rem;">${subText}</div>
+    </div>
+    <div class="resize-handle resize-right" style="position: absolute; right: 0; top: 0; bottom: 0; width: 8px; cursor: ew-resize; background: rgba(0,0,0,0.15);"></div>
+  `;
+
+  // ドライバーをバーにドロップできるようにする
+  bar.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    bar.classList.add('driver-drop-on-bar');
+  });
+  bar.addEventListener('dragleave', (e) => {
+    bar.classList.remove('driver-drop-on-bar');
+  });
+  bar.addEventListener('drop', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    bar.classList.remove('driver-drop-on-bar');
+
+    const type = e.dataTransfer.getData('type');
+    if (type === 'driver') {
+      const employeeId = e.dataTransfer.getData('employeeId');
+      const employeeName = e.dataTransfer.getData('employeeName');
+      assignDriverToAssignment(assignment.id, employeeId, employeeName);
+    }
+  });
+
+  // ダブルクリックで編集モーダル
+  bar.addEventListener('dblclick', (e) => {
+    e.stopPropagation();
+    openAssignmentModal(assignment);
+  });
+
+  // interact.jsでドラッグ＆リサイズを設定
+  setupBarInteraction(bar, assignment);
+
+  return bar;
+}
+
+// interact.jsを使ったバーのドラッグ・リサイズ設定
+function setupBarInteraction(bar, assignment) {
+  interact(bar)
+    .draggable({
+      inertia: false,
+      autoScroll: true,
+      listeners: {
+        start(event) {
+          const target = event.target;
+          target.dataset.dragging = 'true';
+          target.style.zIndex = '100';
+          target.dataset.originalParent = target.parentElement.dataset.vehicleId;
+          // 絶対位置で移動できるようにする
+          const rect = target.getBoundingClientRect();
+          target.dataset.startX = rect.left;
+          target.dataset.startY = rect.top;
+        },
+        move(event) {
+          const target = event.target;
+          const x = (parseFloat(target.dataset.x) || parseFloat(target.style.left) || 0) + event.dx;
+          const y = (parseFloat(target.dataset.y) || 0) + event.dy;
+          target.style.left = `${x}px`;
+          target.style.transform = `translateY(${y}px)`;
+          target.dataset.x = x;
+          target.dataset.y = y;
+
+          // ドロップ先のハイライト
+          highlightDropTarget(event.clientX, event.clientY);
+        },
+        end(event) {
+          const target = event.target;
+          target.dataset.dragging = 'false';
+          target.style.zIndex = '5';
+          target.style.transform = '';
+          target.dataset.y = 0;
+
+          // ドロップ先の車両行を検出
+          const dropTarget = getDropTargetRow(event.clientX, event.clientY);
+          clearDropHighlights();
+
+          const newLeft = parseFloat(target.style.left) || 0;
+          const newDeparture = pixelsToTime(newLeft);
+          const width = parseFloat(target.style.width) || 80;
+          const newArrival = pixelsToTime(newLeft + width);
+
+          if (dropTarget && dropTarget.dataset.vehicleId != target.dataset.originalParent) {
+            // 別の車両に移動
+            const newVehicleId = dropTarget.dataset.vehicleId;
+            moveAssignmentToVehicle(assignment.id, newVehicleId, newDeparture, newArrival);
+          } else {
+            // 同じ車両内での時間変更
+            updateAssignmentTime(assignment.id, newDeparture, newArrival);
+          }
+        }
+      }
+    })
+    .resizable({
+      edges: { right: '.resize-right' },
+      modifiers: [
+        interact.modifiers.restrictSize({
+          min: { width: 20 }
+        })
+      ],
+      listeners: {
+        move(event) {
+          const target = event.target;
+          target.style.width = `${event.rect.width}px`;
+        },
+        end(event) {
+          const target = event.target;
+          const left = parseFloat(target.style.left) || 0;
+          const width = event.rect.width;
+
+          const newDeparture = pixelsToTime(left);
+          const newArrival = pixelsToTime(left + width);
+
+          updateAssignmentTime(assignment.id, newDeparture, newArrival);
+        }
+      }
+    });
+}
+
+// ドロップ先の車両行をハイライト
+function highlightDropTarget(clientX, clientY) {
+  clearDropHighlights();
+  const row = getDropTargetRow(clientX, clientY);
+  if (row) {
+    row.classList.add('bar-drop-target');
+  }
+}
+
+// ハイライトをクリア
+function clearDropHighlights() {
+  document.querySelectorAll('.bar-drop-target').forEach(el => el.classList.remove('bar-drop-target'));
+}
+
+// ドロップ先の車両行を取得
+function getDropTargetRow(clientX, clientY) {
+  const rows = document.querySelectorAll('#timeline-rows-vehicle .timeline-bars');
+  for (const row of rows) {
+    const rect = row.getBoundingClientRect();
+    if (clientY >= rect.top && clientY <= rect.bottom) {
+      return row;
+    }
+  }
+  return null;
+}
+
+// 配車を別の車両に移動
+function moveAssignmentToVehicle(assignmentId, newVehicleId, departure, arrival) {
+  const dateStr = getDateInputValue();
+
+  // 新しい車両のデフォルトドライバーを取得
+  const defaultDriver = window.vehicleDefaultDrivers[newVehicleId];
+
+  fetch('/dispatch_plans/batch_update?date=' + dateStr, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+    },
+    body: JSON.stringify({
+      assignments: [{
+        id: assignmentId,
+        vehicle_id: newVehicleId,
+        employee_id: defaultDriver?.id || null, // 新しい車両のデフォルトドライバーを適用
+        scheduled_departure: departure,
+        scheduled_arrival: arrival
+      }]
+    })
+  })
+  .then(response => response.json())
+  .then(result => {
+    if (result.success) {
+      showToast('配車を移動しました', 'success');
+      reloadKeepingView();
+    } else {
+      alert('配車の移動に失敗しました');
+      reloadKeepingView();
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    reloadKeepingView();
+  });
+}
+
+// 配車の時間を更新
+function updateAssignmentTime(assignmentId, departure, arrival) {
+  const dateStr = getDateInputValue();
+
+  fetch('/dispatch_plans/batch_update?date=' + dateStr, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+    },
+    body: JSON.stringify({
+      assignments: [{
+        id: assignmentId,
+        scheduled_departure: departure,
+        scheduled_arrival: arrival
+      }]
+    })
+  })
+  .then(response => response.json())
+  .then(result => {
+    if (!result.success) {
+      alert('時間の更新に失敗しました');
+      reloadKeepingView();
+    }
+    // 成功時はリロードしない（そのまま表示を維持）
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    reloadKeepingView();
+  });
+}
+
+// 0:00始まりの24時間タイムライン（1時間=40px）
+// Turbo対応: 再宣言防止
+if (typeof TIMELINE_START_HOUR === 'undefined') {
+  var TIMELINE_START_HOUR = 0;
+  var TIMELINE_PIXELS_PER_HOUR = 40;
+}
+
+function timeToPixels(timeStr) {
+  if (!timeStr) return 0;
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  const totalMinutes = (hours - TIMELINE_START_HOUR) * 60 + (minutes || 0);
+  return Math.max(0, (totalMinutes / 60) * TIMELINE_PIXELS_PER_HOUR);
+}
+
+function updateCurrentTimeLine() {
+  const now = new Date();
+  const hours = now.getHours();
+  const minutes = now.getMinutes();
+  // 24時間表示なので常に表示
+  const pixelPos = ((hours - TIMELINE_START_HOUR) * 60 + minutes) / 60 * TIMELINE_PIXELS_PER_HOUR;
+  const line = document.getElementById('current-time-line');
+
+  if (line) {
+    line.style.left = (150 + pixelPos) + 'px'; // ラベル幅150pxに変更
+    line.style.display = 'block';
+  }
+}
+
+// モーダルインスタンスをキャッシュして高速表示
+// Turboでの再宣言エラーを防ぐためwindowオブジェクトを使用
+if (typeof window.assignmentModalInstance === 'undefined') {
+  window.assignmentModalInstance = null;
+}
+
+function openAssignmentModal(assignment) {
+  document.getElementById('modal-assignment-id').value = assignment.id || '';
+  document.getElementById('modal-vehicle-id').value = assignment.vehicle_id || '';
+  document.getElementById('modal-employee').value = assignment.employee_id || '';
+  document.getElementById('modal-departure').value = assignment.scheduled_departure || '';
+  document.getElementById('modal-arrival').value = assignment.scheduled_arrival || '';
+  document.getElementById('modal-destination').value = assignment.destination_location_id || '';
+  document.getElementById('modal-product').value = assignment.product_name || '';
+  document.getElementById('modal-instruction').value = assignment.instruction || '';
+  document.getElementById('modal-alert-flag').checked = assignment.alert_flag || false;
+
+  // モーダルインスタンスをキャッシュして再利用
+  if (!window.assignmentModalInstance) {
+    window.assignmentModalInstance = new bootstrap.Modal(document.getElementById('assignmentModal'));
+  }
+  window.assignmentModalInstance.show();
+}
+
+function saveAssignmentFromModal() {
+  console.log('saveAssignmentFromModal called');
+  try {
+    const dateStr = getDateInputValue();
+    const assignmentIdValue = document.getElementById('modal-assignment-id').value;
+    const assignmentId = assignmentIdValue && assignmentIdValue.trim() !== '' ? parseInt(assignmentIdValue) : null;
+    const vehicleIdValue = document.getElementById('modal-vehicle-id').value;
+    const vehicleId = vehicleIdValue && vehicleIdValue.trim() !== '' ? parseInt(vehicleIdValue) : null;
+    const employeeIdValue = document.getElementById('modal-employee').value;
+    const employeeId = employeeIdValue && employeeIdValue.trim() !== '' ? parseInt(employeeIdValue) : null;
+    const destinationIdValue = document.getElementById('modal-destination').value;
+    const destinationId = destinationIdValue && destinationIdValue.trim() !== '' ? parseInt(destinationIdValue) : null;
+
+    // alert_flag要素の存在確認
+    const alertFlagEl = document.getElementById('modal-alert-flag');
+    console.log('alert_flag element:', alertFlagEl);
+    const alertFlag = alertFlagEl ? alertFlagEl.checked : false;
+
+    console.log('Saving assignment:', { id: assignmentId, vehicle_id: vehicleId, employee_id: employeeId, date: dateStr, alert_flag: alertFlag });
+
+    const assignment = {
+      id: assignmentId,
+      vehicle_id: vehicleId,
+      employee_id: employeeId,
+      scheduled_departure: document.getElementById('modal-departure').value || null,
+      scheduled_arrival: document.getElementById('modal-arrival').value || null,
+      destination_location_id: destinationId,
+      product_name: document.getElementById('modal-product').value || null,
+      instruction: document.getElementById('modal-instruction').value || null,
+      alert_flag: alertFlag,
+      sequence: 1,
+      status: 'pending'
+    };
+
+  fetch('/dispatch_plans/batch_update?date=' + dateStr, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+    },
+    body: JSON.stringify({ assignments: [assignment] })
+  })
+  .then(response => response.json())
+  .then(result => {
+    console.log('Save result:', result);
+    if (result.success) {
+      bootstrap.Modal.getInstance(document.getElementById('assignmentModal')).hide();
+      // ページを確実にリロード - 日付とデポを維持
+      const depotFilter = document.getElementById('depot-filter-inline');
+      const depot = depotFilter ? depotFilter.value : '';
+      let reloadUrl = '/dispatch?date=' + dateStr + '&view=' + currentView;
+      if (depot) reloadUrl += '&depot=' + encodeURIComponent(depot);
+      window.location.href = reloadUrl;
+    } else {
+      alert('保存に失敗しました: ' + (result.errors || []).map(e => e.errors || e).join(', '));
+    }
+  })
+  .catch(err => {
+    console.error('Fetch error:', err);
+    alert('通信エラーが発生しました: ' + err.message);
+  });
+  } catch (e) {
+    console.error('saveAssignmentFromModal error:', e);
+    alert('エラーが発生しました: ' + e.message);
+  }
+}
+
+function deleteAssignmentFromModal() {
+  // 重複実行防止
+  if (window.isDeleting) return;
+
+  const assignmentId = document.getElementById('modal-assignment-id').value;
+  if (!assignmentId) {
+    alert('削除対象がありません');
+    return;
+  }
+
+  if (!confirm('この配車を削除しますか？')) return;
+
+  window.isDeleting = true;
+
+  fetch('/dispatch_plans/destroy_assignment?assignment_id=' + assignmentId, {
+    method: 'DELETE',
+    headers: {
+      'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+    }
+  })
+  .then(response => {
+    if (response.ok || response.status === 204) {
+      const modal = bootstrap.Modal.getInstance(document.getElementById('assignmentModal'));
+      if (modal) modal.hide();
+      // 通常のページ遷移でリロード（Turboを使わない）
+      const url = new URL(window.location.href);
+      url.searchParams.set('view', currentView);
+      window.location.href = url.toString();
+    } else {
+      window.isDeleting = false;
+      alert('削除に失敗しました');
+    }
+  })
+  .catch(error => {
+    window.isDeleting = false;
+    console.error('Error:', error);
+    alert('削除中にエラーが発生しました');
+  });
+}
+
+// ===============================
+// 共通関数
+// ===============================
+function changeDate(dateStr) {
+  const depotFilter = document.getElementById('depot-filter-inline');
+  const depot = depotFilter ? depotFilter.value : '';
+  let url = '/dispatch?date=' + dateStr;
+  if (depot) url += '&depot=' + encodeURIComponent(depot);
+  // 現在のビューを維持
+  url += '&view=' + currentView;
+  window.location.href = url;
+}
+
+function changeDepot(depot) {
+  const dateStr = getDateInputValue();
+  let url = '/dispatch?date=' + dateStr;
+  if (depot) url += '&depot=' + encodeURIComponent(depot);
+  // 現在のビューを維持
+  url += '&view=' + currentView;
+  window.location.href = url;
+}
+
+// 現在表示されているビューの日付入力フィールドを取得
+function getDateInputValue() {
+  const timelineDateInput = document.getElementById('dispatch-date');
+  const tableDateInput = document.getElementById('dispatch-date-table');
+  // どちらかの値を返す（両方同じ日付）
+  return (timelineDateInput && timelineDateInput.value) || (tableDateInput && tableDateInput.value) || new Date().toISOString().split('T')[0];
+}
+
+function goToPreviousDay() {
+  const currentDate = new Date(getDateInputValue());
+  currentDate.setDate(currentDate.getDate() - 1);
+  changeDate(currentDate.toISOString().split('T')[0]);
+}
+
+function goToNextDay() {
+  const currentDate = new Date(getDateInputValue());
+  currentDate.setDate(currentDate.getDate() + 1);
+  changeDate(currentDate.toISOString().split('T')[0]);
+}
+
+function goToToday() {
+  const today = new Date().toISOString().split('T')[0];
+  changeDate(today);
+}
+
+// ===============================
+// 確定（ロック）機能
+// ===============================
+function confirmDispatchPlan() {
+  if (!confirm('配車計画を確定しますか？確定後は編集がロックされます。')) return;
+
+  const dateStr = document.getElementById('dispatch-date').value;
+
+  fetch('/dispatch_plans/confirm?date=' + dateStr, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+    }
+  })
+  .then(response => response.json())
+  .then(result => {
+    if (result.success) {
+      location.reload();
+    } else {
+      alert('確定に失敗しました: ' + (result.error || ''));
+    }
+  });
+}
+
+function unlockDispatchPlan() {
+  const reason = prompt('ロック解除の理由を入力してください（必須）:');
+  if (!reason || reason.trim() === '') {
+    alert('理由が必要です');
+    return;
+  }
+
+  const dateStr = document.getElementById('dispatch-date').value;
+
+  fetch('/dispatch_plans/unlock?date=' + dateStr, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+    },
+    body: JSON.stringify({ reason: reason })
+  })
+  .then(response => response.json())
+  .then(result => {
+    if (result.success) {
+      location.reload();
+    } else {
+      alert('解除に失敗しました: ' + (result.error || ''));
+    }
+  });
+}
+
+function saveDispatchPlan() {
+  if (currentView === 'table') {
+    saveFromTableView();
+  } else {
+    // タイムラインからの保存は個別モーダルで行う
+    alert('タイムライン表示では、バーをクリックして個別に編集・保存してください。');
+  }
+}
+
+function saveFromTableView() {
+  const hot = window.dispatchHot;
+  const data = hot.getData();
+  const dateStr = document.getElementById('dispatch-date').value;
+
+  const assignments = data
+    .filter(row => row[1] && row[1].trim() !== '')
+    .map(row => ({
+      id: row[0],
+      vehicle_id: window.vehicleLabelToId[row[1]],
+      employee_id: window.employeeLabelToId[row[2]],
+      scheduled_departure: row[3],
+      scheduled_arrival: row[4],
+      destination_location_id: window.destinationLabelToId[row[5]],
+      product_name: row[6],
+      instruction: row[7],
+      route_instruction: row[8],
+      status: row[9] || 'pending',
+      sequence: 1
+    }));
+
+  fetch('/dispatch_plans/batch_update?date=' + dateStr, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+    },
+    body: JSON.stringify({ assignments: assignments })
+  })
+  .then(response => response.json())
+  .then(result => {
+    if (result.success) {
+      window.dispatchDataChanged = false;
+      const toast = document.createElement('div');
+      toast.className = 'position-fixed bottom-0 end-0 p-3';
+      toast.innerHTML = `
+        <div class="toast show bg-success text-white">
+          <div class="toast-body"><i class="bi bi-check-circle"></i> ${result.message}</div>
+        </div>
+      `;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+      setTimeout(() => location.reload(), 1000);
+    } else {
+      alert('保存に失敗しました: ' + (result.errors || []).map(e => e.errors).join(', '));
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('保存中にエラーが発生しました');
+  });
+}
+
+window.addEventListener('beforeunload', function(e) {
+  if (window.dispatchDataChanged) {
+    e.preventDefault();
+    e.returnValue = '';
+  }
+});
+
+// 車両メモを保存
+function saveVehicleMemo(input) {
+  const vehicleId = input.dataset.vehicleId;
+  const memo = input.value.trim();
+  const dateStr = getDateInputValue();
+
+  fetch('/dispatch_plans/save_vehicle_memo?date=' + dateStr, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+    },
+    body: JSON.stringify({ vehicle_id: vehicleId, memo: memo })
+  })
+  .then(response => response.json())
+  .then(result => {
+    if (result.success) {
+      // 成功したら入力フィールドの背景を一瞬緑にして保存を視覚化
+      input.style.backgroundColor = '#d1e7dd';
+      setTimeout(() => { input.style.backgroundColor = 'transparent'; }, 500);
+    } else {
+      alert('備考の保存に失敗しました');
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+  });
+}
+
+// ===============================
+// スクロール同期
+// ===============================
+function setupScrollSync() {
+  const labelsScroll = document.getElementById('timeline-labels-scroll');
+  const timelineScroll = document.getElementById('timeline-scroll-container');
+
+  if (labelsScroll && timelineScroll) {
+    // タイムラインの縦スクロールをラベルに同期
+    timelineScroll.addEventListener('scroll', function() {
+      labelsScroll.scrollTop = timelineScroll.scrollTop;
+    });
+    // ラベルの縦スクロールをタイムラインに同期
+    labelsScroll.addEventListener('scroll', function() {
+      timelineScroll.scrollTop = labelsScroll.scrollTop;
+    });
+  }
+}
+
+// 初期化時にスクロール同期をセットアップ
+document.addEventListener('DOMContentLoaded', setupScrollSync);
+document.addEventListener('turbo:load', setupScrollSync);
+
+// ===============================
+// 拡大表示（フルスクリーン）
+// ===============================
+var isFullscreen = false;
+
+function toggleFullscreen() {
+  const wrapper = document.getElementById('timeline-wrapper');
+  const sidebar = document.getElementById('right-sidebar');
+  const card = wrapper.closest('.card');
+
+  if (!isFullscreen) {
+    // フルスクリーンモードに
+    card.style.position = 'fixed';
+    card.style.top = '0';
+    card.style.left = '0';
+    card.style.right = '0';
+    card.style.bottom = '0';
+    card.style.zIndex = '9999';
+    card.style.margin = '0';
+    card.style.borderRadius = '0';
+    wrapper.style.height = 'calc(100vh - 100px)';
+    if (sidebar) sidebar.style.display = 'none';
+    document.body.style.overflow = 'hidden';
+    isFullscreen = true;
+  } else {
+    // 通常モードに戻す
+    card.style.position = '';
+    card.style.top = '';
+    card.style.left = '';
+    card.style.right = '';
+    card.style.bottom = '';
+    card.style.zIndex = '';
+    card.style.margin = '';
+    card.style.borderRadius = '';
+    wrapper.style.height = '560px';
+    if (sidebar) sidebar.style.display = '';
+    document.body.style.overflow = '';
+    isFullscreen = false;
+  }
+}
+
+// ESCキーでフルスクリーン解除
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape' && isFullscreen) {
+    toggleFullscreen();
+  }
+});
+
+// ===============================
+// 共有URL発行
+// ===============================
+function generateShareUrl() {
+  const dateStr = getDateInputValue();
+  const depotFilter = document.getElementById('depot-filter-inline');
+  const depot = depotFilter ? depotFilter.value : '';
+
+  fetch('/dispatch_plans/generate_share_token?date=' + dateStr, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+    },
+    body: JSON.stringify({ depot: depot })
+  })
+  .then(response => response.json())
+  .then(result => {
+    if (result.success) {
+      // 共有URLをコピー
+      const shareUrl = result.share_url;
+      navigator.clipboard.writeText(shareUrl).then(() => {
+        alert('共有URLをクリップボードにコピーしました！\n\n' + shareUrl + '\n\n有効期限: ' + result.expires_at);
+      }).catch(() => {
+        // クリップボードが使えない場合はプロンプトで表示
+        prompt('共有URLをコピーしてください:\n有効期限: ' + result.expires_at, shareUrl);
+      });
+    } else {
+      alert('共有URLの発行に失敗しました: ' + (result.error || ''));
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('エラーが発生しました');
+  });
+}
+</script>
+
+<style>
+.bg-success-subtle { background-color: #d1e7dd !important; }
+.bg-info-subtle { background-color: #cff4fc !important; }
+.bg-secondary-subtle { background-color: #e2e3e5 !important; }
+
+/* デフォルトドライバー解除ボタン */
+.clear-default-driver {
+  display: none;
+  color: #dc3545;
+  cursor: pointer;
+  font-size: 0.7rem;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+  margin-left: 2px;
+  vertical-align: middle;
+}
+.clear-default-driver:hover {
+  opacity: 1;
+}
+.vehicle-label-row:hover .clear-default-driver {
+  display: inline;
+}
+
+/* 未出発バー用の淡いオレンジ */
+.bar-pending {
+  background-color: #ffe4b5 !important; /* モカシン（淡いオレンジ） */
+}
+
+.handsontable th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+}
+
+.handsontable td {
+  vertical-align: middle;
+}
+
+/* タイムラインスタイル */
+.timeline-container {
+  min-width: 100%;
+  position: relative;
+}
+
+.timeline-row:hover {
+  background-color: #f8f9fa;
+}
+
+.timeline-bar {
+  transition: transform 0.1s ease;
+}
+
+.timeline-bar:hover {
+  transform: scaleY(1.1);
+  opacity: 1 !important;
+  z-index: 10 !important;
+}
+
+.timeline-bars {
+  min-height: 50px;
+}
+
+/* ドラッグ&ドロップ */
+.order-card.dragging,
+.destination-card.dragging {
+  opacity: 0.5;
+  transform: scale(0.95);
+}
+
+.drop-target {
+  background-color: rgba(13, 110, 253, 0.1) !important;
+  outline: 2px dashed #0d6efd;
+}
+
+.order-card:hover:not(.opacity-50) {
+  border-left-color: #0a58ca !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.destination-item:hover {
+  border-left-color: #146c43 !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.destination-item.dragging {
+  opacity: 0.5;
+  transform: scale(0.95);
+}
+
+/* 右サイドバー */
+#right-sidebar {
+  background: linear-gradient(to bottom, #f8f9fa, #fff);
+}
+
+/* ドライバードロップターゲット */
+.driver-drop-target {
+  background-color: rgba(13, 202, 240, 0.2) !important;
+  outline: 2px dashed #0dcaf0;
+}
+
+/* デフォルトドライバー表示 */
+.default-driver-display:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  border-radius: 2px;
+}
+
+/* ドライバーアイテム */
+.driver-item:hover:not(.opacity-50) {
+  border-left-color: #0aa2c0 !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.driver-item.dragging {
+  opacity: 0.5;
+  transform: scale(0.95);
+}
+
+/* バーのドロップターゲット（車両行） */
+.bar-drop-target {
+  background-color: rgba(25, 135, 84, 0.15) !important;
+  outline: 2px dashed #198754;
+}
+
+/* バーにドライバーをドロップする際のスタイル */
+.driver-drop-on-bar {
+  outline: 3px solid #0dcaf0 !important;
+  transform: scale(1.05);
+  z-index: 50 !important;
+}
+
+/* 横線を確実に表示 */
+#timeline-rows-vehicle .timeline-row {
+  border-bottom: 2px solid #adb5bd !important;
+  box-sizing: border-box !important;
+}
+
+.timeline-labels-scroll .timeline-label {
+  border-bottom: 2px solid #adb5bd !important;
+  box-sizing: border-box !important;
+}
+</style>

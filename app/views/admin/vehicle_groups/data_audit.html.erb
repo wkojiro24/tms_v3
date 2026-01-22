@@ -1,0 +1,240 @@
+<% content_for :title, "データ整合性チェック" %>
+<% content_for :section_label, "マスタ管理" %>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <p class="text-muted mb-0">
+      車両グループのデータが正しくインポートされているか確認できます。<br>
+      <small>減価償却費や損益などの値がExcelと一致しているか検算します。</small>
+    </p>
+  </div>
+  <div>
+    <%= link_to "車両グループ設定に戻る", admin_vehicle_groups_path, class: "btn btn-outline-secondary btn-sm" %>
+  </div>
+</div>
+
+<div class="card card-lift mb-4">
+  <div class="card-body">
+    <h2 class="h6 mb-3">検査対象を選択</h2>
+    <%= form_with url: data_audit_admin_vehicle_groups_path, method: :get, local: true do |f| %>
+      <div class="row gy-3 gx-3 align-items-end">
+        <div class="col-sm-6 col-lg-4">
+          <label class="form-label small">車両グループ</label>
+          <%= f.select :vehicle_group_id,
+                       options_for_select(@vehicle_groups.map { |g| ["#{g.name} (#{g.vehicle_codes&.size || 0}台)", g.id] }, @vehicle_group_id),
+                       { include_blank: "グループを選択..." },
+                       class: "form-select form-select-sm" %>
+        </div>
+        <div class="col-sm-6 col-lg-3">
+          <label class="form-label small">対象月（空欄で全期間）</label>
+          <%= f.select :month,
+                       options_for_select(@available_months.map { |m| [m.strftime("%Y年%m月"), m.strftime("%Y-%m")] }, @month&.strftime("%Y-%m")),
+                       { include_blank: "全期間" },
+                       class: "form-select form-select-sm" %>
+        </div>
+        <div class="col-auto">
+          <button type="submit" class="btn btn-primary btn-sm">検査実行</button>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<% if @audit_results.present? %>
+  <% summary = @audit_results[:summary] %>
+  <% vehicles = @audit_results[:vehicles] %>
+
+  <%# サマリーカード %>
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <div class="card card-lift h-100">
+        <div class="card-body text-center">
+          <h6 class="text-muted mb-2">対象車両</h6>
+          <div class="h3 mb-0">
+            <%= summary[:vehicles_with_data] %> / <%= vehicles.size %>
+          </div>
+          <% if summary[:vehicles_without_data] > 0 %>
+            <small class="text-warning"><%= summary[:vehicles_without_data] %>台がデータなし</small>
+          <% else %>
+            <small class="text-success">全車両にデータあり</small>
+          <% end %>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card card-lift h-100">
+        <div class="card-body text-center">
+          <h6 class="text-muted mb-2">減価償却費合計</h6>
+          <div class="h4 mb-0"><%= number_to_currency(summary[:total_depreciation], unit: "¥", precision: 0) %></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card card-lift h-100">
+        <div class="card-body text-center">
+          <h6 class="text-muted mb-2">損益合計</h6>
+          <div class="h4 mb-0 <%= summary[:total_pnl] < 0 ? 'text-danger' : 'text-success' %>">
+            <%= number_to_currency(summary[:total_pnl], unit: "¥", precision: 0) %>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card card-lift h-100 <%= summary[:total_errors] > 0 ? 'border-warning' : '' %>">
+        <div class="card-body text-center">
+          <h6 class="text-muted mb-2">エラーセル</h6>
+          <% if summary[:total_errors] > 0 %>
+            <div class="h4 mb-0 text-warning"><%= summary[:total_errors] %>件</div>
+            <small class="text-muted">#DIV/0! 等のエラー</small>
+          <% else %>
+            <div class="h4 mb-0 text-success">なし</div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <%# 検算サマリー %>
+  <div class="card card-lift mb-4">
+    <div class="card-body">
+      <h3 class="h6 mb-3">検算結果（グループ合計）</h3>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <thead>
+            <tr>
+              <th>項目</th>
+              <th class="text-end">金額</th>
+              <th>説明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>輸送収入</td>
+              <td class="text-end"><%= number_to_currency(summary[:total_revenue], unit: "¥", precision: 0) %></td>
+              <td class="text-muted small">Excelの「輸送収入」をそのまま合算</td>
+            </tr>
+            <tr>
+              <td>輸送原価計</td>
+              <td class="text-end"><%= number_to_currency(summary[:total_cost], unit: "¥", precision: 0) %></td>
+              <td class="text-muted small">Excelの「輸送原価計」をそのまま合算</td>
+            </tr>
+            <tr class="table-light">
+              <td>計算営業所損益（収入-原価）</td>
+              <td class="text-end"><%= number_to_currency(summary[:total_calc_depot_pnl], unit: "¥", precision: 0) %></td>
+              <td class="text-muted small">輸送収入 - 輸送原価計</td>
+            </tr>
+            <tr>
+              <td>営業所損益（Excel値）</td>
+              <td class="text-end"><%= number_to_currency(summary[:total_depot_pnl], unit: "¥", precision: 0) %></td>
+              <td class="text-muted small">Excelの「営業所損益」をそのまま合算</td>
+            </tr>
+            <tr class="<%= summary[:total_depot_diff].abs > 1 ? 'table-warning' : 'table-success' %>">
+              <td><strong>差額</strong></td>
+              <td class="text-end"><strong><%= number_to_currency(summary[:total_depot_diff], unit: "¥", precision: 0) %></strong></td>
+              <td class="text-muted small">
+                <% if summary[:total_depot_diff].abs <= 1 %>
+                  Excel計算値と一致しています
+                <% else %>
+                  誤差あり（本社費用配賦など含む可能性）
+                <% end %>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <%# 車両別詳細 %>
+  <div class="card card-lift">
+    <div class="card-body">
+      <h3 class="h6 mb-3">車両別データ</h3>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead>
+            <tr>
+              <th>車両コード</th>
+              <th class="text-center">データ月数</th>
+              <th class="text-end">輸送収入</th>
+              <th class="text-end">減価償却費</th>
+              <th class="text-end">損益</th>
+              <th class="text-center">エラー</th>
+              <th>備考</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% vehicles.each do |v| %>
+              <tr class="<%= v[:has_data] ? '' : 'table-secondary' %>">
+                <td>
+                  <code><%= v[:code] %></code>
+                </td>
+                <td class="text-center">
+                  <% if v[:has_data] %>
+                    <span class="badge bg-primary"><%= v[:month_count] %>ヶ月</span>
+                  <% else %>
+                    <span class="badge bg-secondary">なし</span>
+                  <% end %>
+                </td>
+                <td class="text-end"><%= number_to_currency(v[:revenue], unit: "", precision: 0, delimiter: ",") if v[:has_data] %></td>
+                <td class="text-end"><%= number_to_currency(v[:depreciation], unit: "", precision: 0, delimiter: ",") if v[:has_data] %></td>
+                <td class="text-end <%= v[:pnl_recorded] < 0 ? 'text-danger' : '' %>">
+                  <%= number_to_currency(v[:pnl_recorded], unit: "", precision: 0, delimiter: ",") if v[:has_data] %>
+                </td>
+                <td class="text-center">
+                  <% if v[:error_count] > 0 %>
+                    <span class="badge bg-warning text-dark"><%= v[:error_count] %></span>
+                  <% end %>
+                </td>
+                <td class="small text-muted">
+                  <% unless v[:has_data] %>
+                    <span class="text-warning">データなし（古い車両または未インポート）</span>
+                  <% end %>
+                  <% if v[:depot_diff].abs > 1 && v[:has_data] %>
+                    <span class="text-info">検算差額: <%= number_to_currency(v[:depot_diff], unit: "", precision: 0, delimiter: ",") %></span>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+          <tfoot class="table-light">
+            <tr>
+              <th>合計</th>
+              <th></th>
+              <th class="text-end"><%= number_to_currency(summary[:total_revenue], unit: "", precision: 0, delimiter: ",") %></th>
+              <th class="text-end"><%= number_to_currency(summary[:total_depreciation], unit: "", precision: 0, delimiter: ",") %></th>
+              <th class="text-end <%= summary[:total_pnl] < 0 ? 'text-danger' : '' %>"><%= number_to_currency(summary[:total_pnl], unit: "", precision: 0, delimiter: ",") %></th>
+              <th class="text-center">
+                <% if summary[:total_errors] > 0 %>
+                  <span class="badge bg-warning text-dark"><%= summary[:total_errors] %></span>
+                <% end %>
+              </th>
+              <th></th>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <%# 説明 %>
+  <div class="card card-lift mt-4">
+    <div class="card-body">
+      <h3 class="h6 mb-3">データの取り扱いについて</h3>
+      <ul class="small text-muted mb-0">
+        <li><strong>インポート方式</strong>: 減価償却費・損益などの数値はExcelの<strong>計算済み値</strong>をそのままインポートしています。</li>
+        <li><strong>再計算なし</strong>: システム側では費目から損益を再計算していません。Excel側で計算された値を信頼しています。</li>
+        <li><strong>グループ集計</strong>: グループ表示時は、各車両の値を<strong>単純合算</strong>しています。</li>
+        <li><strong>差額の原因</strong>: 「計算営業所損益」と「営業所損益」に差があるのは、本社費用配賦などがあるためです。</li>
+        <li><strong>エラーセル</strong>: Excelで #DIV/0! などのエラーが発生していた場合、そのセルの値は0として扱われます。</li>
+      </ul>
+    </div>
+  </div>
+
+<% else %>
+  <div class="card card-lift">
+    <div class="card-body text-center py-5">
+      <i class="bi bi-clipboard-check text-muted fs-1 mb-3 d-block"></i>
+      <p class="text-muted mb-0">車両グループを選択して「検査実行」をクリックしてください。</p>
+    </div>
+  </div>
+<% end %>

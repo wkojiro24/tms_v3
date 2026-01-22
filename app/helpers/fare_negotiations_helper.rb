@@ -1,0 +1,2 @@
+module FareNegotiationsHelper
+end

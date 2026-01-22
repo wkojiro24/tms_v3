@@ -1,0 +1,95 @@
+<% content_for :title, "給与設定なし従業員" %>
+<% content_for :section_label, "給与シミュレーション" %>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2 class="h4 mb-0">給与設定なし従業員 (<%= @year %>年<%= @month %>月)</h2>
+  <%= link_to "戻る", admin_payroll_simulations_path(year: @year, month: @month), class: "btn btn-outline-secondary btn-sm" %>
+</div>
+
+<% if @missing_employees.empty? %>
+  <div class="alert alert-success">
+    全員の給与設定が完了しています。
+  </div>
+<% else %>
+  <%= form_with url: auto_create_settings_admin_payroll_simulations_path(year: @year, month: @month), method: :post, local: true do |f| %>
+    <div class="card card-lift mb-3">
+      <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <span><%= @missing_employees.count %>件の給与設定がありません</span>
+        <div>
+          <button type="button" class="btn btn-outline-secondary btn-sm me-2" id="select-all">全選択</button>
+          <%= f.submit "選択した従業員の給与設定を作成", class: "btn btn-primary btn-sm" %>
+        </div>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th width="40"><input type="checkbox" id="check-all"></th>
+              <th>従業員コード</th>
+              <th>氏名</th>
+              <th>基本給</th>
+              <th>支給総額</th>
+              <th>推測タイプ</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @missing_employees.each do |emp| %>
+              <% salary = @salary_data[emp.id] %>
+              <% basic = salary&.basic_salary.to_i %>
+              <% gross = salary&.gross_total.to_i %>
+              <% salary_type = basic > 0 ? '月給' : (gross < 200000 ? '時給/日給' : '不明') %>
+              <tr>
+                <td>
+                  <input type="checkbox" name="employee_ids[]" value="<%= emp.id %>" class="employee-check">
+                </td>
+                <td><%= emp.employee_code %></td>
+                <td><%= emp.full_name %></td>
+                <td class="text-end"><%= number_with_delimiter(basic) %></td>
+                <td class="text-end"><%= number_with_delimiter(gross) %></td>
+                <td>
+                  <% if basic > 0 %>
+                    <span class="badge bg-primary">月給</span>
+                  <% elsif gross < 200000 %>
+                    <span class="badge bg-warning text-dark">時給/日給</span>
+                  <% else %>
+                    <span class="badge bg-secondary">不明</span>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  <% end %>
+
+  <div class="alert alert-info">
+    <strong>注意:</strong>
+    <ul class="mb-0">
+      <li>基本給が0円の場合は「日給制」として設定されます（バイト・時給制を含む）</li>
+      <li>作成後、個別に時給や日給を設定してください</li>
+      <li>従業員マスタに登録がない場合は表示されません</li>
+    </ul>
+  </div>
+<% end %>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const checkAll = document.getElementById('check-all');
+  const selectAll = document.getElementById('select-all');
+  const checkboxes = document.querySelectorAll('.employee-check');
+
+  if (checkAll) {
+    checkAll.addEventListener('change', function() {
+      checkboxes.forEach(cb => cb.checked = this.checked);
+    });
+  }
+
+  if (selectAll) {
+    selectAll.addEventListener('click', function() {
+      checkboxes.forEach(cb => cb.checked = true);
+      if (checkAll) checkAll.checked = true;
+    });
+  }
+});
+</script>

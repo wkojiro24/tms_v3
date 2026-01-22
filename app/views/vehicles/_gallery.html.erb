@@ -1,0 +1,65 @@
+<div class="card shadow-sm mb-4" id="gallery">
+  <div class="card-header bg-white fw-semibold d-flex align-items-center justify-content-between">
+    <div>
+      車両写真ギャラリー
+      <span class="text-muted small ms-2">(<%= @vehicle.photos.attachments.size %> / 20枚)</span>
+    </div>
+    <% if @vehicle.photos.attached? %>
+      <div class="text-muted small">クリックで拡大表示</div>
+    <% end %>
+  </div>
+  <div class="card-body">
+    <% if @vehicle.photos.attached? %>
+      <div class="row g-3">
+        <div class="col-lg-8">
+          <div class="border rounded overflow-hidden bg-light text-center p-2">
+            <% photo = @selected_photo || @vehicle.photos.first %>
+            <% main_image = photo.variable? ? photo.variant(resize_to_limit: [1200, 800]).processed : photo %>
+            <%= image_tag main_image, class: "img-fluid rounded shadow-sm", alt: "vehicle photo" %>
+          </div>
+        </div>
+        <div class="col-lg-4">
+          <div class="row row-cols-3 g-2">
+            <% @vehicle.photos.each do |thumb| %>
+              <div class="col">
+                <div class="position-relative">
+                  <%= link_to vehicle_path(@vehicle, photo_id: thumb.id, anchor: "gallery"), class: "d-block border rounded overflow-hidden" do %>
+                    <% thumb_image = thumb.variable? ? thumb.variant(resize_to_fill: [140, 140]).processed : thumb %>
+                    <%= image_tag thumb_image, class: "w-100", alt: "thumb" %>
+                  <% end %>
+                  <%= button_to vehicle_photo_path(@vehicle, thumb), method: :delete, class: "btn btn-sm btn-light position-absolute top-0 end-0 m-1", data: { turbo_confirm: "この写真を削除しますか？" } do %>
+                    <i class="bi bi-x"></i>
+                  <% end %>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    <% else %>
+      <p class="text-muted mb-0">まだ写真が登録されていません。下のフォームから最大20枚までアップロードできます。</p>
+    <% end %>
+    <div class="bg-light rounded p-3 mt-4">
+      <div class="d-flex flex-wrap align-items-center justify-content-between">
+        <div>
+          <div class="fw-semibold small text-muted mb-1">写真を追加</div>
+          <p class="text-muted small mb-2">1枚あたり10MB以下、合計20枚までアップロードできます。</p>
+        </div>
+        <%= button_tag type: "button", class: "btn btn-outline-secondary btn-sm", data: { bs_toggle: "collapse", bs_target: "#galleryUploadForm" } do %>
+          <i class="bi bi-upload me-1"></i>アップロードフォームを開く
+        <% end %>
+      </div>
+      <div class="collapse mt-3" id="galleryUploadForm">
+        <%= form_with url: vehicle_photos_path(@vehicle), local: true, html: { multipart: true }, class: "d-flex flex-column gap-3" do %>
+          <div>
+            <label class="form-label small text-muted">画像ファイルを選択</label>
+            <input type="file" name="photos[]" class="form-control form-control-sm" accept="image/*" multiple required>
+          </div>
+          <div class="text-end">
+            <button type="submit" class="btn btn-sm btn-primary">写真をアップロード</button>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

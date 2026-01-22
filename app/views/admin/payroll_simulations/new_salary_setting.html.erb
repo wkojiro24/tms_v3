@@ -1,0 +1,246 @@
+<% content_for :title, "給与設定登録" %>
+<% content_for :section_label, "人事管理" %>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2 class="h4 mb-0">従業員給与設定を登録</h2>
+  <%= link_to "戻る", salary_settings_admin_payroll_simulations_path, class: "btn btn-outline-secondary btn-sm" %>
+</div>
+
+<%= form_with model: @salary_setting, url: create_salary_setting_admin_payroll_simulations_path, class: "needs-validation" do |f| %>
+  <div class="card card-lift">
+    <div class="card-body">
+      <div class="row g-3">
+        <div class="col-md-6">
+          <%= f.label :employee_id, "従業員", class: "form-label" %>
+          <%= f.collection_select :employee_id, @employees, :id, ->(e) { "#{e.employee_code} - #{e.full_name}" }, { include_blank: "選択してください" }, class: "form-select", required: true %>
+        </div>
+        <div class="col-md-3">
+          <%= f.label :salary_type, "給与形態", class: "form-label" %>
+          <%= f.select :salary_type, [['月給制', 'monthly'], ['日給制', 'daily'], ['時給制', 'hourly']], {}, class: "form-select" %>
+        </div>
+        <div class="col-md-3">
+          <%= f.label :effective_from, "適用開始日", class: "form-label" %>
+          <%= f.date_field :effective_from, class: "form-control", required: true %>
+        </div>
+      </div>
+
+      <hr class="my-4">
+      <h6 class="text-muted mb-3">【支給】基準内賃金（時給計算のベース）</h6>
+      <p class="small text-muted mb-3">時給 = 基準内賃金合計 ÷ 163.8</p>
+
+      <div class="row g-3">
+        <div class="col-md-3">
+          <%= f.label :grade_salary_table_id, "適用等級", class: "form-label" %>
+          <%= f.collection_select :grade_salary_table_id, @grade_tables, :id, :display_name, { include_blank: "（等級を選択）" }, class: "form-select" %>
+        </div>
+        <div class="col-md-3">
+          <%= f.label :base_salary_override, "基本給", class: "form-label" %>
+          <div class="input-group">
+            <%= f.number_field :base_salary_override, class: "form-control", min: 0 %>
+            <span class="input-group-text">円</span>
+          </div>
+          <small class="text-muted">明細：基本給</small>
+        </div>
+        <div class="col-md-3">
+          <%= f.label :safety_bonus_cumulative, "無事故継続加算（累計）", class: "form-label" %>
+          <div class="input-group">
+            <%= f.number_field :safety_bonus_cumulative, class: "form-control", min: 0, value: 0 %>
+            <span class="input-group-text">円</span>
+          </div>
+          <small class="text-muted">第16条（最大14,500円）</small>
+        </div>
+        <div class="col-md-3">
+          <%= f.label :position_allowance, "職位加算", class: "form-label" %>
+          <div class="input-group">
+            <%= f.number_field :position_allowance, class: "form-control", min: 0, value: 0 %>
+            <span class="input-group-text">円</span>
+          </div>
+          <small class="text-muted">明細：職位加算</small>
+        </div>
+        <div class="col-md-3">
+          <%= f.label :role_allowance, "職責加算", class: "form-label" %>
+          <div class="input-group">
+            <%= f.number_field :role_allowance, class: "form-control", min: 0, value: 0 %>
+            <span class="input-group-text">円</span>
+          </div>
+          <small class="text-muted">明細：職責加算</small>
+        </div>
+        <div class="col-md-3">
+          <%= f.label :housing_allowance, "大都市加算", class: "form-label" %>
+          <div class="input-group">
+            <%= f.number_field :housing_allowance, class: "form-control", min: 0, value: 0 %>
+            <span class="input-group-text">円</span>
+          </div>
+          <small class="text-muted">明細：大都市加算</small>
+        </div>
+        <div class="col-md-3">
+          <%= f.label :adjustment_salary, "調整給", class: "form-label" %>
+          <div class="input-group">
+            <%= f.number_field :adjustment_salary, class: "form-control", min: 0, value: 0 %>
+            <span class="input-group-text">円</span>
+          </div>
+          <small class="text-muted">明細：調整給</small>
+        </div>
+        <div class="col-md-3">
+          <%= f.label :basic_salary_2, "基本給2", class: "form-label" %>
+          <div class="input-group">
+            <%= f.number_field :basic_salary_2, class: "form-control", min: 0, value: 0 %>
+            <span class="input-group-text">円</span>
+          </div>
+          <small class="text-muted">明細：基本給2</small>
+        </div>
+        <div class="col-md-3">
+          <%= f.label :executive_salary, "役員報酬", class: "form-label" %>
+          <div class="input-group">
+            <%= f.number_field :executive_salary, class: "form-control", min: 0, value: 0 %>
+            <span class="input-group-text">円</span>
+          </div>
+          <small class="text-muted">明細：役員報酬</small>
+        </div>
+      </div>
+      <div class="alert alert-info mt-3 small">
+        <i class="bi bi-info-circle me-1"></i>
+        時給 = (基本給 + 無事故継続累計 + 職位加算 + 職責加算 + 大都市加算) ÷ 163.8
+      </div>
+
+      <hr class="my-4">
+      <h6 class="text-muted mb-3">【支給】基準外賃金・手当</h6>
+      <p class="small text-muted mb-3">時給計算には含まれない手当です。</p>
+
+      <div class="row g-3">
+        <div class="col-md-3">
+          <%= f.label :safety_bonus, "無事故加算（月額）", class: "form-label" %>
+          <div class="input-group">
+            <%= f.number_field :safety_bonus, class: "form-control", min: 0, value: 0 %>
+            <span class="input-group-text">円</span>
+          </div>
+          <small class="text-muted">明細：無事故加算</small>
+        </div>
+        <div class="col-md-3">
+          <%= f.label :adjustment_allowance, "調整加算", class: "form-label" %>
+          <div class="input-group">
+            <%= f.number_field :adjustment_allowance, class: "form-control", min: 0, value: 0 %>
+            <span class="input-group-text">円</span>
+          </div>
+          <small class="text-muted">明細：調整加算</small>
+        </div>
+        <div class="col-md-3">
+          <%= f.label :absence_deduction, "欠勤控除", class: "form-label" %>
+          <div class="input-group">
+            <%= f.number_field :absence_deduction, class: "form-control", value: 0 %>
+            <span class="input-group-text">円</span>
+          </div>
+          <small class="text-muted">明細：欠勤控除（マイナス入力）</small>
+        </div>
+        <div class="col-md-3">
+          <%= f.label :family_allowance, "家族手当", class: "form-label" %>
+          <div class="input-group">
+            <%= f.number_field :family_allowance, class: "form-control", min: 0, value: 0 %>
+            <span class="input-group-text">円</span>
+          </div>
+          <small class="text-muted">明細：家族手当</small>
+        </div>
+      </div>
+
+      <hr class="my-4">
+      <h6 class="text-muted mb-3">【支給】非課税通勤費</h6>
+
+      <div class="row g-3">
+        <div class="col-md-3">
+          <%= f.label :commuting_distance, "通勤距離（片道）", class: "form-label" %>
+          <div class="input-group">
+            <%= f.number_field :commuting_distance, class: "form-control", min: 0, step: 0.1 %>
+            <span class="input-group-text">km</span>
+          </div>
+          <small class="text-muted">距離×ガソリン価格÷燃費×2</small>
+        </div>
+        <div class="col-md-3">
+          <%= f.label :fuel_efficiency, "燃費", class: "form-label" %>
+          <div class="input-group">
+            <%= f.number_field :fuel_efficiency, class: "form-control", min: 1, step: 0.1, value: 13.0 %>
+            <span class="input-group-text">km/L</span>
+          </div>
+          <small class="text-muted">自動車:13, 原付:20</small>
+        </div>
+        <div class="col-md-3">
+          <%= f.label :commuting_daily_rate, "通勤日額", class: "form-label" %>
+          <div class="input-group">
+            <%= f.number_field :commuting_daily_rate, class: "form-control", min: 0 %>
+            <span class="input-group-text">円/日</span>
+          </div>
+          <small class="text-muted">距離計算の代わり</small>
+        </div>
+        <div class="col-md-3">
+          <%= f.label :commuting_allowance, "通勤手当（月額固定）", class: "form-label" %>
+          <div class="input-group">
+            <%= f.number_field :commuting_allowance, class: "form-control", min: 0, value: 0 %>
+            <span class="input-group-text">円</span>
+          </div>
+          <small class="text-muted">固定額の場合のみ</small>
+        </div>
+      </div>
+
+      <hr class="my-4">
+      <h6 class="text-muted mb-3">【控除】税金・社会保険・その他</h6>
+
+      <div class="row g-3">
+        <div class="col-md-3">
+          <%= f.label :resident_tax, "住民税（月額）", class: "form-label" %>
+          <div class="input-group">
+            <%= f.number_field :resident_tax, class: "form-control", min: 0, value: 0 %>
+            <span class="input-group-text">円</span>
+          </div>
+          <small class="text-muted">明細：住民税</small>
+        </div>
+        <div class="col-md-3">
+          <%= f.label :union_fee, "組合費", class: "form-label" %>
+          <div class="input-group">
+            <%= f.number_field :union_fee, class: "form-control", min: 0, value: 0 %>
+            <span class="input-group-text">円</span>
+          </div>
+          <small class="text-muted">明細：組合費</small>
+        </div>
+        <div class="col-md-3">
+          <%= f.label :dependents_count, "扶養人数", class: "form-label" %>
+          <div class="input-group">
+            <%= f.number_field :dependents_count, class: "form-control", min: 0, value: 0 %>
+            <span class="input-group-text">人</span>
+          </div>
+          <small class="text-muted">所得税計算に使用</small>
+        </div>
+        <div class="col-md-3">
+          <%= f.label :tax_table_type, "税額表", class: "form-label" %>
+          <%= f.select :tax_table_type, [['甲欄（通常）', '甲'], ['乙欄（副業等）', '乙']], {}, class: "form-select" %>
+        </div>
+      </div>
+
+      <hr class="my-4">
+      <h6 class="text-muted mb-3">適用期間・ステータス</h6>
+
+      <div class="row g-3">
+        <div class="col-md-4">
+          <%= f.label :effective_until, "適用終了日", class: "form-label" %>
+          <%= f.date_field :effective_until, class: "form-control" %>
+          <small class="text-muted">空欄で無期限</small>
+        </div>
+        <div class="col-md-4">
+          <%= f.label :active, "ステータス", class: "form-label" %>
+          <div class="form-check form-switch mt-2">
+            <%= f.check_box :active, class: "form-check-input", checked: true %>
+            <%= f.label :active, "有効", class: "form-check-label" %>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-3 mt-2">
+        <div class="col-12">
+          <%= f.label :notes, "備考", class: "form-label" %>
+          <%= f.text_area :notes, class: "form-control", rows: 2 %>
+        </div>
+      </div>
+    </div>
+    <div class="card-footer bg-transparent">
+      <%= f.submit "登録", class: "btn btn-primary" %>
+    </div>
+  </div>
+<% end %>

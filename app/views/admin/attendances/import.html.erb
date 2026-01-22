@@ -1,0 +1,88 @@
+<% content_for :title, "勤怠データインポート" %>
+<% content_for :section_label, "人事管理" %>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h2 class="h4 mb-1">勤怠データインポート</h2>
+    <p class="text-muted small mb-0">King of TimeのCSVファイルをインポート</p>
+  </div>
+  <div>
+    <%= link_to "一覧に戻る", admin_attendances_path, class: "btn btn-outline-secondary" %>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-6">
+    <div class="card card-lift">
+      <div class="card-header bg-transparent">
+        <h5 class="card-title mb-0">CSVファイルアップロード</h5>
+      </div>
+      <div class="card-body">
+        <%= form_with url: execute_import_admin_attendances_path, method: :post, multipart: true, local: true do |f| %>
+          <div class="mb-3">
+            <label class="form-label">インポート種別</label>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="import_type" id="importMonthly" value="monthly" checked>
+              <label class="form-check-label" for="importMonthly">
+                <strong>月次集計データ</strong>
+                <span class="text-muted small d-block">custom_csv_YYYYMMDD_YYYYMMDD.csv形式</span>
+              </label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="import_type" id="importDaily" value="daily">
+              <label class="form-check-label" for="importDaily">
+                <strong>日次勤怠データ</strong>
+                <span class="text-muted small d-block">YYYYMMDD_YYYYMMDD.csv形式</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">CSVファイル</label>
+            <input type="file" name="file" class="form-control" accept=".csv" required>
+            <div class="form-text">Shift_JISまたはUTF-8エンコーディングに対応</div>
+          </div>
+
+          <button type="submit" class="btn btn-primary">インポート実行</button>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card card-lift">
+      <div class="card-header bg-transparent">
+        <h5 class="card-title mb-0">一括インポート</h5>
+      </div>
+      <div class="card-body">
+        <p class="text-muted">
+          <code>data/kingoftime</code>フォルダ内の全ての月次CSVファイルを一括でインポートします。
+        </p>
+        <div class="alert alert-info small">
+          <strong>対象ファイル形式：</strong> custom_csv_*.csv<br>
+          <strong>注意：</strong> 既存のデータは上書きされます。
+        </div>
+        <%= button_to "一括インポート実行", bulk_import_admin_attendances_path, method: :post, class: "btn btn-primary", data: { turbo_confirm: "data/kingoftimeフォルダから全ての月次データをインポートしますか？処理に時間がかかる場合があります。" } %>
+      </div>
+    </div>
+
+    <div class="card card-lift mt-4">
+      <div class="card-header bg-transparent">
+        <h5 class="card-title mb-0">CSVフォーマット</h5>
+      </div>
+      <div class="card-body">
+        <h6>月次集計データ (custom_csv_*.csv)</h6>
+        <p class="small text-muted mb-2">
+          King of Timeの「カスタムデータ出力」からエクスポートした月次集計データ
+        </p>
+        <pre class="bg-light p-2 small rounded"><code>所属名,従業員コード,名前,平日出勤日数,法定休日出勤日数,代休取得日数,法定外休日出勤日数,有休取得日数,欠勤取得日数,拘束時間,休憩時間,平日残業,法定休日時間,法定外休時間,法定代休時間,法定外代時間,所定内 残業,有給休暇時間,深夜残業</code></pre>
+
+        <h6 class="mt-4">日次勤怠データ (YYYYMMDD_YYYYMMDD.csv)</h6>
+        <p class="small text-muted mb-2">
+          King of Timeの標準エクスポート形式
+        </p>
+        <pre class="bg-light p-2 small rounded"><code>従業員コード,名前,日時,勤務日種別,時間帯区分名,パターン名,出勤時刻(時刻のみ),退勤時刻(時刻のみ),備考(スケジュール),休憩時間</code></pre>
+      </div>
+    </div>
+  </div>
+</div>

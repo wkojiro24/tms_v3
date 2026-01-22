@@ -1,0 +1,68 @@
+<% content_for :title, "インポート履歴" %>
+<% content_for :section_label, "管理者機能" %>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h2 class="h4 mb-0">インポート履歴</h2>
+  <%= link_to "新規インポート", new_admin_import_path, class: "btn btn-primary" %>
+</div>
+
+<div class="card card-lift shadow-sm">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th class="ps-3">日時</th>
+            <th>種別</th>
+            <th>ファイル名</th>
+            <th class="text-center">作成</th>
+            <th class="text-center">更新</th>
+            <th class="text-center">スキップ</th>
+            <th class="text-center">結果</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @import_batches.each do |batch| %>
+            <tr>
+              <td class="ps-3">
+                <div class="small fw-semibold"><%= batch.imported_at.strftime("%Y/%m/%d") %></div>
+                <div class="text-muted small"><%= batch.imported_at.strftime("%H:%M") %></div>
+              </td>
+              <td>
+                <span class="badge text-bg-secondary">
+                  <%= import_type_label(batch.metadata&.dig("import_type")) || "仕訳" %>
+                </span>
+              </td>
+              <td>
+                <div class="text-truncate" style="max-width: 250px;" title="<%= batch.source_file_name %>">
+                  <%= batch.source_file_name %>
+                </div>
+              </td>
+              <td class="text-center">
+                <span class="badge text-bg-success"><%= batch.metadata&.dig("created") || batch.journal_entries.count %></span>
+              </td>
+              <td class="text-center">
+                <span class="badge text-bg-info"><%= batch.metadata&.dig("updated") || 0 %></span>
+              </td>
+              <td class="text-center">
+                <span class="badge text-bg-secondary"><%= batch.metadata&.dig("skipped") || 0 %></span>
+              </td>
+              <td class="text-center">
+                <%= import_status_badge(batch.metadata&.dig("status") || "success") %>
+              </td>
+            </tr>
+          <% end %>
+
+          <% if @import_batches.empty? %>
+            <tr>
+              <td colspan="7" class="text-center text-muted py-5">
+                インポート履歴がありません。
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>

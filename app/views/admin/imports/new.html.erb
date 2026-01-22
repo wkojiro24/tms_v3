@@ -1,0 +1,214 @@
+<% content_for :title, "データインポート" %>
+<% content_for :section_label, "管理" %>
+
+<div class="row">
+  <div class="col-lg-8">
+    <div class="card card-lift shadow-sm mb-4">
+      <div class="card-body">
+
+        <%= form_with url: admin_imports_path, scope: :import, method: :post, local: true, html: { multipart: true, id: "import-form" } do |f| %>
+          <div class="mb-4">
+            <%= f.label :import_type, "インポート種別", class: "form-label fw-semibold" %>
+            <%= f.select :import_type, import_type_options, { prompt: "選択してください" }, class: "form-select", id: "import-type-select" %>
+          </div>
+
+          <!-- 給与データ用フィールド -->
+          <div id="payroll-fields" class="import-fields d-none">
+            <div class="mb-3">
+              <%= f.label :target_month, "対象月 (YYYY-MM)", class: "form-label" %>
+              <%= f.text_field :target_month, class: "form-control", placeholder: "2025-08" %>
+            </div>
+            <div class="mb-3">
+              <%= f.label :location, "拠点/部署", class: "form-label" %>
+              <%= f.text_field :location, class: "form-control", placeholder: "小名浜" %>
+              <div class="form-text">ファイル名から自動判別できない場合に使用されます。</div>
+            </div>
+          </div>
+
+          <!-- 仕訳データ用フィールド -->
+          <div id="journal-fields" class="import-fields d-none">
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <%= f.label :period_start, "開始月 (YYYY-MM)", class: "form-label" %>
+                <%= f.text_field :period_start, class: "form-control", placeholder: "2024-04" %>
+              </div>
+              <div class="col-md-6 mb-3">
+                <%= f.label :period_end, "終了月 (YYYY-MM)", class: "form-label" %>
+                <%= f.text_field :period_end, class: "form-control", placeholder: "2025-03" %>
+              </div>
+            </div>
+            <div class="mb-3 form-check">
+              <%= f.check_box :replace_period, class: "form-check-input" %>
+              <%= f.label :replace_period, "既存データを上書き（指定期間のデータを置き換え）", class: "form-check-label" %>
+            </div>
+          </div>
+
+          <!-- 車両P/L用フィールド -->
+          <div id="vehicle-pl-fields" class="import-fields d-none">
+            <div class="alert alert-info small">
+              <i class="bi bi-info-circle me-1"></i>
+              車両原価計算Excelファイル（原価計算YYMM.xls）をアップロードしてください。<br>
+              年月はファイル名から自動検出されます。
+            </div>
+          </div>
+
+          <!-- マスタデータ用フィールド -->
+          <div id="master-fields" class="import-fields d-none">
+            <div class="mb-3 form-check">
+              <%= f.check_box :overwrite, class: "form-check-input" %>
+              <%= f.label :overwrite, "既存データを上書き（デフォルト: 追記/更新）", class: "form-check-label" %>
+            </div>
+            <div class="mb-3 form-check">
+              <%= f.check_box :dry_run, class: "form-check-input" %>
+              <%= f.label :dry_run, "ドライラン（実際には保存しない）", class: "form-check-label" %>
+            </div>
+          </div>
+
+          <hr class="my-4">
+
+          <div class="mb-3">
+            <%= f.label :files, "ファイル選択", class: "form-label fw-semibold" %>
+            <%= f.file_field :files, multiple: true, class: "form-control", accept: ".csv,.xls,.xlsx,.xlsm" %>
+            <div class="form-text">Excel (.xls/.xlsx/.xlsm) または CSV ファイルを選択。複数ファイル同時選択可。</div>
+          </div>
+
+          <div class="d-flex gap-2 align-items-center">
+            <%= f.submit "インポート実行", class: "btn btn-primary", id: "submit-btn" %>
+            <a href="#" class="btn btn-outline-secondary d-none" id="template-download-btn">
+              <i class="bi bi-download me-1"></i>テンプレートDL
+            </a>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <div class="card card-lift shadow-sm mb-4">
+      <div class="card-body">
+        <h2 class="h6 text-muted text-uppercase mb-3">インポート種別</h2>
+        <div class="small">
+          <div class="mb-3">
+            <div class="fw-semibold text-dark mb-1">経営データ</div>
+            <ul class="list-unstyled text-muted mb-0 ps-3">
+              <li>• 仕訳明細（CSV/Excel）</li>
+              <li>• 車両原価計算（Excel）</li>
+              <li>• 勘定科目マスタ（CSV/Excel）</li>
+            </ul>
+          </div>
+          <div class="mb-3">
+            <div class="fw-semibold text-dark mb-1">人事データ</div>
+            <ul class="list-unstyled text-muted mb-0 ps-3">
+              <li>• 給与データ（Excel/CSV）</li>
+              <li>• 勤怠データ（CSV/Excel）</li>
+              <li>• 社員マスタ（CSV/Excel）</li>
+            </ul>
+          </div>
+          <div class="mb-3">
+            <div class="fw-semibold text-dark mb-1">配車マスタ</div>
+            <ul class="list-unstyled text-muted mb-0 ps-3">
+              <li>• 届け先台帳（CSV/Excel）</li>
+              <li>• 拠点間距離・時間（CSV/Excel）</li>
+              <li>• 傭車先マスタ（CSV/Excel）</li>
+              <li>• タリフ運賃表（CSV/Excel）</li>
+              <li>• 荷主マスタ（CSV/Excel）</li>
+            </ul>
+          </div>
+          <div>
+            <div class="fw-semibold text-dark mb-1">車両データ</div>
+            <ul class="list-unstyled text-muted mb-0 ps-3">
+              <li>• 車両マスタ（CSV/Excel）</li>
+              <li>• 車両エイリアス（CSV/Excel）</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card card-lift shadow-sm">
+      <div class="card-body">
+        <h2 class="h6 text-muted text-uppercase mb-3">直近のインポート</h2>
+        <% if @recent_imports.present? %>
+          <ul class="list-group list-group-flush">
+            <% @recent_imports.each do |batch| %>
+              <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                <div>
+                  <div class="small fw-semibold"><%= truncate(batch.source_file_name, length: 25) %></div>
+                  <div class="text-muted small"><%= batch.imported_at.strftime("%Y/%m/%d %H:%M") %></div>
+                </div>
+                <span class="badge rounded-pill text-bg-<%= batch.metadata&.dig("status") == "error" ? "danger" : "success" %>">
+                  <%= batch.metadata&.dig("status") == "error" ? "エラー" : "完了" %>
+                </span>
+              </li>
+            <% end %>
+          </ul>
+        <% else %>
+          <p class="text-muted small mb-0">インポート履歴がありません。</p>
+        <% end %>
+        <div class="mt-3">
+          <%= link_to "履歴一覧を見る →", histories_admin_imports_path, class: "small text-decoration-none" %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  const importTypeSelect = document.getElementById("import-type-select");
+  const templateBtn = document.getElementById("template-download-btn");
+  const allFields = document.querySelectorAll(".import-fields");
+
+  const fieldMapping = {
+    "payroll": "payroll-fields",
+    "journal": "journal-fields",
+    "vehicle_pl": "vehicle-pl-fields",
+    "destinations": "master-fields",
+    "route_distances": "master-fields",
+    "subcontractors": "master-fields",
+    "tariffs": "master-fields",
+    "shippers": "master-fields",
+    "employees": "master-fields",
+    "attendance": "master-fields",
+    "vehicles": "master-fields",
+    "vehicle_aliases": "master-fields",
+    "account_codes": "master-fields"
+  };
+
+  const templateUrls = {
+    "destinations": "/admin/imports/template?type=destinations",
+    "route_distances": "/admin/imports/template?type=route_distances",
+    "subcontractors": "/admin/imports/template?type=subcontractors",
+    "tariffs": "/admin/imports/template?type=tariffs",
+    "shippers": "/admin/imports/template?type=shippers",
+    "employees": "/admin/imports/template?type=employees",
+    "attendance": "/admin/imports/template?type=attendance",
+    "vehicles": "/admin/imports/template?type=vehicles",
+    "vehicle_aliases": "/admin/imports/template?type=vehicle_aliases",
+    "account_codes": "/admin/imports/template?type=account_codes"
+  };
+
+  function updateFields() {
+    const selectedType = importTypeSelect.value;
+
+    allFields.forEach(field => field.classList.add("d-none"));
+
+    const fieldId = fieldMapping[selectedType];
+    if (fieldId) {
+      document.getElementById(fieldId).classList.remove("d-none");
+    }
+
+    if (templateUrls[selectedType]) {
+      templateBtn.classList.remove("d-none");
+      templateBtn.href = templateUrls[selectedType];
+    } else {
+      templateBtn.classList.add("d-none");
+    }
+  }
+
+  if (importTypeSelect) {
+    importTypeSelect.addEventListener("change", updateFields);
+    updateFields();
+  }
+});
+</script>

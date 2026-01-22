@@ -1,0 +1,46 @@
+<% content_for :title, "評価サイクルマスタ" %>
+<% content_for :section_label, "マスタ管理" %>
+
+<div class="row g-4">
+  <div class="col-lg-5">
+    <div class="card card-lift">
+      <div class="card-body">
+        <h2 class="h5 mb-3">新規登録</h2>
+        <%= render "form", evaluation_cycle: @evaluation_cycle %>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-7">
+    <div class="card card-lift">
+      <div class="card-body">
+        <h2 class="h5 mb-3">評価サイクル一覧</h2>
+        <table class="table table-sm align-middle">
+          <thead>
+            <tr>
+              <th>コード</th>
+              <th>名称</th>
+              <th>期間</th>
+              <th>状態</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @evaluation_cycles.each do |cycle| %>
+              <tr>
+                <td><%= cycle.code %></td>
+                <td><%= cycle.name %></td>
+                <td><%= [cycle.start_on, cycle.end_on].compact.map { |d| l(d, format: :short) }.join("〜") %></td>
+                <td><span class="badge <%= cycle.active? ? 'bg-success' : 'bg-secondary' %>"><%= cycle.active? ? "有効" : "無効" %></span></td>
+                <td class="text-end">
+                  <%= link_to "編集", edit_admin_evaluation_cycle_path(cycle), class: "btn btn-outline-primary btn-sm" %>
+                  <%= link_to "削除", admin_evaluation_cycle_path(cycle), method: :delete, data: { confirm: "削除しますか？" }, class: "btn btn-outline-danger btn-sm" %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>

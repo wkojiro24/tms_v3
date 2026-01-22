@@ -1,0 +1,6 @@
+/*
+ *= require application.bootstrap
+ *= require vehicle_financials
+ *= require_tree .
+ *= require_self
+ */

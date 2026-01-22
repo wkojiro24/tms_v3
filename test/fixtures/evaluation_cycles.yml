@@ -1,0 +1,7 @@
+cycle_2024_h1:
+  tenant: default
+  code: "2024H1"
+  name: "2024年 上期"
+  start_on: 2024-04-01
+  end_on: 2024-09-30
+  active: true

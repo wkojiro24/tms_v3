@@ -1,0 +1,29 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  tenant: default
+  tenant_id: <%= ActiveRecord::FixtureSet.identify(:default) %>
+  employee: one
+  reviewed_on: 2024-06-30
+  review_cycle: 2024上期
+  score: 4.5
+  grade: A
+  summary: 運転評価良好
+  notes: 事故なし
+  evaluation_cycle: cycle_2024_h1
+  evaluation_grade: s_grade
+  grade_level: driver_band
+
+two:
+  tenant: default
+  tenant_id: <%= ActiveRecord::FixtureSet.identify(:default) %>
+  employee: two
+  reviewed_on: 2024-06-30
+  review_cycle: 2024上期
+  score: 3.0
+  grade: B
+  summary: 事務処理安定
+  notes: 来期課題あり
+  evaluation_cycle: cycle_2024_h1
+  evaluation_grade: a_grade
+  grade_level: office_band

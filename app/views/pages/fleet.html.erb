@@ -1,0 +1,121 @@
+<% content_for :title, "車両管理" %>
+<% content_for :section_label, "設備と点検" %>
+
+<div class="row g-4">
+  <div class="col-xl-4">
+    <div class="card card-lift shadow-sm h-100">
+      <div class="card-body">
+        <h2 class="h6 text-muted text-uppercase mb-3">ステータス</h2>
+        <div class="d-flex flex-column gap-3 small text-muted">
+          <div>
+            <div class="fw-semibold text-dark">保有台数</div>
+            65台（大型 22 / 中型 28 / 冷凍 15）
+          </div>
+          <div>
+            <div class="fw-semibold text-dark">稼働状況</div>
+            稼働 56台 / 待機 6台 / 整備中 3台
+          </div>
+          <div>
+            <div class="fw-semibold text-dark">点検期限</div>
+            今週 7台 / 来週 12台 / 30日以内 24台
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-xl-8">
+    <div class="card card-lift shadow-sm h-100">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <h2 class="h5 mb-0">点検スケジュール</h2>
+          <button class="btn btn-outline-secondary btn-sm">カレンダー表示</button>
+        </div>
+        <div class="table-responsive">
+          <table class="table align-middle mb-0">
+            <thead class="table-light small">
+              <tr>
+                <th>車両名</th>
+                <th>種別</th>
+                <th>担当拠点</th>
+                <th>点検区分</th>
+                <th>期限</th>
+              </tr>
+            </thead>
+            <tbody class="small">
+              <tr>
+                <td>大型 #18</td>
+                <td>ウイング車</td>
+                <td>川崎営業所</td>
+                <td><span class="badge rounded-pill text-bg-danger">車検</span></td>
+                <td>2024/11/05</td>
+              </tr>
+              <tr>
+                <td>冷凍 #12</td>
+                <td>冷凍・冷蔵</td>
+                <td>松戸センター</td>
+                <td><span class="badge rounded-pill text-bg-warning">12ヶ月点検</span></td>
+                <td>2024/11/08</td>
+              </tr>
+              <tr>
+                <td>中型 #34</td>
+                <td>平ボディ</td>
+                <td>宇都宮営業所</td>
+                <td><span class="badge rounded-pill text-bg-info">タイヤ交換</span></td>
+                <td>2024/11/12</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4 mt-1">
+  <div class="col-lg-6">
+    <div class="card card-lift shadow-sm h-100">
+      <div class="card-body">
+        <h2 class="h5 mb-3">車両アラート</h2>
+        <div class="d-flex flex-column gap-3 small text-muted">
+          <div class="d-flex gap-3">
+            <i class="bi bi-thermometer-half text-warning fs-4"></i>
+            <div>
+              <div class="fw-semibold text-dark">冷凍庫温度異常</div>
+              車両: 冷凍 #12 / 対策: ショートチェック & 冷媒補充依頼
+            </div>
+          </div>
+          <div class="d-flex gap-3">
+            <i class="bi bi-ev-station text-info fs-4"></i>
+            <div>
+              <div class="fw-semibold text-dark">燃料カードの利用制限</div>
+              利用上限超過が連続したため、管理者確認中。
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card card-lift shadow-sm h-100">
+      <div class="card-body">
+        <h2 class="h5 mb-3">備品・リース更新</h2>
+        <ul class="list-group list-group-flush small">
+          <li class="list-group-item border-0 px-0 d-flex justify-content-between">
+            <div>
+              <div class="fw-semibold">デジタコ端末（Ver.4）</div>
+              <div class="text-muted">残数 12台 / 追加発注は11月15日まで</div>
+            </div>
+            <span class="badge rounded-pill text-bg-secondary">在庫管理</span>
+          </li>
+          <li class="list-group-item border-0 px-0 d-flex justify-content-between">
+            <div>
+              <div class="fw-semibold">リース契約（大型 #10 #11）</div>
+              <div class="text-muted">更新期限 2024/12/01 / 担当: 経理部</div>
+            </div>
+            <span class="badge rounded-pill text-bg-warning">要確認</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>

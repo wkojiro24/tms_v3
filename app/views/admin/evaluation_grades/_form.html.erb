@@ -1,0 +1,33 @@
+<%= form_with model: [:admin, evaluation_grade], local: true do |f| %>
+  <% if evaluation_grade.errors.any? %>
+    <div class="alert alert-danger">
+      <ul class="mb-0">
+        <% evaluation_grade.errors.full_messages.each do |message| %>
+          <li><%= message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="mb-3">
+    <%= f.label :code, "コード", class: "form-label" %>
+    <%= f.text_field :code, class: "form-control", required: true %>
+  </div>
+  <div class="mb-3">
+    <%= f.label :name, "名称", class: "form-label" %>
+    <%= f.text_field :name, class: "form-control", required: true %>
+  </div>
+  <div class="mb-3">
+    <%= f.label :band, "バンド", class: "form-label" %>
+    <%= f.text_field :band, class: "form-control" %>
+  </div>
+  <div class="mb-3">
+    <%= f.label :score, "スコア", class: "form-label" %>
+    <%= f.number_field :score, class: "form-control" %>
+  </div>
+  <div class="form-check form-switch mb-3">
+    <%= f.check_box :active, class: "form-check-input" %>
+    <%= f.label :active, "有効", class: "form-check-label" %>
+  </div>
+  <%= f.submit(evaluation_grade.persisted? ? "更新" : "登録", class: "btn btn-primary") %>
+<% end %>

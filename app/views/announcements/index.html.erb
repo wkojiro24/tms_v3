@@ -1,0 +1,110 @@
+<% content_for :title, "お知らせ" %>
+<% content_for :section_label, "情報共有" %>
+
+<div class="row">
+  <div class="col-lg-8">
+    <div class="card card-lift shadow-sm">
+      <div class="card-body p-0">
+        <% if @announcements.any? %>
+          <div class="list-group list-group-flush">
+            <% @announcements.each do |announcement| %>
+              <%= link_to announcement_path(announcement), class: "list-group-item list-group-item-action" do %>
+                <div class="d-flex w-100 justify-content-between align-items-start">
+                  <div>
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                      <% if announcement.pinned? %>
+                        <i class="bi bi-pin-angle-fill text-danger"></i>
+                      <% end %>
+                      <% if announcement.event? %>
+                        <i class="bi bi-calendar-event text-primary"></i>
+                      <% end %>
+                      <h6 class="mb-0 fw-semibold"><%= announcement.title %></h6>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                      <span class="badge bg-<%= category_badge_color(announcement.category) %>">
+                        <%= announcement.category_label %>
+                      </span>
+                      <% if announcement.event? %>
+                        <span class="text-primary small">
+                          <i class="bi bi-calendar3 me-1"></i><%= announcement.event_period %>
+                        </span>
+                        <% if announcement.event_location.present? %>
+                          <span class="text-muted small">
+                            <i class="bi bi-geo-alt me-1"></i><%= announcement.event_location %>
+                          </span>
+                        <% end %>
+                      <% end %>
+                    </div>
+                    <% if announcement.body.present? %>
+                      <p class="text-muted small mb-0 mt-2"><%= truncate(announcement.body, length: 100) %></p>
+                    <% end %>
+                  </div>
+                  <small class="text-muted text-nowrap ms-3">
+                    <%= announcement.published_at&.strftime("%Y/%m/%d") %>
+                  </small>
+                </div>
+              <% end %>
+            <% end %>
+          </div>
+        <% else %>
+          <div class="text-center text-muted py-5">
+            <i class="bi bi-megaphone fs-1 d-block mb-3"></i>
+            お知らせはありません
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-4">
+    <!-- 今後のイベント -->
+    <div class="card card-lift shadow-sm">
+      <div class="card-header bg-transparent">
+        <h5 class="card-title mb-0"><i class="bi bi-calendar-event text-primary me-2"></i>今後の予定</h5>
+      </div>
+      <div class="card-body p-0">
+        <% if @upcoming_events.any? %>
+          <div class="list-group list-group-flush">
+            <% @upcoming_events.each do |event| %>
+              <%= link_to announcement_path(event), class: "list-group-item list-group-item-action" do %>
+                <div class="d-flex align-items-center gap-3">
+                  <div class="text-center" style="min-width: 50px;">
+                    <div class="fs-4 fw-bold text-primary"><%= event.event_date.day %></div>
+                    <div class="small text-muted"><%= event.event_date.strftime("%m月") %></div>
+                  </div>
+                  <div>
+                    <div class="fw-semibold"><%= event.title %></div>
+                    <% if event.event_location.present? %>
+                      <small class="text-muted"><i class="bi bi-geo-alt me-1"></i><%= event.event_location %></small>
+                    <% end %>
+                  </div>
+                </div>
+              <% end %>
+            <% end %>
+          </div>
+        <% else %>
+          <div class="text-center text-muted py-4">
+            <i class="bi bi-calendar-x fs-3 d-block mb-2"></i>
+            予定されているイベントはありません
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- カテゴリ別 -->
+    <div class="card card-lift shadow-sm mt-3">
+      <div class="card-header bg-transparent">
+        <h5 class="card-title mb-0"><i class="bi bi-tags me-2"></i>カテゴリ</h5>
+      </div>
+      <div class="card-body">
+        <div class="d-flex flex-wrap gap-2">
+          <% Announcement::CATEGORIES.each do |key, label| %>
+            <%= link_to announcements_path(category: key), class: "btn btn-sm btn-outline-secondary" do %>
+              <%= label %>
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,43 @@
+<%# section: { code:, name:, amount:, total:, children:, depth:, node_type: } %>
+<%# comparison: nil or { sections:, totals: } %>
+<%# depth: 階層の深さ %>
+
+<% indent = depth * 20 %>
+<% is_total_row = section[:children].present? %>
+<% comparison_section = comparison&.dig(:sections)&.find { |s| s[:code] == section[:code] } %>
+<% display_amount = is_total_row ? section[:total] : section[:amount] %>
+<% comparison_amount = comparison_section ? (is_total_row ? comparison_section[:total] : comparison_section[:amount]) : nil %>
+
+<% if section[:node_type] != "calculated" %>
+  <tr class="<%= is_total_row ? 'fw-semibold' : '' %> <%= depth == 0 ? 'table-light' : '' %>">
+    <td class="ps-3" style="padding-left: <%= 12 + indent %>px !important;">
+      <% if depth == 0 %>
+        <i class="bi bi-caret-down-fill small text-muted me-1"></i>
+      <% end %>
+      <% if display_amount != 0 && !is_total_row %>
+        <a href="#" class="text-decoration-none text-dark" data-drilldown="<%= section[:name] %>">
+          <%= section[:name] %>
+          <i class="bi bi-box-arrow-up-right small text-muted ms-1"></i>
+        </a>
+      <% else %>
+        <%= section[:name] %>
+      <% end %>
+    </td>
+    <td class="text-end <%= display_amount < 0 ? 'text-danger' : '' %>">
+      <%= number_with_delimiter(display_amount) %>
+    </td>
+    <% if comparison %>
+      <td class="text-end <%= comparison_amount && comparison_amount < 0 ? 'text-danger' : '' %>">
+        <% if comparison_amount %>
+          <%= number_with_delimiter(comparison_amount) %>
+        <% else %>
+          -
+        <% end %>
+      </td>
+    <% end %>
+  </tr>
+
+  <% section[:children].each do |child| %>
+    <%= render partial: "pl_row", locals: { section: child, comparison: comparison, depth: depth + 1 } %>
+  <% end %>
+<% end %>

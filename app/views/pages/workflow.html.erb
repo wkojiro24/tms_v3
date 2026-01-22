@@ -1,0 +1,90 @@
+<% content_for :title, "ワークフロー" %>
+<% content_for :section_label, "承認プロセス" %>
+
+<div class="card card-lift shadow-sm mb-4">
+  <div class="card-body">
+    <div class="d-flex align-items-center justify-content-between">
+      <div>
+        <h2 class="h5 mb-1">進行中のワークフロー</h2>
+        <div class="text-muted small">承認待ち 3件 / 下書き 2件 / 完了 18件</div>
+      </div>
+      <button class="btn btn-primary btn-sm">
+        <i class="bi bi-plus-circle"></i> 申請を作成
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-6">
+    <div class="card card-lift shadow-sm h-100">
+      <div class="card-body">
+        <h2 class="h6 text-muted text-uppercase mb-3">承認待ち</h2>
+        <div class="list-group list-group-flush small">
+          <a href="#" class="list-group-item list-group-item-action border-0 px-0 py-3">
+            <div class="d-flex align-items-start justify-content-between gap-3">
+              <div>
+                <div class="fw-semibold">新規顧客「北信運輸」契約稟議</div>
+                <div class="text-muted">営業部 → 配車本部 / 申請日: 10月25日</div>
+              </div>
+              <span class="badge rounded-pill text-bg-warning">承認待ち</span>
+            </div>
+          </a>
+          <a href="#" class="list-group-item list-group-item-action border-0 px-0 py-3">
+            <div class="d-flex align-items-start justify-content-between gap-3">
+              <div>
+                <div class="fw-semibold">冬季増便の派遣手配</div>
+                <div class="text-muted">配車本部 → 人事部 / 申請日: 10月24日</div>
+              </div>
+              <span class="badge rounded-pill text-bg-primary">一次承認済</span>
+            </div>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card card-lift shadow-sm h-100">
+      <div class="card-body">
+        <h2 class="h6 text-muted text-uppercase mb-3">最近完了</h2>
+        <div class="list-group list-group-flush small">
+          <div class="list-group-item border-0 px-0 py-3 d-flex align-items-start justify-content-between gap-3">
+            <div>
+              <div class="fw-semibold">ドライバー安全研修（11月度）</div>
+              <div class="text-muted">教育担当 / 完了日: 10月26日</div>
+            </div>
+            <span class="badge rounded-pill text-bg-success">完了</span>
+          </div>
+          <div class="list-group-item border-0 px-0 py-3 d-flex align-items-start justify-content-between gap-3">
+            <div>
+              <div class="fw-semibold">配車システムメンテナンス計画</div>
+              <div class="text-muted">情報システム部 / 完了日: 10月25日</div>
+            </div>
+            <span class="badge rounded-pill text-bg-success">完了</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card card-lift shadow-sm mt-4">
+  <div class="card-body">
+    <h2 class="h6 text-muted text-uppercase mb-3">テンプレート</h2>
+    <div class="row g-3 small text-muted">
+      <% [
+        ["車両メンテナンス依頼", "整備部・配車本部", "更新: 10月20日"],
+        ["臨時運行の申請", "営業部・配車本部", "更新: 10月10日"],
+        ["人事異動・派遣依頼", "人事部", "更新: 9月30日"]
+      ].each do |title, dept, updated| %>
+        <div class="col-lg-4">
+          <div class="border rounded-4 p-3 h-100">
+            <div class="fw-semibold text-dark mb-1"><%= title %></div>
+            <div><%= dept %></div>
+            <div><%= updated %></div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

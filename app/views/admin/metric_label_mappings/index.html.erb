@@ -1,0 +1,89 @@
+<% content_for :title, "指標マッピング" %>
+<% content_for :section_label, "マスタ管理" %>
+
+<div class="card card-lift mb-4">
+  <div class="card-body">
+    <h2 class="h5 mb-3">未マッピングのラベル</h2>
+    <% if @unmapped_labels.present? %>
+      <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+          <thead>
+            <tr>
+              <th>ラベル</th>
+              <th>カテゴリ / 項目</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @unmapped_labels.each do |label| %>
+              <tr>
+                <td><code><%= label %></code></td>
+                <td>
+                  <%= form_with url: admin_metric_label_mappings_path, method: :post, local: true, class: "row g-2 align-items-center" do |f| %>
+                    <div class="col-md-8">
+                      <%= f.hidden_field :label, value: label %>
+                      <select name="metric_category_item_id" class="form-select form-select-sm">
+                        <% @category_items.each do |item| %>
+                          <% option_label = "#{item.metric_category.display_label} / #{item.display_label}" %>
+                          <option value="<%= item.id %>"><%= option_label %></option>
+                        <% end %>
+                      </select>
+                    </div>
+                    <div class="col-md-4">
+                      <%= f.submit "紐付け", class: "btn btn-primary btn-sm w-100" %>
+                    </div>
+                  <% end %>
+                </td>
+                <td></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% else %>
+      <p class="text-muted mb-0">未マッピングのラベルはありません。</p>
+    <% end %>
+  </div>
+</div>
+
+<div class="card card-lift">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h2 class="h5 mb-0">現在のマッピング</h2>
+      <small class="text-muted">カンマ区切りで追加・上書きできます</small>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0">
+        <thead>
+          <tr>
+            <th>カテゴリ</th>
+            <th>項目</th>
+            <th style="width:60%;">紐付けラベル</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @category_items.each do |item| %>
+            <tr>
+              <td><%= item.metric_category.display_label %></td>
+              <td><%= item.display_label %></td>
+              <td>
+                <%= form_with model: [:admin, item], url: admin_metric_category_metric_category_item_path(item.metric_category, item), method: :put, local: true, class: "mb-0" do |f| %>
+                  <%= f.hidden_field :display_label, value: item.display_label %>
+                  <%= f.hidden_field :position, value: item.position %>
+                  <div class="input-group input-group-sm">
+                    <%= f.text_field :source_label_text,
+                                     value: item.source_label_list.join(", "),
+                                     class: "form-control",
+                                     placeholder: "カンマ区切りで入力",
+                                     autocomplete: "off" %>
+                    <button type="submit" class="btn btn-outline-primary">保存</button>
+                  </div>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

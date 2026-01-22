@@ -1,0 +1,227 @@
+<% content_for :title, "給与計算" %>
+<% content_for :section_label, "人事管理" %>
+<% content_for :subtitle, "#{@year}年#{@month}月 - KingOfTime勤怠データから給与を計算" %>
+<% content_for :header_actions do %>
+  <form action="<%= admin_payroll_simulations_path %>" method="get" class="d-flex gap-2">
+    <select name="year" class="form-select form-select-sm" onchange="this.form.submit()">
+      <% @available_periods.map(&:first).uniq.each do |y| %>
+        <option value="<%= y %>" <%= 'selected' if y == @year %>><%= y %>年</option>
+      <% end %>
+    </select>
+    <select name="month" class="form-select form-select-sm" onchange="this.form.submit()">
+      <% (1..12).each do |m| %>
+        <option value="<%= m %>" <%= 'selected' if m == @month %>><%= m %>月</option>
+      <% end %>
+    </select>
+  </form>
+  <form action="<%= calculate_admin_payroll_simulations_path(year: @year, month: @month) %>" method="post" class="d-inline" data-turbo-confirm="<%= @year %>年<%= @month %>月の給与シミュレーションを実行しますか？">
+    <%= hidden_field_tag :authenticity_token, form_authenticity_token %>
+    <button type="submit" class="btn btn-primary btn-sm">
+      <i class="bi bi-calculator me-1"></i>計算実行
+    </button>
+  </form>
+<% end %>
+
+<!-- ワークフローガイド -->
+<div class="alert alert-light border mb-4">
+  <h6 class="alert-heading mb-2"><i class="bi bi-info-circle me-1"></i>給与計算の流れ</h6>
+  <ol class="mb-0 small">
+    <li><strong>事前準備（1回だけ）:</strong> 各従業員の「給与設定」に固定項目（職位加算、大都市加算、調整給など）を登録</li>
+    <li><strong>毎月の計算:</strong> KingOfTime勤怠データをインポート → 「計算実行」で自動計算</li>
+    <li><strong>確認・承認:</strong> 差異がある場合は詳細画面で確認・修正 → 問題なければ「承認」</li>
+    <li><strong>出力:</strong> 承認後、Excel出力または振込データ出力</li>
+  </ol>
+</div>
+
+<!-- サマリーカード -->
+<div class="row g-3 mb-4">
+  <div class="col-md-2">
+    <div class="card card-lift">
+      <div class="card-body text-center py-3">
+        <div class="text-muted small">勤怠データ</div>
+        <div class="h5 mb-0"><%= @summary[:total_employees] %><small class="text-muted">名</small></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-2">
+    <div class="card card-lift border-primary">
+      <div class="card-body text-center py-3">
+        <div class="text-muted small">計算済み</div>
+        <div class="h5 mb-0 text-primary"><%= @summary[:simulated] %><small class="text-muted">名</small></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-2">
+    <div class="card card-lift border-success">
+      <div class="card-body text-center py-3">
+        <div class="text-muted small">差異5%以内</div>
+        <div class="h5 mb-0 text-success"><%= @summary[:confirmed] %><small class="text-muted">名</small></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-2">
+    <div class="card card-lift border-warning">
+      <div class="card-body text-center py-3">
+        <div class="text-muted small">差異5%超</div>
+        <div class="h5 mb-0 text-warning"><%= @summary[:with_diff] %><small class="text-muted">名</small></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-2">
+    <div class="card card-lift">
+      <div class="card-body text-center py-3">
+        <div class="text-muted small">予測総支給額</div>
+        <div class="h6 mb-0"><%= number_with_delimiter(@summary[:total_calc_gross]) %><small class="text-muted">円</small></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-2">
+    <div class="card card-lift">
+      <div class="card-body text-center py-3">
+        <div class="text-muted small">予測手取合計</div>
+        <div class="h6 mb-0 text-success"><%= number_with_delimiter(@summary[:total_calc_net]) %><small class="text-muted">円</small></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- アクションリンク -->
+<div class="mb-4 d-flex justify-content-between">
+  <div class="d-flex gap-2 flex-wrap">
+    <%= link_to '<i class="bi bi-table me-1"></i>給与明細一覧'.html_safe, salary_list_admin_payroll_simulations_path(year: @year, month: @month), class: "btn btn-outline-primary btn-sm" %>
+    <%= link_to '<i class="bi bi-list-ol me-1"></i>等級テーブル'.html_safe, grade_tables_admin_payroll_simulations_path, class: "btn btn-outline-secondary btn-sm" %>
+    <%= link_to '<i class="bi bi-person-gear me-1"></i>給与設定一覧'.html_safe, salary_settings_admin_payroll_simulations_path, class: "btn btn-outline-secondary btn-sm" %>
+    <%= link_to '<i class="bi bi-person-exclamation me-1"></i>設定なし従業員'.html_safe, missing_settings_admin_payroll_simulations_path(year: @year, month: @month), class: "btn btn-outline-warning btn-sm" %>
+    <% if @simulations.any? && @summary[:with_diff] > 0 %>
+      <%= button_to '<i class="bi bi-arrow-repeat me-1"></i>実績から一括更新'.html_safe,
+          bulk_sync_settings_admin_payroll_simulations_path(year: @year, month: @month),
+          method: :post,
+          class: "btn btn-warning btn-sm",
+          data: { turbo_confirm: "全員の給与設定を実績データで更新しますか？\n※職位加算、調整給など固定項目が実績値で上書きされます" } %>
+    <% end %>
+  </div>
+  <% if @simulations.any? %>
+    <div class="d-flex gap-2">
+      <%= link_to '<i class="bi bi-file-earmark-excel me-1"></i>Excel出力'.html_safe, export_admin_payroll_simulations_path(year: @year, month: @month, format: :xlsx), class: "btn btn-success btn-sm" %>
+      <% unapproved_count = @simulations.where.not(status: 'approved').count %>
+      <% if unapproved_count > 0 %>
+        <%= button_to "<i class=\"bi bi-check2-all me-1\"></i>一括承認（#{unapproved_count}件）".html_safe,
+            bulk_approve_admin_payroll_simulations_path(year: @year, month: @month),
+            method: :post,
+            class: "btn btn-primary btn-sm",
+            data: { turbo_confirm: "#{unapproved_count}件の給与を一括承認しますか？" } %>
+      <% else %>
+        <span class="btn btn-outline-success btn-sm disabled">
+          <i class="bi bi-check-circle me-1"></i>全件承認済み
+        </span>
+      <% end %>
+    </div>
+  <% end %>
+</div>
+
+<% if @simulations.any? %>
+  <div class="card card-lift">
+    <div class="card-header bg-transparent d-flex justify-content-between align-items-center">
+      <h6 class="card-title mb-0"><i class="bi bi-table me-1"></i><%= @year %>年<%= @month %>月 シミュレーション結果</h6>
+      <small class="text-muted">予測値と実績値を比較して差異を確認</small>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>従業員</th>
+              <th class="text-end">残業</th>
+              <th class="text-end">予測支給</th>
+              <th class="text-end">実績支給</th>
+              <th class="text-end">予測手取</th>
+              <th class="text-end">実績手取</th>
+              <th class="text-center">判定</th>
+              <th class="text-end">差額</th>
+              <th class="text-center">承認</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @simulations.each do |sim| %>
+              <% row_class = sim.within_tolerance? ? '' : 'table-warning' %>
+              <% row_class = 'table-danger' if sim.diff_gross && sim.diff_gross.abs > sim.calc_gross_total.to_i * 0.1 %>
+              <tr class="<%= row_class %>">
+                <td>
+                  <div class="fw-bold"><%= sim.employee&.full_name || sim.employee_code %></div>
+                  <small class="text-muted"><%= sim.employee_code %></small>
+                </td>
+                <td class="text-end"><%= sim.overtime_hours&.round(1) %>h</td>
+                <td class="text-end"><%= number_with_delimiter(sim.calc_gross_total) %></td>
+                <td class="text-end">
+                  <% if sim.has_actual_data? %>
+                    <%= number_with_delimiter(sim.actual_gross_total) %>
+                  <% else %>
+                    <span class="text-muted">-</span>
+                  <% end %>
+                </td>
+                <td class="text-end text-success"><%= number_with_delimiter(sim.calc_net_total) %></td>
+                <td class="text-end">
+                  <% if sim.has_actual_data? %>
+                    <span class="text-success"><%= number_with_delimiter(sim.actual_net_total) %></span>
+                  <% else %>
+                    <span class="text-muted">-</span>
+                  <% end %>
+                </td>
+                <td class="text-center">
+                  <% if sim.has_actual_data? %>
+                    <% if sim.within_tolerance? %>
+                      <span class="badge bg-success"><i class="bi bi-check-circle"></i> OK</span>
+                    <% else %>
+                      <span class="badge bg-warning text-dark"><i class="bi bi-exclamation-triangle"></i> 差異</span>
+                    <% end %>
+                  <% else %>
+                    <span class="badge bg-secondary">実績なし</span>
+                  <% end %>
+                </td>
+                <td class="text-end">
+                  <% if sim.diff_gross %>
+                    <span class="<%= sim.diff_gross >= 0 ? 'text-primary' : 'text-danger' %>">
+                      <%= sim.diff_gross > 0 ? '+' : '' %><%= number_with_delimiter(sim.diff_gross) %>
+                    </span>
+                    <br><small class="text-muted">(<%= sim.gross_diff_rate %>%)</small>
+                  <% else %>
+                    -
+                  <% end %>
+                </td>
+                <td class="text-center">
+                  <% if sim.status == 'approved' %>
+                    <span class="badge bg-success"><i class="bi bi-check-circle"></i> 承認済</span>
+                  <% else %>
+                    <span class="badge bg-secondary">未承認</span>
+                  <% end %>
+                </td>
+                <td class="text-end">
+                  <%= link_to '<i class="bi bi-search"></i> 詳細'.html_safe, admin_payroll_simulation_path(sim), class: "btn btn-outline-primary btn-sm" %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 差額の見方の説明 -->
+  <div class="card mt-3">
+    <div class="card-body py-2 small">
+      <strong>差額の見方：</strong>
+      <span class="text-primary">+○○円</span> = 予測が実績より高い（何か含めすぎ or 実績に未登録項目あり）
+      <span class="text-danger">-○○円</span> = 予測が実績より低い（手当が未登録）
+      <span class="badge bg-warning text-dark">未登録</span> = 詳細画面で確認して給与設定に追加
+    </div>
+  </div>
+<% else %>
+  <div class="alert alert-info">
+    <i class="bi bi-info-circle me-1"></i>
+    シミュレーション結果がありません。「計算実行」ボタンをクリックして計算を開始してください。
+    <br><small class="text-muted">
+      ※事前に「等級別基本給テーブル」と「従業員給与設定」の登録が必要です。
+    </small>
+  </div>
+<% end %>

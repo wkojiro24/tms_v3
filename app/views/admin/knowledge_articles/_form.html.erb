@@ -1,0 +1,106 @@
+<%= form_with model: [:admin, @article], class: "needs-validation", novalidate: true do |f| %>
+  <div class="row">
+    <div class="col-lg-8">
+      <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white">
+          <h6 class="mb-0">記事内容</h6>
+        </div>
+        <div class="card-body">
+          <% if @article.errors.any? %>
+            <div class="alert alert-danger">
+              <ul class="mb-0">
+                <% @article.errors.full_messages.each do |message| %>
+                  <li><%= message %></li>
+                <% end %>
+              </ul>
+            </div>
+          <% end %>
+
+          <div class="mb-3">
+            <%= f.label :title, "タイトル", class: "form-label" %>
+            <%= f.text_field :title, class: "form-control", required: true, placeholder: "記事のタイトル" %>
+          </div>
+
+          <div class="mb-3">
+            <%= f.label :content, "本文", class: "form-label" %>
+            <%= f.rich_text_area :content, class: "form-control" %>
+            <small class="text-muted">画像はドラッグ＆ドロップで挿入できます</small>
+          </div>
+        </div>
+      </div>
+
+      <!-- 添付ファイル -->
+      <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white">
+          <h6 class="mb-0"><i class="bi bi-paperclip me-2"></i>添付ファイル</h6>
+        </div>
+        <div class="card-body">
+          <% if @article.attachments.attached? %>
+            <div class="mb-3">
+              <label class="form-label">現在の添付ファイル</label>
+              <div class="list-group">
+                <% @article.attachments.each do |attachment| %>
+                  <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                      <i class="bi bi-file-earmark me-2"></i>
+                      <%= link_to attachment.filename, rails_blob_path(attachment, disposition: "attachment"), target: "_blank" %>
+                      <small class="text-muted ms-2">(<%= number_to_human_size(attachment.byte_size) %>)</small>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+          <% end %>
+
+          <div class="mb-0">
+            <%= f.label :attachments, "ファイルを追加", class: "form-label" %>
+            <%= f.file_field :attachments, multiple: true, class: "form-control", accept: ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.jpg,.jpeg,.png,.gif" %>
+            <small class="text-muted">PDF, Office文書, 画像, ZIPファイルなどを添付できます（複数選択可）</small>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-4">
+      <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white">
+          <h6 class="mb-0">設定</h6>
+        </div>
+        <div class="card-body">
+          <div class="mb-3">
+            <%= f.label :category, "カテゴリ", class: "form-label" %>
+            <%= f.select :category, KnowledgeArticle::CATEGORIES.map { |k, v| [v, k] }, {}, class: "form-select" %>
+          </div>
+
+          <div class="mb-3">
+            <%= f.label :tags, "タグ", class: "form-label" %>
+            <%= f.text_field :tags, class: "form-control", placeholder: "カンマ区切りで入力" %>
+            <small class="text-muted">例: 安全,運行,マニュアル</small>
+          </div>
+
+          <div class="mb-3">
+            <%= f.label :slug, "スラッグ（URL）", class: "form-label" %>
+            <%= f.text_field :slug, class: "form-control", placeholder: "自動生成" %>
+            <small class="text-muted">空欄で自動生成</small>
+          </div>
+
+          <div class="mb-3">
+            <%= f.label :position, "表示順", class: "form-label" %>
+            <%= f.number_field :position, class: "form-control", min: 0 %>
+            <small class="text-muted">小さい数字が先に表示</small>
+          </div>
+
+          <div class="form-check">
+            <%= f.check_box :published, class: "form-check-input" %>
+            <%= f.label :published, "公開する", class: "form-check-label" %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="d-flex gap-2">
+    <%= f.submit @article.persisted? ? "更新" : "作成", class: "btn btn-primary" %>
+    <%= link_to "キャンセル", admin_knowledge_articles_path, class: "btn btn-outline-secondary" %>
+  </div>
+<% end %>

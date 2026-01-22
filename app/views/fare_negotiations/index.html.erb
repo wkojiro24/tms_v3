@@ -1,0 +1,939 @@
+<% content_for :title, "運賃交渉資料" %>
+<% content_for :section_label, "経営" %>
+
+<div class="container-fluid px-4 py-3">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h1 class="h4 mb-1">運賃交渉資料</h1>
+      <p class="text-muted small mb-0">コスト推移と外部指標の比較、シミュレーション</p>
+    </div>
+    <div class="d-flex gap-2">
+      <% if @simulation_base %>
+        <button type="button" class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#simulationModal">
+          <i class="bi bi-calculator me-1"></i>シミュレーション
+        </button>
+      <% end %>
+      <%= link_to fare_negotiations_path(format: :xlsx, vehicle_group_id: params[:vehicle_group_id], vehicle_code: params[:vehicle_code], start_year: @start_year, end_year: @end_year), class: "btn btn-success btn-sm" do %><i class="bi bi-file-earmark-excel me-1"></i>Excelダウンロード<% end %>
+    </div>
+  </div>
+
+  <%# フィルター %>
+  <div class="card mb-4">
+    <div class="card-body py-2">
+      <%= form_with url: fare_negotiations_path, method: :get, local: true, class: "row g-2 align-items-end" do |f| %>
+        <div class="col-md-2">
+          <label class="form-label small mb-1">車両グループ</label>
+          <%= select_tag :vehicle_group_id,
+                options_from_collection_for_select(@vehicle_groups, :id, :name, params[:vehicle_group_id]),
+                include_blank: "全車両",
+                class: "form-select form-select-sm",
+                id: "vehicle_group_select" %>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small mb-1">車両（単体）</label>
+          <%= select_tag :vehicle_code,
+                options_for_select([["全車両", ""]] + @vehicles.map { |v| [v, v] }, params[:vehicle_code]),
+                class: "form-select form-select-sm",
+                id: "vehicle_code_select" %>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small mb-1">開始年度</label>
+          <%= select_tag :start_year,
+                options_for_select((2015..Time.current.year).to_a.reverse, @start_year),
+                class: "form-select form-select-sm" %>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label small mb-1">終了年度</label>
+          <%= select_tag :end_year,
+                options_for_select((2015..Time.current.year).to_a.reverse, @end_year),
+                class: "form-select form-select-sm" %>
+        </div>
+        <div class="col-md-2">
+          <div class="form-check">
+            <%= check_box_tag :include_special, "1", params[:include_special] == "1", class: "form-check-input", id: "include_special" %>
+            <label class="form-check-label small" for="include_special">調整項目を含む</label>
+          </div>
+        </div>
+        <div class="col-md-2">
+          <%= submit_tag "表示", class: "btn btn-primary btn-sm" %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <%# 選択中の表示 %>
+  <% if @vehicle_group || @selected_vehicle_code %>
+    <div class="alert alert-info py-2 mb-3 small">
+      <i class="bi bi-filter me-1"></i>
+      <strong>絞り込み:</strong>
+      <% if @selected_vehicle_code %>
+        車両コード: <%= @selected_vehicle_code %>
+      <% elsif @vehicle_group %>
+        <%= @vehicle_group.name %> (<%= @vehicle_group.vehicle_codes&.size || 0 %>台)
+      <% end %>
+    </div>
+  <% end %>
+
+  <%# シミュレーション結果（実行された場合） %>
+  <% if @simulation_result %>
+    <div class="alert alert-info mb-4">
+      <h6 class="mb-3"><i class="bi bi-calculator me-1"></i>シミュレーション結果（<%= @simulation_base[:year] %>期実績ベース）</h6>
+      <div class="row">
+        <div class="col-md-6">
+          <table class="table table-sm table-borderless mb-0 small">
+            <thead>
+              <tr>
+                <th></th>
+                <th class="text-end">現状（<%= @simulation_base[:year] %>期）</th>
+                <th class="text-end">シミュレーション</th>
+                <th class="text-end">増減</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>売上</td>
+                <td class="text-end"><%= number_with_delimiter((@simulation_base[:revenue] / 10000).round(0)) %>万</td>
+                <td class="text-end"><%= number_with_delimiter((@simulation_result[:revenue] / 10000).round(0)) %>万</td>
+                <td class="text-end <%= params[:fare_increase].to_f > 0 ? 'text-success' : '' %>">
+                  <%= params[:fare_increase].to_f > 0 ? '+' : '' %><%= params[:fare_increase] %>%
+                </td>
+              </tr>
+              <tr>
+                <td>人件費</td>
+                <td class="text-end"><%= number_with_delimiter((@simulation_base[:labor_cost] / 10000).round(0)) %>万</td>
+                <td class="text-end"><%= number_with_delimiter((@simulation_result[:labor_cost] / 10000).round(0)) %>万</td>
+                <td class="text-end <%= params[:labor_increase].to_f > 0 ? 'text-danger' : '' %>">
+                  <%= params[:labor_increase].to_f > 0 ? '+' : '' %><%= params[:labor_increase] %>%
+                </td>
+              </tr>
+              <tr>
+                <td>燃料費</td>
+                <td class="text-end"><%= number_with_delimiter((@simulation_base[:fuel_cost] / 10000).round(0)) %>万</td>
+                <td class="text-end"><%= number_with_delimiter((@simulation_result[:fuel_cost] / 10000).round(0)) %>万</td>
+                <td class="text-end <%= params[:fuel_increase].to_f > 0 ? 'text-danger' : '' %>">
+                  <%= params[:fuel_increase].to_f > 0 ? '+' : '' %><%= params[:fuel_increase] %>%
+                </td>
+              </tr>
+              <tr>
+                <td>その他経費</td>
+                <td class="text-end"><%= number_with_delimiter((@simulation_base[:other_cost] / 10000).round(0)) %>万</td>
+                <td class="text-end"><%= number_with_delimiter((@simulation_result[:other_cost] / 10000).round(0)) %>万</td>
+                <td class="text-end">±0%</td>
+              </tr>
+              <tr class="fw-bold border-top">
+                <td>損益</td>
+                <td class="text-end"><%= number_with_delimiter((@simulation_base[:profit] / 10000).round(0)) %>万</td>
+                <td class="text-end <%= @simulation_result[:profit] < 0 ? 'text-danger' : '' %>">
+                  <%= number_with_delimiter((@simulation_result[:profit] / 10000).round(0)) %>万
+                </td>
+                <td class="text-end <%= @simulation_result[:profit_change] < 0 ? 'text-danger' : 'text-success' %>">
+                  <%= @simulation_result[:profit_change] >= 0 ? '+' : '' %><%= number_with_delimiter((@simulation_result[:profit_change] / 10000).round(0)) %>万
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="col-md-6">
+          <div class="bg-white rounded p-3 h-100">
+            <div class="text-muted small mb-2">計算の考え方</div>
+            <ul class="small mb-0 ps-3">
+              <li><%= @simulation_base[:year] %>期の実績をベースに、指定した増減率を適用</li>
+              <li>人件費 <%= number_with_delimiter((@simulation_base[:labor_cost] / 10000).round(0)) %>万 × <%= 100 + params[:labor_increase].to_f %>% = <%= number_with_delimiter((@simulation_result[:labor_cost] / 10000).round(0)) %>万</li>
+              <li>燃料費 <%= number_with_delimiter((@simulation_base[:fuel_cost] / 10000).round(0)) %>万 × <%= 100 + params[:fuel_increase].to_f %>% = <%= number_with_delimiter((@simulation_result[:fuel_cost] / 10000).round(0)) %>万</li>
+              <li>売上 <%= number_with_delimiter((@simulation_base[:revenue] / 10000).round(0)) %>万 × <%= 100 + params[:fare_increase].to_f %>% = <%= number_with_delimiter((@simulation_result[:revenue] / 10000).round(0)) %>万</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <%# 外部環境 vs 自社コスト 比較サマリー %>
+  <%
+    start_indices = @company_cost_indices[@start_year] || {}
+    end_indices = @company_cost_indices[@end_year] || {}
+    labor_change = end_indices[:labor_cost_index].to_f - 100
+    fuel_change = end_indices[:fuel_cost_index].to_f - 100
+    total_change = end_indices[:total_cost_index].to_f - 100
+
+    # 自社コストの実額
+    start_financials = @yearly_financials[@start_year] || {}
+    end_financials = @yearly_financials[@end_year] || {}
+  %>
+  <div class="row mb-4 g-3">
+    <div class="col-lg-5">
+      <div class="card h-100">
+        <div class="card-header bg-danger-subtle py-2">
+          <span class="fw-bold">外部環境の変化</span>
+          <span class="text-muted small ms-2"><%= @start_year %>年→<%= @end_year %>年</span>
+        </div>
+        <div class="card-body py-2 small">
+          <div class="d-flex justify-content-between align-items-center py-1 border-bottom">
+            <div>
+              <div>最低賃金</div>
+              <div class="text-muted"><%= @external_comparison[:minimum_wage][:base]&.to_i %>円 → <%= @external_comparison[:minimum_wage][:latest]&.to_i %>円</div>
+            </div>
+            <span class="text-danger fw-bold">+<%= @external_comparison[:minimum_wage][:change_rate] || 0 %>%</span>
+          </div>
+          <div class="d-flex justify-content-between align-items-center py-1 border-bottom">
+            <div>
+              <div>軽油価格</div>
+              <div class="text-muted"><%= @external_comparison[:diesel_price][:base]&.round(1) %>円/L → <%= @external_comparison[:diesel_price][:latest]&.round(1) %>円/L</div>
+            </div>
+            <span class="text-danger fw-bold"><%= @external_comparison[:diesel_price][:change_rate].to_f > 0 ? '+' : '' %><%= @external_comparison[:diesel_price][:change_rate] || 0 %>%</span>
+          </div>
+          <div class="d-flex justify-content-between align-items-center py-1">
+            <div>
+              <div>運転者賃金</div>
+              <div class="text-muted"><%= @external_comparison[:driver_wage][:base]&.to_i %>万円 → <%= @external_comparison[:driver_wage][:latest]&.to_i %>万円</div>
+            </div>
+            <span class="text-danger fw-bold">+<%= @external_comparison[:driver_wage][:change_rate] || 0 %>%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-5">
+      <div class="card h-100">
+        <div class="card-header bg-primary-subtle py-2">
+          <span class="fw-bold">自社コストの変化</span>
+          <span class="text-muted small ms-2"><%= @start_year %>期→<%= @end_year %>期</span>
+        </div>
+        <div class="card-body py-2 small">
+          <div class="d-flex justify-content-between align-items-center py-1 border-bottom">
+            <div>
+              <div>人件費</div>
+              <div class="text-muted"><%= number_with_delimiter((start_financials[:labor_cost].to_f / 10000).round(0)) %>万 → <%= number_with_delimiter((end_financials[:labor_cost].to_f / 10000).round(0)) %>万</div>
+            </div>
+            <span class="fw-bold <%= labor_change < 0 ? 'text-success' : 'text-primary' %>"><%= labor_change >= 0 ? '+' : '' %><%= labor_change.round(1) %>%</span>
+          </div>
+          <div class="d-flex justify-content-between align-items-center py-1 border-bottom">
+            <div>
+              <div>燃料費</div>
+              <div class="text-muted"><%= number_with_delimiter((start_financials[:fuel_cost].to_f / 10000).round(0)) %>万 → <%= number_with_delimiter((end_financials[:fuel_cost].to_f / 10000).round(0)) %>万</div>
+            </div>
+            <span class="fw-bold <%= fuel_change < 0 ? 'text-success' : 'text-primary' %>"><%= fuel_change >= 0 ? '+' : '' %><%= fuel_change.round(1) %>%</span>
+          </div>
+          <div class="d-flex justify-content-between align-items-center py-1">
+            <div>
+              <div class="fw-bold">総コスト</div>
+              <div class="text-muted"><%= number_with_delimiter((start_financials[:cost].to_f / 10000).round(0)) %>万 → <%= number_with_delimiter((end_financials[:cost].to_f / 10000).round(0)) %>万</div>
+            </div>
+            <span class="fw-bold <%= total_change < 0 ? 'text-success' : 'text-primary' %>"><%= total_change >= 0 ? '+' : '' %><%= total_change.round(1) %>%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-2">
+      <div class="card h-100 bg-light">
+        <div class="card-body d-flex flex-column justify-content-center text-center py-3">
+          <div class="text-muted small">コスト抑制効果</div>
+          <div class="fs-3 fw-bold <%= (total_change - @external_comparison[:driver_wage][:change_rate].to_f) < 0 ? 'text-success' : 'text-danger' %>">
+            <%= ((total_change - @external_comparison[:driver_wage][:change_rate].to_f) * -1).round(1) %>%
+          </div>
+          <div class="text-muted small">外部比</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <%# 売上・コスト推移 %>
+  <div class="row mb-4">
+    <div class="col-lg-8">
+      <div class="card h-100">
+        <div class="card-header py-2">
+          <h2 class="h6 mb-0">売上・コストの推移</h2>
+        </div>
+        <div class="card-body p-2">
+          <div style="height: 200px;">
+            <canvas id="financials-chart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-4">
+      <div class="card h-100">
+        <div class="card-header py-2">
+          <h2 class="h6 mb-0">損益の推移</h2>
+        </div>
+        <div class="card-body p-2">
+          <div style="height: 200px;">
+            <canvas id="profit-chart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <%# データテーブル %>
+  <div class="card mb-4">
+    <div class="card-header py-2">
+      <h2 class="h6 mb-0">年度別実績</h2>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm table-striped mb-0 small text-center">
+          <thead class="table-light">
+            <tr>
+              <th class="text-start">年度</th>
+              <% (@start_year..@end_year).each do |year| %>
+                <th><%= year %>期</th>
+              <% end %>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="text-start fw-bold">売上</td>
+              <% (@start_year..@end_year).each do |year| %>
+                <td><%= number_with_delimiter((@yearly_financials.dig(year, :revenue).to_f / 10000).round(0)) %>万</td>
+              <% end %>
+            </tr>
+            <tr>
+              <td class="text-start fw-bold">コスト</td>
+              <% (@start_year..@end_year).each do |year| %>
+                <td><%= number_with_delimiter((@yearly_financials.dig(year, :cost).to_f / 10000).round(0)) %>万</td>
+              <% end %>
+            </tr>
+            <tr class="table-warning">
+              <td class="text-start fw-bold">損益</td>
+              <% (@start_year..@end_year).each do |year| %>
+                <% profit = @yearly_financials.dig(year, :profit).to_f %>
+                <td class="<%= profit < 0 ? 'text-danger' : 'text-success' %> fw-bold">
+                  <%= number_with_delimiter((profit / 10000).round(0)) %>万
+                </td>
+              <% end %>
+            </tr>
+            <tr>
+              <td class="text-start fw-bold">損益率</td>
+              <% (@start_year..@end_year).each do |year| %>
+                <% rate = @yearly_financials.dig(year, :profit_rate) %>
+                <td class="<%= rate.to_f < 0 ? 'text-danger' : '' %>"><%= rate %>%</td>
+              <% end %>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <%# 外部指標との比較 %>
+  <div class="card mb-4">
+    <div class="card-header py-2">
+      <h2 class="h6 mb-0">外部環境 vs 自社コスト推移（<%= @start_year %>年=100）</h2>
+    </div>
+    <div class="card-body p-2">
+      <div style="height: 280px;">
+        <canvas id="external-chart"></canvas>
+      </div>
+    </div>
+    <div class="card-footer p-0">
+      <div class="table-responsive">
+        <table class="table table-sm table-striped mb-0 small text-center" id="external-data-table">
+          <thead class="table-light">
+            <tr>
+              <th class="text-start">指標</th>
+              <% (@start_year..@end_year).each do |year| %>
+                <th><%= year %>年</th>
+              <% end %>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="table-secondary">
+              <td colspan="<%= (@start_year..@end_year).count + 1 %>" class="text-start fw-bold">
+                外部環境（点線）
+                <small class="text-muted fw-normal ms-2">数値を入力するとグラフに即時反映</small>
+              </td>
+            </tr>
+            <tr>
+              <td class="text-start">最低賃金（円）</td>
+              <% (@start_year..@end_year).each do |year| %>
+                <% value = ExternalEconomicDatum.by_type(:minimum_wage).yearly.find_by(year: year)&.value %>
+                <td>
+                  <input type="number" class="form-control form-control-sm external-input text-end p-1"
+                         data-type="minimum_wage" data-year="<%= year %>"
+                         value="<%= value&.to_i %>" style="width: 70px; margin: 0 auto;">
+                </td>
+              <% end %>
+            </tr>
+            <tr>
+              <td class="text-start">軽油価格（円/L）</td>
+              <% (@start_year..@end_year).each do |year| %>
+                <% value = ExternalEconomicDatum.by_type(:diesel_price).yearly.find_by(year: year)&.value %>
+                <td>
+                  <input type="number" class="form-control form-control-sm external-input text-end p-1"
+                         data-type="diesel_price" data-year="<%= year %>" step="0.1"
+                         value="<%= value&.round(1) %>" style="width: 70px; margin: 0 auto;">
+                </td>
+              <% end %>
+            </tr>
+            <tr>
+              <td class="text-start">運転者賃金（万円）</td>
+              <% (@start_year..@end_year).each do |year| %>
+                <% value = ExternalEconomicDatum.by_type(:driver_wage).yearly.find_by(year: year)&.value %>
+                <td>
+                  <input type="number" class="form-control form-control-sm external-input text-end p-1"
+                         data-type="driver_wage" data-year="<%= year %>"
+                         value="<%= value&.to_i %>" style="width: 70px; margin: 0 auto;">
+                </td>
+              <% end %>
+            </tr>
+            <tr class="table-secondary">
+              <td colspan="<%= (@start_year..@end_year).count + 1 %>" class="text-start fw-bold">自社コスト（実線）</td>
+            </tr>
+            <tr>
+              <td class="text-start">人件費（万円）</td>
+              <% (@start_year..@end_year).each do |year| %>
+                <% data = @yearly_financials.dig(year) %>
+                <td><%= data ? number_with_delimiter((data[:labor_cost].to_f / 10000).round(0)) : '-' %></td>
+              <% end %>
+            </tr>
+            <tr>
+              <td class="text-start">燃料費（万円）</td>
+              <% (@start_year..@end_year).each do |year| %>
+                <% data = @yearly_financials.dig(year) %>
+                <td><%= data ? number_with_delimiter((data[:fuel_cost].to_f / 10000).round(0)) : '-' %></td>
+              <% end %>
+            </tr>
+            <tr class="table-info">
+              <td class="text-start fw-bold">総コスト（万円）</td>
+              <% (@start_year..@end_year).each do |year| %>
+                <% data = @yearly_financials.dig(year) %>
+                <td class="fw-bold"><%= data ? number_with_delimiter((data[:cost].to_f / 10000).round(0)) : '-' %></td>
+              <% end %>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card-footer bg-light py-2 d-flex justify-content-end gap-2">
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="reset-external-data">
+          <i class="bi bi-arrow-counterclockwise me-1"></i>リセット
+        </button>
+        <button type="button" class="btn btn-primary btn-sm" id="save-external-data">
+          <i class="bi bi-save me-1"></i>データを保存
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <%# 単価指標 %>
+  <% if @unit_metrics.present? && @unit_metrics.values.any? { |m| m[:vehicle_count].to_i > 0 } %>
+    <div class="card mb-4">
+      <div class="card-header py-2">
+        <h2 class="h6 mb-0">1台あたり・1人あたり指標</h2>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-sm table-striped mb-0 small text-center">
+            <thead class="table-light">
+              <tr>
+                <th class="text-start">項目</th>
+                <% (@start_year..@end_year).each do |year| %>
+                  <th><%= year %>期</th>
+                <% end %>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="table-secondary">
+                <td colspan="<%= (@start_year..@end_year).count + 1 %>" class="text-start fw-bold">1台あたり</td>
+              </tr>
+              <tr>
+                <td class="text-start">車両数</td>
+                <% (@start_year..@end_year).each do |year| %>
+                  <td><%= @unit_metrics.dig(year, :vehicle_count) || '-' %>台</td>
+                <% end %>
+              </tr>
+              <tr>
+                <td class="text-start">売上/台</td>
+                <% (@start_year..@end_year).each do |year| %>
+                  <td><%= number_with_delimiter((@unit_metrics.dig(year, :revenue_per_vehicle).to_f / 10000).round(0)) %>万</td>
+                <% end %>
+              </tr>
+              <tr>
+                <td class="text-start">コスト/台</td>
+                <% (@start_year..@end_year).each do |year| %>
+                  <td><%= number_with_delimiter((@unit_metrics.dig(year, :cost_per_vehicle).to_f / 10000).round(0)) %>万</td>
+                <% end %>
+              </tr>
+              <tr class="table-info">
+                <td class="text-start fw-bold">損益/台</td>
+                <% (@start_year..@end_year).each do |year| %>
+                  <% profit = @unit_metrics.dig(year, :profit_per_vehicle).to_f %>
+                  <td class="<%= profit < 0 ? 'text-danger' : '' %> fw-bold">
+                    <%= number_with_delimiter((profit / 10000).round(0)) %>万
+                  </td>
+                <% end %>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <%# コスト比率の推移 %>
+  <div class="card mb-4">
+    <div class="card-header py-2">
+      <h2 class="h6 mb-0">コスト比率の推移</h2>
+    </div>
+    <div class="card-body p-2">
+      <div style="height: 200px;">
+        <canvas id="metrics-chart"></canvas>
+      </div>
+    </div>
+    <div class="card-footer p-0">
+      <div class="table-responsive">
+        <table class="table table-sm table-striped mb-0 small text-center">
+          <thead class="table-light">
+            <tr>
+              <th class="text-start">項目</th>
+              <% (@start_year..@end_year).each do |year| %>
+                <th><%= year %>期</th>
+              <% end %>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="text-start fw-bold">人件費率</td>
+              <% (@start_year..@end_year).each do |year| %>
+                <td><%= @yearly_metrics.dig(year, :labor_cost_rate) %>%</td>
+              <% end %>
+            </tr>
+            <tr>
+              <td class="text-start fw-bold">燃料費率</td>
+              <% (@start_year..@end_year).each do |year| %>
+                <td><%= @yearly_metrics.dig(year, :fuel_cost_rate) %>%</td>
+              <% end %>
+            </tr>
+            <tr>
+              <td class="text-start fw-bold">その他経費率</td>
+              <% (@start_year..@end_year).each do |year| %>
+                <td><%= @yearly_metrics.dig(year, :other_cost_rate) %>%</td>
+              <% end %>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<%# シミュレーションモーダル %>
+<div class="modal fade" id="simulationModal" tabindex="-1" aria-labelledby="simulationModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-info-subtle">
+        <h5 class="modal-title" id="simulationModalLabel">
+          <i class="bi bi-calculator me-1"></i>損益シミュレーション
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <% if @simulation_base %>
+          <div class="alert alert-light mb-3">
+            <small>
+              <strong>ベース:</strong> <%= @simulation_base[:year] %>期の実績<br>
+              売上: <%= number_with_delimiter(@simulation_base[:revenue]) %>円<br>
+              コスト: <%= number_with_delimiter(@simulation_base[:total_cost]) %>円<br>
+              損益: <%= number_with_delimiter(@simulation_base[:profit]) %>円
+            </small>
+          </div>
+
+          <%= form_with url: fare_negotiations_path, method: :get, local: true do |f| %>
+            <%= hidden_field_tag :vehicle_group_id, params[:vehicle_group_id] %>
+            <%= hidden_field_tag :vehicle_code, params[:vehicle_code] %>
+            <%= hidden_field_tag :start_year, @start_year %>
+            <%= hidden_field_tag :end_year, @end_year %>
+            <%= hidden_field_tag :simulate, "1" %>
+
+            <div class="mb-3">
+              <label class="form-label">人件費増加率</label>
+              <div class="input-group">
+                <%= number_field_tag :labor_increase, params[:labor_increase] || 0, class: "form-control", step: 1, min: -50, max: 100 %>
+                <span class="input-group-text">%</span>
+              </div>
+              <small class="text-muted">外部指標：運転者賃金 +<%= @external_comparison[:driver_wage][:change_rate] || 0 %>%</small>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">燃料費増加率</label>
+              <div class="input-group">
+                <%= number_field_tag :fuel_increase, params[:fuel_increase] || 0, class: "form-control", step: 1, min: -50, max: 100 %>
+                <span class="input-group-text">%</span>
+              </div>
+              <small class="text-muted">外部指標：軽油価格 <%= @external_comparison[:diesel_price][:change_rate].to_f > 0 ? '+' : '' %><%= @external_comparison[:diesel_price][:change_rate] || 0 %>%</small>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">運賃値上げ率</label>
+              <div class="input-group">
+                <%= number_field_tag :fare_increase, params[:fare_increase] || 0, class: "form-control", step: 1, min: -50, max: 100 %>
+                <span class="input-group-text">%</span>
+              </div>
+            </div>
+
+            <div class="d-grid">
+              <%= submit_tag "シミュレーション実行", class: "btn btn-info" %>
+            </div>
+          <% end %>
+        <% else %>
+          <p class="text-muted">データがありません</p>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+(function() {
+  let chartsInitialized = false;
+  let financialsChart, profitChart, externalChart, metricsChart;
+
+  function initCharts() {
+    if (chartsInitialized) {
+      if (financialsChart) financialsChart.destroy();
+      if (profitChart) profitChart.destroy();
+      if (externalChart) externalChart.destroy();
+      if (metricsChart) metricsChart.destroy();
+    }
+
+    const financialsCanvas = document.getElementById('financials-chart');
+    const profitCanvas = document.getElementById('profit-chart');
+    const externalCanvas = document.getElementById('external-chart');
+    const metricsCanvas = document.getElementById('metrics-chart');
+
+    if (!financialsCanvas || !profitCanvas || !externalCanvas || !metricsCanvas) return;
+
+    const chartData = <%= raw @chart_data.to_json %>;
+
+    // 売上・コストグラフ（損益は別グラフ）
+    financialsChart = new Chart(financialsCanvas, {
+      type: 'bar',
+      data: {
+        labels: chartData.financials.labels,
+        datasets: [
+          {
+            label: '売上',
+            data: chartData.financials.revenue,
+            backgroundColor: 'rgba(54, 162, 235, 0.7)',
+            borderColor: 'rgba(54, 162, 235, 1)',
+            borderWidth: 1
+          },
+          {
+            label: 'コスト',
+            data: chartData.financials.cost,
+            backgroundColor: 'rgba(255, 159, 64, 0.7)',
+            borderColor: 'rgba(255, 159, 64, 1)',
+            borderWidth: 1
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'top' },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                return context.dataset.label + ': ' + (context.raw / 10000).toLocaleString() + '万円';
+              }
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: {
+              callback: function(value) {
+                return (value / 10000).toLocaleString() + '万';
+              }
+            }
+          }
+        }
+      }
+    });
+
+    // 損益グラフ（別グラフ、0基準で赤字は下、黒字は上）
+    const profitColors = chartData.financials.profit.map(v => v < 0 ? 'rgba(220, 53, 69, 0.8)' : 'rgba(40, 167, 69, 0.8)');
+    const profitBorderColors = chartData.financials.profit.map(v => v < 0 ? 'rgb(220, 53, 69)' : 'rgb(40, 167, 69)');
+
+    profitChart = new Chart(profitCanvas, {
+      type: 'bar',
+      data: {
+        labels: chartData.financials.labels,
+        datasets: [{
+          label: '損益',
+          data: chartData.financials.profit,
+          backgroundColor: profitColors,
+          borderColor: profitBorderColors,
+          borderWidth: 1
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const value = context.raw / 10000;
+                return '損益: ' + value.toLocaleString() + '万円';
+              }
+            }
+          }
+        },
+        scales: {
+          y: {
+            ticks: {
+              callback: function(value) {
+                return (value / 10000).toLocaleString() + '万';
+              }
+            }
+          }
+        }
+      }
+    });
+
+    // 外部指標グラフ
+    const externalDatasets = [
+      { key: 'minimum_wage', label: '最低賃金（外部）', color: 'rgb(255, 99, 132)', dash: [5, 5] },
+      { key: 'diesel_price', label: '軽油価格（外部）', color: 'rgb(54, 162, 235)', dash: [5, 5] },
+      { key: 'driver_wage', label: '運転者賃金（外部）', color: 'rgb(75, 192, 192)', dash: [5, 5] },
+      { key: 'company_labor', label: '人件費（自社）', color: 'rgb(220, 53, 69)', dash: [] },
+      { key: 'company_fuel', label: '燃料費（自社）', color: 'rgb(13, 110, 253)', dash: [] },
+      { key: 'company_total', label: '総コスト（自社）', color: 'rgb(25, 135, 84)', dash: [] }
+    ].map(item => ({
+      label: item.label,
+      data: chartData.external.series[item.key],
+      borderColor: item.color,
+      backgroundColor: item.color.replace('rgb', 'rgba').replace(')', ', 0.1)'),
+      borderDash: item.dash,
+      borderWidth: item.dash.length > 0 ? 1.5 : 3,
+      tension: 0.1,
+      fill: false,
+      pointRadius: item.dash.length > 0 ? 2 : 5
+    }));
+
+    externalChart = new Chart(externalCanvas, {
+      type: 'line',
+      data: {
+        labels: chartData.external.labels,
+        datasets: externalDatasets
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: 'top',
+            labels: { font: { size: 11 }, boxWidth: 25 }
+          }
+        },
+        scales: {
+          y: {
+            ticks: {
+              callback: function(value) { return value; }
+            }
+          }
+        }
+      }
+    });
+
+    // コスト比率グラフ
+    metricsChart = new Chart(metricsCanvas, {
+      type: 'line',
+      data: {
+        labels: chartData.metrics.labels,
+        datasets: [
+          {
+            label: '人件費率',
+            data: chartData.metrics.labor_rate,
+            borderColor: 'rgb(255, 99, 132)',
+            backgroundColor: 'rgba(255, 99, 132, 0.1)',
+            fill: true,
+            tension: 0.1
+          },
+          {
+            label: '燃料費率',
+            data: chartData.metrics.fuel_rate,
+            borderColor: 'rgb(54, 162, 235)',
+            backgroundColor: 'rgba(54, 162, 235, 0.1)',
+            fill: true,
+            tension: 0.1
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'top' } },
+        scales: {
+          y: {
+            ticks: {
+              callback: function(value) { return value + '%'; }
+            }
+          }
+        }
+      }
+    });
+
+    chartsInitialized = true;
+  }
+
+  // 外部環境データをinputから取得して指数に変換
+  function getExternalDataFromInputs() {
+    const years = chartData.external.labels.map(l => parseInt(l));
+    const baseYear = years[0];
+    const types = ['minimum_wage', 'diesel_price', 'driver_wage'];
+    const result = {};
+
+    types.forEach(type => {
+      const inputs = document.querySelectorAll(`input[data-type="${type}"]`);
+      const values = [];
+      let baseValue = null;
+
+      inputs.forEach((input, idx) => {
+        const val = parseFloat(input.value) || null;
+        if (idx === 0 && val) baseValue = val;
+        values.push(val);
+      });
+
+      // 指数に変換（基準年=100）
+      result[type] = values.map(v => {
+        if (v === null || baseValue === null) return null;
+        return Math.round((v / baseValue) * 1000) / 10;
+      });
+    });
+
+    return result;
+  }
+
+  // グラフをリアルタイムで更新
+  function updateExternalChart() {
+    if (!externalChart) return;
+
+    const newData = getExternalDataFromInputs();
+
+    // 外部環境データのみ更新（最初の3つのdataset）
+    ['minimum_wage', 'diesel_price', 'driver_wage'].forEach((type, idx) => {
+      if (newData[type]) {
+        externalChart.data.datasets[idx].data = newData[type];
+      }
+    });
+
+    externalChart.update();
+  }
+
+  // 元の値を保存（リセット用）
+  let originalValues = {};
+  function saveOriginalValues() {
+    document.querySelectorAll('.external-input').forEach(input => {
+      const key = `${input.dataset.type}_${input.dataset.year}`;
+      originalValues[key] = input.value;
+    });
+  }
+
+  // リセット
+  function resetExternalData() {
+    document.querySelectorAll('.external-input').forEach(input => {
+      const key = `${input.dataset.type}_${input.dataset.year}`;
+      if (originalValues[key] !== undefined) {
+        input.value = originalValues[key];
+      }
+    });
+    updateExternalChart();
+  }
+
+  // データを保存
+  function saveExternalData() {
+    const data = [];
+    document.querySelectorAll('.external-input').forEach(input => {
+      const value = parseFloat(input.value);
+      if (!isNaN(value)) {
+        data.push({
+          data_type: input.dataset.type,
+          year: parseInt(input.dataset.year),
+          value: value
+        });
+      }
+    });
+
+    fetch('<%= update_external_data_fare_negotiations_path %>', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content
+      },
+      body: JSON.stringify({ external_data: data })
+    })
+    .then(response => response.json())
+    .then(result => {
+      if (result.success) {
+        saveOriginalValues();
+        alert('データを保存しました');
+      } else {
+        alert('保存に失敗しました: ' + result.error);
+      }
+    })
+    .catch(error => {
+      alert('保存に失敗しました: ' + error.message);
+    });
+  }
+
+  // イベントリスナー設定
+  function setupExternalDataListeners() {
+    // 入力時にリアルタイムでグラフ更新
+    document.querySelectorAll('.external-input').forEach(input => {
+      input.addEventListener('input', updateExternalChart);
+    });
+
+    // リセットボタン
+    const resetBtn = document.getElementById('reset-external-data');
+    if (resetBtn) {
+      resetBtn.addEventListener('click', resetExternalData);
+    }
+
+    // 保存ボタン
+    const saveBtn = document.getElementById('save-external-data');
+    if (saveBtn) {
+      saveBtn.addEventListener('click', saveExternalData);
+    }
+
+    // 元の値を保存
+    saveOriginalValues();
+  }
+
+  // 車両グループ選択時に車両コードをクリア
+  document.addEventListener('turbo:load', function() {
+    initCharts();
+    setupExternalDataListeners();
+
+    const groupSelect = document.getElementById('vehicle_group_select');
+    const codeSelect = document.getElementById('vehicle_code_select');
+
+    if (groupSelect && codeSelect) {
+      groupSelect.addEventListener('change', function() {
+        if (this.value) {
+          codeSelect.value = '';
+        }
+      });
+      codeSelect.addEventListener('change', function() {
+        if (this.value) {
+          groupSelect.value = '';
+        }
+      });
+    }
+  });
+
+  document.addEventListener('DOMContentLoaded', function() {
+    initCharts();
+    setupExternalDataListeners();
+  });
+
+  if (document.readyState === 'complete') {
+    initCharts();
+    setupExternalDataListeners();
+  }
+})();
+</script>

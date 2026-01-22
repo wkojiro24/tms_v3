@@ -1,0 +1,60 @@
+<% content_for :title, "FAQ" %>
+<% content_for :section_label, "よくある質問" %>
+
+<div class="row g-4">
+  <div class="col-lg-7">
+    <div class="card card-lift shadow-sm">
+      <div class="card-body">
+        <h2 class="h5 mb-3">FAQ一覧</h2>
+        <div class="accordion accordion-flush" id="faqAccordion">
+          <% [
+            ["配車の遅延が見込まれる場合の対応は？", "遅延が予想される際は、配車画面右上の「遅延アラート」ボタンからドライバー報告を登録し、納品先へ自動通知を行います。緊急便が必要な場合はワークフローから臨時便を申請してください。"],
+            ["車両点検の記録はどこからアップロードしますか？", "車両管理メニューの対象車両を開き、「点検記録」タブから点検表（PDF/画像）をアップロードしてください。ドラッグ＆ドロップにも対応しています。"],
+            ["ドライバーの勤怠修正は誰ができますか？", "営業所長および人事部のみが勤怠修正権限を持っています。修正後は自動で労務チームに通知されます。"]
+          ].each_with_index do |(question, answer), idx| %>
+            <div class="accordion-item">
+              <h2 class="accordion-header" id="faq-heading-<%= idx %>">
+                <button class="accordion-button <%= 'collapsed' unless idx.zero? %>" type="button" data-bs-toggle="collapse" data-bs-target="#faq-collapse-<%= idx %>">
+                  <%= question %>
+                </button>
+              </h2>
+              <div id="faq-collapse-<%= idx %>" class="accordion-collapse collapse <%= 'show' if idx.zero? %>" data-bs-parent="#faqAccordion">
+                <div class="accordion-body text-muted small">
+                  <%= answer %>
+                </div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-5">
+    <div class="card card-lift shadow-sm">
+      <div class="card-body">
+        <h2 class="h6 text-muted text-uppercase mb-3">お問い合わせ</h2>
+        <form class="small">
+          <div class="mb-3">
+            <label class="form-label">件名</label>
+            <input type="text" class="form-control" placeholder="例: 配車の操作方法について">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">カテゴリ</label>
+            <select class="form-select">
+              <option>配車管理</option>
+              <option>収益管理</option>
+              <option>車両管理</option>
+              <option>人事・勤怠</option>
+              <option>その他</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">内容</label>
+            <textarea class="form-control" rows="4" placeholder="詳細をご記入ください"></textarea>
+          </div>
+          <button type="button" class="btn btn-primary w-100">問い合わせを送信</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,11 @@
+default_hq:
+  tenant: default
+  code: HQ
+  name: 本社
+  active: true
+
+default_ops:
+  tenant: default
+  code: OPS
+  name: 運行部
+  active: true

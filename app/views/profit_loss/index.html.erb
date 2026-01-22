@@ -1,0 +1,337 @@
+<% content_for :title, "損益計算書" %>
+<% content_for :section_label, "経営" %>
+<% content_for :subtitle, @view_mode == "yearly" ? @fiscal_year_label : @period_start.strftime("%Y年%m月") %>
+
+<div class="d-flex justify-content-end mb-4">
+  <div class="d-flex gap-2">
+    <!-- 月次/年次切り替え -->
+    <div class="btn-group btn-group-sm" role="group">
+      <%= link_to "月次", profit_loss_index_path(view_mode: "monthly", year: @period_start.year, month: @period_start.month),
+          class: "btn #{@view_mode == 'monthly' ? 'btn-primary' : 'btn-outline-primary'}" %>
+      <%= link_to "年次", profit_loss_index_path(view_mode: "yearly", fiscal_year: @fiscal_year_start.year),
+          class: "btn #{@view_mode == 'yearly' ? 'btn-primary' : 'btn-outline-primary'}" %>
+    </div>
+
+    <%= form_with url: profit_loss_index_path, method: :get, local: true, class: "d-flex gap-2 align-items-center" do |f| %>
+      <%= hidden_field_tag :view_mode, @view_mode %>
+
+      <% if @view_mode == "yearly" %>
+        <select name="fiscal_year" class="form-select form-select-sm" style="width: auto;">
+          <% (Date.current.year - 5..Date.current.year).each do |y| %>
+            <option value="<%= y %>" <%= 'selected' if y == @fiscal_year_start.year %>><%= y %>年度</option>
+          <% end %>
+        </select>
+        <select name="compare" class="form-select form-select-sm" style="width: auto;">
+          <option value="">比較なし</option>
+          <option value="prev_fiscal_year" <%= 'selected' if params[:compare] == 'prev_fiscal_year' %>>前年度比較</option>
+        </select>
+      <% else %>
+        <select name="year" class="form-select form-select-sm" style="width: auto;">
+          <% (Date.current.year - 3..Date.current.year).each do |y| %>
+            <option value="<%= y %>" <%= 'selected' if y == @period_start.year %>><%= y %>年</option>
+          <% end %>
+        </select>
+        <select name="month" class="form-select form-select-sm" style="width: auto;">
+          <% (1..12).each do |m| %>
+            <option value="<%= m %>" <%= 'selected' if m == @period_start.month %>><%= m %>月</option>
+          <% end %>
+        </select>
+        <select name="compare" class="form-select form-select-sm" style="width: auto;">
+          <option value="">比較なし</option>
+          <option value="prev_month" <%= 'selected' if params[:compare] == 'prev_month' %>>前月比較</option>
+          <option value="prev_year" <%= 'selected' if params[:compare] == 'prev_year' %>>前年同月比較</option>
+        </select>
+      <% end %>
+      <%= f.submit "表示", class: "btn btn-primary btn-sm" %>
+    <% end %>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-lg-8">
+    <div class="card card-lift shadow-sm mb-4">
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0" id="pl-table">
+            <thead class="table-light">
+              <tr>
+                <th class="ps-3" style="width: 50%;">勘定科目</th>
+                <th class="text-end" style="width: 25%;">
+                  <% if @view_mode == "yearly" %>
+                    <%= @fiscal_year_label %>
+                  <% else %>
+                    <%= @period_start.strftime("%Y/%m") %>
+                  <% end %>
+                </th>
+                <% if @comparison_data %>
+                  <th class="text-end" style="width: 25%;">
+                    <% if params[:compare] == 'prev_fiscal_year' %>
+                      前年度
+                    <% elsif params[:compare] == 'prev_month' %>
+                      <%= (@period_start - 1.month).strftime("%Y/%m") %>
+                    <% else %>
+                      <%= (@period_start - 1.year).strftime("%Y/%m") %>
+                    <% end %>
+                  </th>
+                <% end %>
+              </tr>
+            </thead>
+            <tbody>
+              <% @pl_data[:sections].each do |section| %>
+                <%= render partial: "pl_row", locals: { section: section, comparison: @comparison_data, depth: 0 } %>
+              <% end %>
+
+              <!-- 計算項目 -->
+              <tr class="table-primary fw-bold">
+                <td class="ps-3">売上総利益</td>
+                <td class="text-end"><%= number_with_delimiter(@pl_data[:totals]["gross_profit"] || 0) %></td>
+                <% if @comparison_data %>
+                  <td class="text-end"><%= number_with_delimiter(@comparison_data[:totals]["gross_profit"] || 0) %></td>
+                <% end %>
+              </tr>
+              <tr class="table-info fw-bold">
+                <td class="ps-3">営業利益</td>
+                <td class="text-end"><%= number_with_delimiter(@pl_data[:totals]["operating_income"] || 0) %></td>
+                <% if @comparison_data %>
+                  <td class="text-end"><%= number_with_delimiter(@comparison_data[:totals]["operating_income"] || 0) %></td>
+                <% end %>
+              </tr>
+              <tr class="table-warning fw-bold">
+                <td class="ps-3">経常利益</td>
+                <td class="text-end"><%= number_with_delimiter(@pl_data[:totals]["ordinary_income"] || 0) %></td>
+                <% if @comparison_data %>
+                  <td class="text-end"><%= number_with_delimiter(@comparison_data[:totals]["ordinary_income"] || 0) %></td>
+                <% end %>
+              </tr>
+              <tr class="table-success fw-bold">
+                <td class="ps-3">当期純利益</td>
+                <td class="text-end"><%= number_with_delimiter(@pl_data[:totals]["net_income"] || 0) %></td>
+                <% if @comparison_data %>
+                  <td class="text-end"><%= number_with_delimiter(@comparison_data[:totals]["net_income"] || 0) %></td>
+                <% end %>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <% if @pl_data[:unmapped_accounts].present? %>
+      <div class="card card-lift shadow-sm">
+        <div class="card-body">
+          <h3 class="h6 text-muted text-uppercase mb-3">
+            未分類の勘定科目
+            <span class="badge bg-warning text-dark"><%= @pl_data[:unmapped_accounts].size %></span>
+          </h3>
+          <div class="table-responsive">
+            <table class="table table-sm small mb-0">
+              <thead>
+                <tr>
+                  <th>勘定科目</th>
+                  <th class="text-end">借方</th>
+                  <th class="text-end">貸方</th>
+                  <th class="text-end">差額</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @pl_data[:unmapped_accounts].take(20).each do |acc| %>
+                  <tr>
+                    <td><%= acc[:account_name] %></td>
+                    <td class="text-end"><%= number_with_delimiter(acc[:debit]) %></td>
+                    <td class="text-end"><%= number_with_delimiter(acc[:credit]) %></td>
+                    <td class="text-end <%= acc[:debit] - acc[:credit] < 0 ? 'text-danger' : '' %>">
+                      <%= number_with_delimiter(acc[:debit] - acc[:credit]) %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+          <% if @pl_data[:unmapped_accounts].size > 20 %>
+            <p class="text-muted small mt-2 mb-0">他 <%= @pl_data[:unmapped_accounts].size - 20 %> 件</p>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+
+  <div class="col-lg-4">
+    <!-- 累計 -->
+    <% if @view_mode == "monthly" %>
+      <div class="card card-lift shadow-sm mb-4">
+        <div class="card-body">
+          <h3 class="h6 text-muted text-uppercase mb-3">年度累計（<%= @fiscal_year_start.strftime("%Y/4") %>〜）</h3>
+          <table class="table table-sm small mb-0">
+            <tbody>
+              <tr>
+                <td>売上高</td>
+                <td class="text-end fw-semibold"><%= number_with_delimiter(@ytd_data[:totals]["sales"] || 0) %></td>
+              </tr>
+              <tr>
+                <td>売上総利益</td>
+                <td class="text-end fw-semibold"><%= number_with_delimiter(@ytd_data[:totals]["gross_profit"] || 0) %></td>
+              </tr>
+              <tr>
+                <td>営業利益</td>
+                <td class="text-end fw-semibold <%= (@ytd_data[:totals]["operating_income"] || 0) < 0 ? 'text-danger' : '' %>">
+                  <%= number_with_delimiter(@ytd_data[:totals]["operating_income"] || 0) %>
+                </td>
+              </tr>
+              <tr>
+                <td>経常利益</td>
+                <td class="text-end fw-semibold <%= (@ytd_data[:totals]["ordinary_income"] || 0) < 0 ? 'text-danger' : '' %>">
+                  <%= number_with_delimiter(@ytd_data[:totals]["ordinary_income"] || 0) %>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    <% end %>
+
+    <!-- 月次推移 -->
+    <div class="card card-lift shadow-sm mb-4">
+      <div class="card-body">
+        <h3 class="h6 text-muted text-uppercase mb-3">月次推移</h3>
+        <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+          <table class="table table-sm small mb-0">
+            <thead class="sticky-top bg-white">
+              <tr>
+                <th>月</th>
+                <th class="text-end">売上</th>
+                <th class="text-end">営業利益</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% @monthly_data.each do |month| %>
+                <tr class="<%= month[:month] == @period_start.month && month[:year] == @period_start.year ? 'table-active' : '' %>">
+                  <td>
+                    <%= link_to month[:label], profit_loss_index_path(view_mode: "monthly", year: month[:year], month: month[:month]), class: "text-decoration-none" %>
+                  </td>
+                  <td class="text-end"><%= number_with_delimiter((month[:data][:totals]["sales"] || 0) / 1000) %>k</td>
+                  <td class="text-end <%= (month[:data][:totals]["operating_income"] || 0) < 0 ? 'text-danger' : '' %>">
+                    <%= number_with_delimiter((month[:data][:totals]["operating_income"] || 0) / 1000) %>k
+                  </td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 利益率 -->
+    <div class="card card-lift shadow-sm">
+      <div class="card-body">
+        <h3 class="h6 text-muted text-uppercase mb-3">利益率</h3>
+        <% sales = (@pl_data[:totals]["sales"] || 0).abs %>
+        <% sales = 1 if sales.zero? %>
+        <div class="mb-3">
+          <div class="d-flex justify-content-between small mb-1">
+            <span>売上総利益率</span>
+            <% gp_rate = ((@pl_data[:totals]["gross_profit"] || 0).to_f / sales * 100).round(1) %>
+            <span class="fw-semibold <%= gp_rate < 0 ? 'text-danger' : '' %>"><%= gp_rate %>%</span>
+          </div>
+          <div class="progress" style="height: 6px;">
+            <div class="progress-bar bg-primary" style="width: <%= [gp_rate.abs, 100].min %>%;"></div>
+          </div>
+        </div>
+        <div class="mb-3">
+          <div class="d-flex justify-content-between small mb-1">
+            <span>営業利益率</span>
+            <% op_rate = ((@pl_data[:totals]["operating_income"] || 0).to_f / sales * 100).round(1) %>
+            <span class="fw-semibold <%= op_rate < 0 ? 'text-danger' : '' %>"><%= op_rate %>%</span>
+          </div>
+          <div class="progress" style="height: 6px;">
+            <div class="progress-bar <%= op_rate < 0 ? 'bg-danger' : 'bg-info' %>" style="width: <%= [op_rate.abs, 100].min %>%;"></div>
+          </div>
+        </div>
+        <div>
+          <div class="d-flex justify-content-between small mb-1">
+            <span>経常利益率</span>
+            <% ord_rate = ((@pl_data[:totals]["ordinary_income"] || 0).to_f / sales * 100).round(1) %>
+            <span class="fw-semibold <%= ord_rate < 0 ? 'text-danger' : '' %>"><%= ord_rate %>%</span>
+          </div>
+          <div class="progress" style="height: 6px;">
+            <div class="progress-bar <%= ord_rate < 0 ? 'bg-danger' : 'bg-warning' %>" style="width: <%= [ord_rate.abs, 100].min %>%;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ドリルダウンモーダル -->
+<div class="modal fade" id="drilldownModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="drilldownModalTitle">勘定科目内訳</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="drilldownModalBody">
+        <div class="text-center py-4">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  let drilldownModal = null;
+
+  function initDrilldown() {
+    const modalEl = document.getElementById('drilldownModal');
+    if (!modalEl) return;
+
+    // 既存のモーダルインスタンスがあれば取得、なければ作成
+    drilldownModal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+
+    document.querySelectorAll('[data-drilldown]').forEach(function(el) {
+      // 既存のリスナーを削除するためcloneする
+      const newEl = el.cloneNode(true);
+      el.parentNode.replaceChild(newEl, el);
+
+      newEl.addEventListener('click', function(e) {
+        e.preventDefault();
+        const accountName = this.dataset.drilldown;
+        const modalTitle = document.getElementById('drilldownModalTitle');
+        const modalBody = document.getElementById('drilldownModalBody');
+
+        modalTitle.textContent = accountName + ' の内訳';
+        modalBody.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary" role="status"></div></div>';
+
+        drilldownModal.show();
+
+        fetch('/profit_loss/drilldown?account=' + encodeURIComponent(accountName) + '&start=<%= @period_start %>&end=<%= @period_end %>')
+          .then(response => response.text())
+          .then(html => {
+            modalBody.innerHTML = html;
+          })
+          .catch(err => {
+            modalBody.innerHTML = '<div class="alert alert-danger">データの取得に失敗しました</div>';
+          });
+      });
+    });
+  }
+
+  function cleanupModal() {
+    // モーダルを閉じてbackdropを削除
+    if (drilldownModal) {
+      drilldownModal.hide();
+    }
+    // 残ったbackdropを強制削除
+    document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+    document.body.classList.remove('modal-open');
+    document.body.style.removeProperty('overflow');
+    document.body.style.removeProperty('padding-right');
+  }
+
+  document.addEventListener("turbo:load", initDrilldown);
+  document.addEventListener("turbo:before-cache", cleanupModal);
+})();
+</script>

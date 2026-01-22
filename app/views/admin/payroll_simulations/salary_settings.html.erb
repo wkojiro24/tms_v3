@@ -1,0 +1,80 @@
+<% content_for :title, "従業員給与設定" %>
+<% content_for :section_label, "人事管理" %>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h2 class="h4 mb-1">従業員給与設定</h2>
+    <p class="text-muted small mb-0">従業員ごとの給与条件を設定</p>
+  </div>
+  <div class="d-flex gap-2">
+    <%= link_to admin_payroll_simulations_path, class: "btn btn-outline-secondary btn-sm" do %>
+      <i class="bi bi-arrow-left me-1"></i>シミュレーションへ
+    <% end %>
+    <%= link_to new_salary_setting_admin_payroll_simulations_path, class: "btn btn-primary btn-sm" do %>
+      <i class="bi bi-plus me-1"></i>新規登録
+    <% end %>
+  </div>
+</div>
+
+<% if @salary_settings.any? %>
+  <div class="card card-lift">
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>従業員</th>
+              <th>給与形態</th>
+              <th>適用等級</th>
+              <th class="text-end">基本給</th>
+              <th class="text-end">通勤手当</th>
+              <th class="text-end">住民税</th>
+              <th class="text-center">扶養</th>
+              <th>有効開始</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @salary_settings.each do |setting| %>
+              <tr>
+                <td>
+                  <div class="fw-bold"><%= setting.employee.full_name %></div>
+                  <small class="text-muted"><%= setting.employee.employee_code %></small>
+                </td>
+                <td>
+                  <%= { 'monthly' => '月給制', 'daily' => '日給制', 'hourly' => '時給制' }[setting.salary_type] %>
+                </td>
+                <td>
+                  <% if setting.grade_salary_table %>
+                    <span class="badge bg-primary"><%= setting.grade_salary_table.grade_code %></span>
+                    <%= setting.grade_salary_table.grade_name %>
+                  <% else %>
+                    <span class="text-muted">-</span>
+                  <% end %>
+                </td>
+                <td class="text-end"><%= number_with_delimiter(setting.base_salary) %> 円</td>
+                <td class="text-end"><%= number_with_delimiter(setting.commuting_allowance) %> 円</td>
+                <td class="text-end"><%= number_with_delimiter(setting.resident_tax) %> 円</td>
+                <td class="text-center"><%= setting.dependents_count %> 人</td>
+                <td><%= setting.effective_from.strftime('%Y/%m/%d') %></td>
+                <td class="text-end">
+                  <%= link_to edit_salary_setting_admin_payroll_simulation_path(setting), class: "btn btn-outline-secondary btn-sm" do %>
+                    <i class="bi bi-pencil"></i>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+<% else %>
+  <div class="alert alert-info">
+    <i class="bi bi-info-circle me-1"></i>
+    従業員給与設定が登録されていません。「新規登録」から登録してください。
+    <br><small class="text-muted">
+      ※給与シミュレーションを行うには、各従業員の給与設定が必要です。
+    </small>
+  </div>
+<% end %>

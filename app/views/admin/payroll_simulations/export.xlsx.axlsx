@@ -1,0 +1,185 @@
+wb = xlsx_package.workbook
+
+# スタイル定義
+styles = wb.styles
+header_style = styles.add_style(
+  b: true,
+  bg_color: "4472C4",
+  fg_color: "FFFFFF",
+  alignment: { horizontal: :center, vertical: :center },
+  border: { style: :thin, color: "000000" }
+)
+
+section_header = styles.add_style(
+  b: true,
+  bg_color: "BDD7EE",
+  alignment: { horizontal: :center },
+  border: { style: :thin, color: "000000" }
+)
+
+number_style = styles.add_style(
+  num_fmt: 3,  # #,##0
+  border: { style: :thin, color: "000000" },
+  alignment: { horizontal: :right }
+)
+
+total_style = styles.add_style(
+  b: true,
+  num_fmt: 3,
+  border: { style: :thin, color: "000000" },
+  alignment: { horizontal: :right },
+  bg_color: "FFF2CC"
+)
+
+text_style = styles.add_style(
+  border: { style: :thin, color: "000000" },
+  alignment: { horizontal: :center }
+)
+
+approved_style = styles.add_style(
+  border: { style: :thin, color: "000000" },
+  alignment: { horizontal: :center },
+  bg_color: "C6EFCE",
+  fg_color: "006100"
+)
+
+pending_style = styles.add_style(
+  border: { style: :thin, color: "000000" },
+  alignment: { horizontal: :center },
+  bg_color: "FFEB9C",
+  fg_color: "9C6500"
+)
+
+wb.add_worksheet(name: "給与台帳_#{@year}年#{@month}月") do |sheet|
+  # タイトル行
+  sheet.add_row ["#{@year}年#{@month}月 給与台帳"], style: styles.add_style(b: true, sz: 16)
+  sheet.add_row []
+
+  # ヘッダー行
+  headers = [
+    "コード", "氏名", "出勤日数", "残業h", "深夜h", "休日h", "有給日数",
+    "基本給", "大都市", "職位", "職責", "残業手当", "深夜手当", "休日手当", "有給手当", "通勤手当", "無事故", "その他",
+    "支給合計",
+    "健康保険", "介護保険", "厚生年金", "雇用保険", "所得税", "組合費", "住民税",
+    "控除合計",
+    "差引支給額",
+    "ステータス"
+  ]
+  sheet.add_row headers, style: header_style
+
+  # データ行
+  @simulations.each do |sim|
+    details = sim.calculation_details || {}
+    payment = details['payment'] || {}
+
+    status_text = case sim.status
+                  when 'approved' then '承認済'
+                  when 'confirmed' then '確認済'
+                  else '未承認'
+                  end
+
+    row_data = [
+      sim.employee_code,
+      sim.employee&.full_name || "",
+      sim.working_days&.to_f,
+      sim.overtime_hours&.round(1),
+      sim.late_night_hours&.round(1),
+      sim.holiday_hours&.round(1),
+      sim.paid_leave_days&.to_f,
+      sim.calc_basic_salary.to_i,
+      payment['city_allowance'].to_i,
+      payment['position_allowance'].to_i,
+      payment['qualification_allowance'].to_i,
+      sim.calc_overtime_pay.to_i,
+      sim.calc_late_night_pay.to_i,
+      sim.calc_holiday_pay.to_i,
+      sim.calc_paid_leave_pay.to_i,
+      sim.calc_commuting_allowance.to_i,
+      sim.calc_safety_bonus.to_i,
+      (sim.calc_other_allowances.to_i - payment['city_allowance'].to_i - payment['position_allowance'].to_i - payment['qualification_allowance'].to_i - payment['family_allowance'].to_i),
+      sim.calc_gross_total.to_i,
+      sim.calc_health_insurance.to_i,
+      sim.calc_nursing_insurance.to_i,
+      sim.calc_pension.to_i,
+      sim.calc_employment_insurance.to_i,
+      sim.calc_income_tax.to_i,
+      sim.calc_union_fee.to_i,
+      sim.calc_resident_tax.to_i,
+      sim.calc_deduction_total.to_i,
+      sim.calc_net_total.to_i,
+      status_text
+    ]
+
+    # セルごとのスタイル適用
+    row_styles = [
+      text_style,   # コード
+      text_style,   # 氏名
+      number_style, # 出勤日数
+      number_style, # 残業h
+      number_style, # 深夜h
+      number_style, # 休日h
+      number_style, # 有給日数
+      number_style, # 基本給
+      number_style, # 大都市
+      number_style, # 職位
+      number_style, # 職責
+      number_style, # 残業手当
+      number_style, # 深夜手当
+      number_style, # 休日手当
+      number_style, # 有給手当
+      number_style, # 通勤手当
+      number_style, # 無事故
+      number_style, # その他
+      total_style,  # 支給合計
+      number_style, # 健康保険
+      number_style, # 介護保険
+      number_style, # 厚生年金
+      number_style, # 雇用保険
+      number_style, # 所得税
+      number_style, # 組合費
+      number_style, # 住民税
+      total_style,  # 控除合計
+      total_style,  # 差引支給額
+      sim.status == 'approved' ? approved_style : pending_style  # ステータス
+    ]
+
+    sheet.add_row row_data, style: row_styles
+  end
+
+  # 合計行
+  sheet.add_row []
+  totals = [
+    "合計", "",
+    @simulations.sum { |s| s.working_days.to_f },
+    @simulations.sum { |s| s.overtime_hours.to_f.round(1) },
+    @simulations.sum { |s| s.late_night_hours.to_f.round(1) },
+    @simulations.sum { |s| s.holiday_hours.to_f.round(1) },
+    @simulations.sum { |s| s.paid_leave_days.to_f },
+    @simulations.sum(:calc_basic_salary),
+    @simulations.sum { |s| (s.calculation_details&.dig('payment', 'city_allowance') || 0).to_i },
+    @simulations.sum { |s| (s.calculation_details&.dig('payment', 'position_allowance') || 0).to_i },
+    @simulations.sum { |s| (s.calculation_details&.dig('payment', 'qualification_allowance') || 0).to_i },
+    @simulations.sum(:calc_overtime_pay),
+    @simulations.sum(:calc_late_night_pay),
+    @simulations.sum(:calc_holiday_pay),
+    @simulations.sum(:calc_paid_leave_pay),
+    @simulations.sum(:calc_commuting_allowance),
+    @simulations.sum { |s| s.calc_safety_bonus.to_i },
+    0, # その他はスキップ
+    @simulations.sum(:calc_gross_total),
+    @simulations.sum(:calc_health_insurance),
+    @simulations.sum(:calc_nursing_insurance),
+    @simulations.sum(:calc_pension),
+    @simulations.sum(:calc_employment_insurance),
+    @simulations.sum(:calc_income_tax),
+    @simulations.sum { |s| s.calc_union_fee.to_i },
+    @simulations.sum(:calc_resident_tax),
+    @simulations.sum(:calc_deduction_total),
+    @simulations.sum(:calc_net_total),
+    "#{@simulations.count}名"
+  ]
+  sheet.add_row totals, style: total_style
+
+  # 列幅調整
+  sheet.column_widths 8, 12, 8, 6, 6, 6, 6, 10, 8, 8, 8, 10, 10, 10, 10, 10, 8, 8, 12, 10, 10, 10, 10, 10, 8, 10, 12, 12, 10
+end

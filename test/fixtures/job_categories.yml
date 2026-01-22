@@ -1,0 +1,11 @@
+driver:
+  tenant: default
+  code: driver
+  name: ドライバー
+  active: true
+
+office:
+  tenant: default
+  code: office
+  name: 事務
+  active: true

@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <title><%= content_for(:title) || "TMS-cloud" %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+
+    <%= yield :head %>
+
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" href="/icon.png" type="image/png">
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/icon.png">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Trix Editor CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/trix@2.1.12/dist/trix.css">
+    <!-- Gilroy-like font (Poppins is the closest free alternative) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+      .app-brand-logo {
+        font-family: 'Poppins', sans-serif;
+        font-weight: 500;
+        font-size: 1.35rem;
+        letter-spacing: 0px;
+        color: #3d4f5f;
+      }
+    </style>
+    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+  </head>
+
+  <body class="app-shell">
+    <div class="app-shell__container">
+      <% if user_signed_in? %>
+      <aside class="app-sidebar">
+        <div class="app-sidebar__brand">
+          <div class="app-brand-logo"><i class="fa-solid fa-truck-front me-2"></i>TMS Cloud</div>
+          <% if current_tenant.present? %>
+            <div class="app-sidebar__tenant"><%= current_tenant.name %></div>
+          <% end %>
+        </div>
+
+        <nav class="app-sidebar__nav">
+          <%
+            menu_items = [
+              { label: "ダッシュボード", path: dashboard_path, active: current_page?(dashboard_path) || current_page?(root_path) },
+              { label: "お知らせ", path: announcements_path, active: request.path.starts_with?("/announcements") },
+              { label: "共有リンク", path: bookmarks_path, active: request.path.starts_with?("/bookmarks") },
+              { label: "ナレッジ共有", path: knowledge_articles_path, active: request.path.starts_with?("/knowledge") },
+              {
+                label: "ワークフロー",
+                active: request.path.starts_with?("/workflows") || request.path.starts_with?("/admin/workflow"),
+                children: [
+                  { label: "申請", path: workflow_requests_path, active: request.path.starts_with?("/workflows") },
+                  current_user&.admin_role? ? { label: "承認", path: admin_workflow_requests_path, active: request.path.starts_with?("/admin/workflow_requests") } : nil,
+                  current_user&.admin_role? ? { label: "カテゴリ", path: admin_workflow_categories_path, active: request.path.starts_with?("/admin/workflow_categories") } : nil
+                ].compact
+              },
+              { label: "配車", path: dispatch_path, active: current_page?(dispatch_path) },
+              { label: "運送明細", path: transport_orders_path, active: request.path.starts_with?("/transport_orders") },
+              {
+                label: "車両",
+                active: request.path.starts_with?("/vehicles") || request.path.starts_with?("/vehicle_financials") || request.path.starts_with?("/maintenance") || request.path.starts_with?("/revenue"),
+                children: [
+                  { label: "車両一覧", path: vehicles_path, active: current_page?(vehicles_path) },
+                  { label: "収支グリッド", path: vehicle_financials_path, active: request.path.starts_with?("/vehicle_financials") },
+                  { label: "整備計画", path: maintenance_schedule_path, active: request.path.starts_with?("/maintenance_events") || request.path == "/vehicles/schedule" },
+                  { label: "メンテナンス種別", path: maintenance_categories_path, active: request.path.starts_with?("/maintenance_categories") },
+                  { label: "車両別収支", path: revenue_path, active: request.path.starts_with?("/revenue") }
+                ]
+              },
+              {
+                label: "経営",
+                active: request.path.starts_with?("/journal_entries") || request.path.starts_with?("/fleet") || request.path.starts_with?("/profit_loss") || request.path.starts_with?("/fare_negotiations"),
+                children: [
+                  { label: "P/Lダッシュボード", path: dashboard_profit_loss_index_path, active: request.path == "/profit_loss/dashboard" },
+                  { label: "部門別分析", path: department_analysis_profit_loss_index_path, active: request.path == "/profit_loss/department_analysis" },
+                  { label: "損益計算書", path: profit_loss_index_path, active: request.path == "/profit_loss" },
+                  { label: "仕訳明細", path: journal_entries_path, active: request.path.starts_with?("/journal_entries") },
+                  { label: "固定資産", path: fleet_path, active: request.path.starts_with?("/fleet") },
+                  { label: "運賃交渉資料", path: fare_negotiations_path, active: request.path.starts_with?("/fare_negotiations") }
+                ]
+              },
+              {
+                label: "人事",
+                active: request.path.starts_with?("/hr") || request.path == "/admin/payrolls" || request.path.starts_with?("/admin/attendances") || request.path.starts_with?("/admin/payroll_simulations"),
+                children: [
+                  { label: "社員情報", path: hr_path, active: request.path.starts_with?("/hr") },
+                  current_user&.admin_role? ? { label: "勤怠管理", path: admin_attendances_path, active: request.path.starts_with?("/admin/attendances") } : nil,
+                  current_user&.admin_role? ? { label: "給与シミュレーション", path: admin_payroll_simulations_path, active: request.path.starts_with?("/admin/payroll_simulations") } : nil,
+                  current_user&.admin_role? ? { label: "給与グリッド", path: admin_payrolls_path, active: request.path == "/admin/payrolls" } : nil
+                ].compact
+              },
+              current_user&.admin_role? ? {
+                label: "管理者",
+                active: request.path.starts_with?("/admin") && !request.path.starts_with?("/admin/workflow") && request.path != "/admin/payrolls",
+                children: [
+                  { label: "ダッシュボード", path: admin_root_path, active: current_page?(admin_root_path) },
+                  { label: "データインポート", path: new_admin_import_path, active: request.path.starts_with?("/admin/imports") },
+                  { label: "インポート履歴", path: histories_admin_imports_path, active: current_page?(histories_admin_imports_path) },
+                  { label: "ユーザー管理", path: admin_users_path, active: request.path.starts_with?("/admin/users") },
+                  { label: "社員管理", path: admin_employees_path, active: request.path.starts_with?("/admin/employees") },
+                  { label: "マスタ設定", path: admin_departments_path, active: request.path.starts_with?("/admin/departments") || request.path.starts_with?("/admin/job_") || request.path.starts_with?("/admin/grade_") || request.path.starts_with?("/admin/evaluation_") },
+                  { label: "車両グループ", path: admin_vehicle_groups_path, active: request.path.starts_with?("/admin/vehicle_groups") },
+                  { label: "原価表カテゴリ", path: admin_metric_categories_path, active: request.path.starts_with?("/admin/metric_") },
+                  { label: "集計設定", path: edit_admin_summary_setting_path, active: request.path.starts_with?("/admin/summary_setting") },
+                  { label: "お知らせ管理", path: admin_announcements_path, active: request.path.starts_with?("/admin/announcements") },
+                  { label: "ブックマーク管理", path: admin_bookmarks_path, active: request.path.starts_with?("/admin/bookmarks") },
+                  { label: "ナレッジ管理", path: admin_knowledge_articles_path, active: request.path.starts_with?("/admin/knowledge") }
+                ]
+              } : nil
+            ].compact
+          %>
+          <ul class="app-sidebar__list">
+            <% menu_items.each do |item| %>
+              <li>
+                <% if item[:children].present? %>
+                  <button type="button" class="app-sidebar__item app-sidebar__item--parent <%= 'is-active' if item[:active] %>" data-toggle-menu="<%= item[:label] %>">
+                    <%= item[:label] %>
+                    <span class="app-sidebar__arrow"></span>
+                  </button>
+                  <ul class="app-sidebar__submenu <%= 'is-open' if item[:active] %>">
+                    <% item[:children].each do |child| %>
+                      <li>
+                        <%= link_to child[:path], class: "app-sidebar__subitem #{'is-active' if child[:active]}" do %>
+                          <%= child[:label] %>
+                        <% end %>
+                      </li>
+                    <% end %>
+                  </ul>
+                <% else %>
+                  <%= link_to item[:path], class: "app-sidebar__item #{'is-active' if item[:active]}" do %>
+                    <%= item[:label] %>
+                  <% end %>
+                <% end %>
+              </li>
+            <% end %>
+          </ul>
+        </nav>
+
+      </aside>
+      <% end %>
+
+      <div class="app-main <%= 'app-main--full' unless user_signed_in? %>">
+        <% if user_signed_in? %>
+        <header class="app-header">
+          <div class="d-flex align-items-center gap-4 flex-grow-1">
+            <div>
+              <div class="small text-muted"><%= yield(:section_label) %></div>
+              <h1 class="h5 mb-0 fw-semibold"><%= content_for(:title) || "TMS-cloud" %></h1>
+              <% if content_for?(:subtitle) %>
+                <div class="small text-muted"><%= yield(:subtitle) %></div>
+              <% end %>
+            </div>
+            <% if content_for?(:header_actions) %>
+              <div class="d-flex gap-2">
+                <%= yield(:header_actions) %>
+              </div>
+            <% end %>
+          </div>
+          <div class="d-flex align-items-center gap-3">
+            <div class="input-group input-group-sm app-header__search">
+              <span class="input-group-text bg-white border-end-0"><i class="bi bi-search"></i></span>
+              <input type="search" class="form-control border-start-0" placeholder="ポータル内検索...">
+            </div>
+            <div class="d-flex align-items-center gap-2">
+              <span class="text-muted small me-2">
+                <i class="bi bi-person-circle"></i>
+                <%= current_user.email %>
+                (<%= current_user.admin_role? ? "管理者" : "スタッフ" %>)
+                <% if current_tenant.present? %>
+                  - <%= current_tenant.name %>
+                <% end %>
+                <% if current_user.employment.present? %>
+                  / <%= current_user.employment.display_label %>
+                <% end %>
+              </span>
+              <button class="btn btn-outline-primary btn-sm d-flex align-items-center gap-2">
+                <i class="bi bi-bell"></i>
+                通知
+              </button>
+              <%= button_to destroy_user_session_path, method: :delete, class: "btn btn-secondary btn-sm" do %>
+                <i class="bi bi-box-arrow-right"></i>
+                ログアウト
+              <% end %>
+            </div>
+          </div>
+        </header>
+        <% end %>
+        <main class="app-content">
+          <div class="app-content__inner">
+            <% flash.each do |type, message| %>
+              <% next if message.blank? %>
+              <div class="alert alert-<%= type == "alert" ? "danger" : "success" %> alert-dismissible fade show app-flash" role="alert">
+                <%= message %>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+              </div>
+            <% end %>
+            <%= yield %>
+          </div>
+        </main>
+      </div>
+    </div>
+  </body>
+</html>

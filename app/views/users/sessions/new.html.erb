@@ -1,0 +1,82 @@
+<div class="login-page">
+  <div class="login-card">
+    <div class="login-card__header">
+      <h1 class="login-card__title">TMS Cloud</h1>
+      <% if current_tenant.present? %>
+        <p class="login-card__subtitle"><%= current_tenant.name %></p>
+      <% else %>
+        <p class="login-card__subtitle">ログイン</p>
+      <% end %>
+    </div>
+
+    <% flash.each do |type, message| %>
+      <% next if message.blank? %>
+      <div class="login-card__alert login-card__alert--<%= type == 'alert' ? 'error' : 'success' %>">
+        <%= message %>
+      </div>
+    <% end %>
+
+    <%= form_for(resource, as: resource_name, url: session_path(resource_name), html: { class: "login-form", id: "login-form" }) do |f| %>
+      <% unless current_tenant.present? %>
+      <div class="login-form__group">
+        <label class="login-form__label">テナント（会社）</label>
+        <%= select_tag :tenant_slug,
+            options_from_collection_for_select(Tenant.unscoped.order(:name), :slug, :name, params[:tenant_slug]),
+            class: "login-form__input login-form__select",
+            prompt: "テナントを選択してください",
+            id: "tenant_select" %>
+      </div>
+      <% end %>
+
+      <div class="login-form__group">
+        <label class="login-form__label">メールアドレス</label>
+        <%= f.email_field :email, autofocus: true, autocomplete: "email", class: "login-form__input", placeholder: "example@company.com" %>
+      </div>
+
+      <div class="login-form__group">
+        <label class="login-form__label">パスワード</label>
+        <%= f.password_field :password, autocomplete: "current-password", class: "login-form__input", placeholder: "パスワードを入力" %>
+      </div>
+
+      <% if devise_mapping.rememberable? %>
+        <div class="login-form__remember">
+          <%= f.check_box :remember_me, class: "login-form__checkbox" %>
+          <label class="login-form__remember-label">ログイン状態を保持する</label>
+        </div>
+      <% end %>
+
+      <div class="login-form__actions">
+        <%= f.submit "ログイン", class: "login-form__submit" %>
+      </div>
+    <% end %>
+
+    <div class="login-card__footer">
+      <% if devise_mapping.registerable? && controller_name != 'registrations' %>
+        <%= link_to "新規登録", new_registration_path(resource_name), class: "login-card__link" %>
+      <% end %>
+      <% if devise_mapping.recoverable? && controller_name != 'passwords' && controller_name != 'registrations' %>
+        <%= link_to "パスワードをお忘れですか？", new_password_path(resource_name), class: "login-card__link" %>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const tenantSelect = document.getElementById('tenant_select');
+  const loginForm = document.getElementById('login-form');
+  const baseDomain = '<%= Rails.configuration.x.tenancy.base_domain %>';
+
+  if (tenantSelect && loginForm) {
+    tenantSelect.addEventListener('change', function() {
+      const selectedTenant = this.value;
+      if (selectedTenant) {
+        // Redirect to tenant subdomain
+        const protocol = window.location.protocol;
+        const newUrl = `${protocol}//${selectedTenant}.${baseDomain}/users/sign_in`;
+        window.location.href = newUrl;
+      }
+    });
+  }
+});
+</script>

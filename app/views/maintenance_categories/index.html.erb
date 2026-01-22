@@ -1,0 +1,62 @@
+<% content_for :title, "メンテ種別管理" %>
+
+<div class="card shadow-sm mb-3">
+  <div class="card-body">
+    <h1 class="h5 mb-3">メンテナンス種別</h1>
+    <% if flash[:alert].present? %>
+      <div class="alert alert-danger"><%= flash[:alert] %></div>
+    <% end %>
+    <% if notice.present? %>
+      <div class="alert alert-success"><%= notice %></div>
+    <% end %>
+    <div class="row">
+      <div class="col-md-5">
+        <h2 class="h6 mb-2">種別の追加/編集</h2>
+        <%= form_with model: @category, url: @category.persisted? ? maintenance_category_path(@category) : maintenance_categories_path, local: true do |f| %>
+          <div class="mb-3">
+            <%= f.label :key, "キー (例: shaken / tenken / shuuri / tire)", class: "form-label" %>
+            <%= f.text_field :key, class: "form-control" %>
+          </div>
+          <div class="mb-3">
+            <%= f.label :name, "表示名", class: "form-label" %>
+            <%= f.text_field :name, class: "form-control" %>
+          </div>
+          <div class="mb-3">
+            <%= f.label :color, "カラー (任意・CSS色)", class: "form-label" %>
+            <%= f.text_field :color, class: "form-control", placeholder: "#3793e0 など" %>
+          </div>
+          <%= f.submit @category.persisted? ? "更新" : "追加", class: "btn btn-primary" %>
+          <% if @category.persisted? %>
+            <%= link_to "キャンセル", maintenance_categories_path, class: "btn btn-link" %>
+          <% end %>
+        <% end %>
+      </div>
+      <div class="col-md-7">
+        <h2 class="h6 mb-2">登録済みの種別</h2>
+        <table class="table table-sm">
+          <thead>
+            <tr>
+              <th>キー</th>
+              <th>表示名</th>
+              <th>カラー</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @categories.each do |cat| %>
+              <tr>
+                <td><code><%= cat.key %></code></td>
+                <td><%= cat.name %></td>
+                <td><%= cat.color.presence || "-" %></td>
+                <td class="text-end">
+                  <%= link_to "編集", edit_maintenance_category_path(cat), class: "btn btn-outline-primary btn-sm" %>
+                  <%= link_to "削除", maintenance_category_path(cat), method: :delete, data: { confirm: "削除しますか？" }, class: "btn btn-outline-danger btn-sm" %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>

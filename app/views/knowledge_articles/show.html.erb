@@ -1,0 +1,111 @@
+<% content_for :title, @article.title %>
+
+<div class="mb-4">
+  <%= link_to knowledge_articles_path, class: "text-decoration-none" do %>
+    <i class="bi bi-arrow-left me-1"></i>ナレッジ共有に戻る
+  <% end %>
+</div>
+
+<div class="row">
+  <div class="col-lg-9">
+    <div class="card shadow-sm">
+      <div class="card-header bg-white">
+        <div class="d-flex align-items-center gap-2">
+          <span class="badge bg-primary"><%= @article.category_label %></span>
+          <% @article.tag_list.each do |tag| %>
+            <span class="badge bg-light text-dark"><%= tag %></span>
+          <% end %>
+        </div>
+      </div>
+      <div class="card-body">
+        <h4 class="card-title mb-4"><%= @article.title %></h4>
+        <div class="article-body">
+          <%= @article.content %>
+        </div>
+      </div>
+
+      <% if @article.attachments.attached? %>
+        <div class="card-footer bg-white border-top">
+          <h6 class="mb-3"><i class="bi bi-paperclip me-2"></i>添付ファイル</h6>
+          <div class="list-group">
+            <% @article.attachments.each do |attachment| %>
+              <%= link_to rails_blob_path(attachment, disposition: "attachment"), class: "list-group-item list-group-item-action d-flex align-items-center gap-2" do %>
+                <i class="bi bi-file-earmark text-primary"></i>
+                <div class="flex-grow-1">
+                  <div><%= attachment.filename %></div>
+                  <small class="text-muted"><%= number_to_human_size(attachment.byte_size) %></small>
+                </div>
+                <i class="bi bi-download"></i>
+              <% end %>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+
+      <div class="card-footer bg-white">
+        <small class="text-muted">
+          <i class="bi bi-eye me-1"></i><%= @article.view_count %>回閲覧
+          <span class="mx-2">|</span>
+          <i class="bi bi-person me-1"></i><%= @article.author&.name || "管理者" %>
+          <span class="mx-2">|</span>
+          <i class="bi bi-calendar me-1"></i>更新: <%= @article.updated_at.strftime("%Y/%m/%d %H:%M") %>
+        </small>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-3">
+    <!-- 関連記事 -->
+    <div class="card shadow-sm">
+      <div class="card-header bg-white">
+        <h6 class="mb-0"><i class="bi bi-link-45deg me-2"></i>関連記事</h6>
+      </div>
+      <div class="list-group list-group-flush">
+        <% related = current_tenant.knowledge_articles.published.by_category(@article.category).where.not(id: @article.id).limit(5) %>
+        <% if related.any? %>
+          <% related.each do |article| %>
+            <%= link_to knowledge_article_path(article), class: "list-group-item list-group-item-action" do %>
+              <div class="fw-medium small"><%= article.title %></div>
+            <% end %>
+          <% end %>
+        <% else %>
+          <div class="list-group-item text-muted small">関連記事がありません</div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .article-body {
+    line-height: 1.8;
+  }
+  .article-body p {
+    margin-bottom: 1rem;
+  }
+  .article-body img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+  }
+  .article-body h1, .article-body h2, .article-body h3 {
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+  }
+  .article-body ul, .article-body ol {
+    margin-bottom: 1rem;
+    padding-left: 1.5rem;
+  }
+  .article-body blockquote {
+    border-left: 4px solid #dee2e6;
+    padding-left: 1rem;
+    margin-left: 0;
+    color: #6c757d;
+  }
+  .article-body pre {
+    background-color: #f8f9fa;
+    padding: 1rem;
+    border-radius: 4px;
+    overflow-x: auto;
+  }
+</style>

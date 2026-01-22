@@ -1,0 +1,419 @@
+<% content_for :title, "勤怠一覧" %>
+<% content_for :section_label, "人事管理" %>
+<% content_for :subtitle, "King of Timeからインポートした勤怠データ" %>
+<% content_for :header_actions do %>
+  <%= link_to "データインポート", import_admin_attendances_path, class: "btn btn-primary btn-sm" %>
+  <%= button_to "一括インポート", bulk_import_admin_attendances_path, method: :post, class: "btn btn-outline-primary btn-sm", data: { turbo_confirm: "data/kingoftimeフォルダから全ての月次データをインポートしますか？" } %>
+<% end %>
+
+<!-- 期間・ソート選択 -->
+<div class="card card-lift mb-4">
+  <div class="card-body">
+    <form action="<%= admin_attendances_path %>" method="get" class="row g-3 align-items-end">
+      <div class="col-auto">
+        <label class="form-label">年</label>
+        <select name="year" class="form-select">
+          <% (2020..Date.current.year).to_a.reverse.each do |y| %>
+            <option value="<%= y %>" <%= 'selected' if y == @year %>><%= y %>年</option>
+          <% end %>
+        </select>
+      </div>
+      <div class="col-auto">
+        <label class="form-label">月</label>
+        <select name="month" class="form-select">
+          <% (1..12).each do |m| %>
+            <option value="<%= m %>" <%= 'selected' if m == @month %>><%= m %>月</option>
+          <% end %>
+        </select>
+      </div>
+      <div class="col-auto">
+        <label class="form-label">並び順</label>
+        <select name="sort" class="form-select">
+          <% @sort_options.each do |key, opt| %>
+            <option value="<%= key %>" <%= 'selected' if key == @sort %>><%= opt[:label] %></option>
+          <% end %>
+        </select>
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-secondary">表示</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<% if @monthlies.any? %>
+  <!-- サマリーカード -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-2">
+      <div class="card card-lift">
+        <div class="card-body text-center py-3">
+          <div class="text-muted small">対象従業員</div>
+          <div class="h4 mb-0"><%= @summary[:total_employees] %><small class="text-muted">名</small></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <div class="card card-lift">
+        <div class="card-body text-center py-3">
+          <div class="text-muted small">総残業時間</div>
+          <div class="h4 mb-0"><%= number_with_delimiter(@summary[:total_overtime].round(1)) %><small class="text-muted">h</small></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <div class="card card-lift">
+        <div class="card-body text-center py-3">
+          <div class="text-muted small">平均残業</div>
+          <div class="h4 mb-0"><%= @summary[:avg_overtime] %><small class="text-muted">h</small></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <div class="card card-lift border-warning">
+        <div class="card-body text-center py-3">
+          <div class="text-muted small">45h超過</div>
+          <div class="h4 mb-0 text-warning"><%= @summary[:warnings] %><small class="text-muted">名</small></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <div class="card card-lift border-danger">
+        <div class="card-body text-center py-3">
+          <div class="text-muted small">60h超過</div>
+          <div class="h4 mb-0 text-danger"><%= @summary[:criticals] %><small class="text-muted">名</small></div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <div class="card card-lift">
+        <div class="card-body text-center py-3">
+          <div class="text-muted small">所属数</div>
+          <div class="h4 mb-0"><%= @departments.size %><small class="text-muted">部門</small></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ランキングセクション -->
+  <div class="row g-4 mb-4">
+    <!-- 残業時間ランキング -->
+    <div class="col-lg-3 col-md-6">
+      <div class="card card-lift h-100">
+        <div class="card-header bg-danger text-white py-2">
+          <h6 class="mb-0"><i class="bi bi-trophy me-1"></i>残業時間 Top10</h6>
+        </div>
+        <div class="card-body p-0">
+          <ol class="list-group list-group-flush list-group-numbered">
+            <% @overtime_ranking.each_with_index do |m, i| %>
+              <li class="list-group-item d-flex justify-content-between align-items-center py-2 <%= 'bg-danger bg-opacity-10' if i < 3 %>">
+                <div class="ms-2 me-auto small">
+                  <div class="fw-bold"><%= m.employee_name %></div>
+                  <span class="text-muted"><%= m.department_name %></span>
+                </div>
+                <span class="badge <%= m.overtime_critical? ? 'bg-danger' : m.overtime_warning? ? 'bg-warning text-dark' : 'bg-secondary' %>">
+                  <%= m.total_overtime.round(1) %>h
+                </span>
+              </li>
+            <% end %>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <!-- 深夜残業ランキング -->
+    <div class="col-lg-3 col-md-6">
+      <div class="card card-lift h-100">
+        <div class="card-header bg-purple text-white py-2" style="background-color: #6f42c1;">
+          <h6 class="mb-0"><i class="bi bi-moon-stars me-1"></i>深夜残業 Top10</h6>
+        </div>
+        <div class="card-body p-0">
+          <ol class="list-group list-group-flush list-group-numbered">
+            <% @late_night_ranking.each_with_index do |m, i| %>
+              <li class="list-group-item d-flex justify-content-between align-items-center py-2 <%= 'bg-purple bg-opacity-10' if i < 3 %>" style="<%= 'background-color: rgba(111, 66, 193, 0.1);' if i < 3 %>">
+                <div class="ms-2 me-auto small">
+                  <div class="fw-bold"><%= m.employee_name %></div>
+                  <span class="text-muted"><%= m.department_name %></span>
+                </div>
+                <span class="badge bg-secondary"><%= m.late_night_hours %>h</span>
+              </li>
+            <% end %>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <!-- 出勤日数ランキング -->
+    <div class="col-lg-3 col-md-6">
+      <div class="card card-lift h-100">
+        <div class="card-header bg-primary text-white py-2">
+          <h6 class="mb-0"><i class="bi bi-calendar-check me-1"></i>出勤日数 Top10</h6>
+        </div>
+        <div class="card-body p-0">
+          <ol class="list-group list-group-flush list-group-numbered">
+            <% @working_days_ranking.each_with_index do |m, i| %>
+              <li class="list-group-item d-flex justify-content-between align-items-center py-2 <%= 'bg-primary bg-opacity-10' if i < 3 %>">
+                <div class="ms-2 me-auto small">
+                  <div class="fw-bold"><%= m.employee_name %></div>
+                  <span class="text-muted"><%= m.department_name %></span>
+                </div>
+                <span class="badge bg-primary"><%= m.working_days %>日</span>
+              </li>
+            <% end %>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <!-- 有休取得ランキング -->
+    <div class="col-lg-3 col-md-6">
+      <div class="card card-lift h-100">
+        <div class="card-header bg-success text-white py-2">
+          <h6 class="mb-0"><i class="bi bi-emoji-smile me-1"></i>有休取得 Top10</h6>
+        </div>
+        <div class="card-body p-0">
+          <ol class="list-group list-group-flush list-group-numbered">
+            <% @paid_leave_ranking.each_with_index do |m, i| %>
+              <li class="list-group-item d-flex justify-content-between align-items-center py-2 <%= 'bg-success bg-opacity-10' if i < 3 %>">
+                <div class="ms-2 me-auto small">
+                  <div class="fw-bold"><%= m.employee_name %></div>
+                  <span class="text-muted"><%= m.department_name %></span>
+                </div>
+                <span class="badge bg-success"><%= m.paid_leave_days %>日</span>
+              </li>
+            <% end %>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 部門別ランキング -->
+  <div class="row g-4 mb-4">
+    <div class="col-lg-6">
+      <div class="card card-lift">
+        <div class="card-header bg-transparent">
+          <h6 class="mb-0"><i class="bi bi-building me-1"></i>部門別 総残業時間</h6>
+        </div>
+        <div class="card-body">
+          <% max_overtime = @dept_overtime_ranking.first&.dig(1, :total_overtime) || 1 %>
+          <% @dept_overtime_ranking.each do |dept, stats| %>
+            <div class="mb-3">
+              <div class="d-flex justify-content-between small mb-1">
+                <span><%= dept %> (<%= stats[:count] %>名)</span>
+                <span class="fw-bold"><%= number_with_delimiter(stats[:total_overtime].round(1)) %>h</span>
+              </div>
+              <div class="progress" style="height: 20px;">
+                <div class="progress-bar <%= stats[:criticals] > 0 ? 'bg-danger' : stats[:warnings] > 0 ? 'bg-warning' : 'bg-primary' %>"
+                     style="width: <%= (stats[:total_overtime] / max_overtime * 100).round(1) %>%">
+                </div>
+              </div>
+              <% if stats[:warnings] > 0 || stats[:criticals] > 0 %>
+                <div class="small text-muted mt-1">
+                  <% if stats[:criticals] > 0 %><span class="text-danger">60h超: <%= stats[:criticals] %>名</span><% end %>
+                  <% if stats[:warnings] > 0 %><span class="text-warning ms-2">45h超: <%= stats[:warnings] %>名</span><% end %>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-6">
+      <div class="card card-lift">
+        <div class="card-header bg-transparent">
+          <h6 class="mb-0"><i class="bi bi-person me-1"></i>部門別 平均残業時間</h6>
+        </div>
+        <div class="card-body">
+          <% max_avg = @dept_avg_overtime_ranking.first&.dig(1, :avg_overtime) || 1 %>
+          <% @dept_avg_overtime_ranking.each do |dept, stats| %>
+            <div class="mb-3">
+              <div class="d-flex justify-content-between small mb-1">
+                <span><%= dept %> (<%= stats[:count] %>名)</span>
+                <span class="fw-bold"><%= stats[:avg_overtime].round(1) %>h/人</span>
+              </div>
+              <div class="progress" style="height: 20px;">
+                <% bar_color = stats[:avg_overtime] > 45 ? 'bg-danger' : stats[:avg_overtime] > 30 ? 'bg-warning' : 'bg-success' %>
+                <div class="progress-bar <%= bar_color %>"
+                     style="width: <%= (stats[:avg_overtime] / [max_avg, 60].max * 100).round(1) %>%">
+                </div>
+              </div>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 部門別タブ -->
+  <ul class="nav nav-tabs mb-3" role="tablist">
+    <li class="nav-item">
+      <a class="nav-link active" data-bs-toggle="tab" href="#all">全員 (<%= @monthlies.size %>)</a>
+    </li>
+    <% @departments.each_with_index do |dept, i| %>
+      <% dept_count = @monthlies.count { |m| m.department_name == dept } %>
+      <li class="nav-item">
+        <a class="nav-link" data-bs-toggle="tab" href="#dept-<%= i %>"><%= dept %> (<%= dept_count %>)</a>
+      </li>
+    <% end %>
+  </ul>
+
+  <div class="tab-content">
+    <!-- 全員タブ -->
+    <div class="tab-pane fade show active" id="all">
+      <div class="card card-lift">
+        <div class="card-body">
+          <div class="table-responsive">
+            <table class="table table-sm table-hover align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th style="width: 50px;">#</th>
+                  <th>従業員コード</th>
+                  <th>氏名</th>
+                  <th>所属</th>
+                  <th class="text-end">出勤日数</th>
+                  <th class="text-end">有休取得</th>
+                  <th class="text-end">拘束時間</th>
+                  <th class="text-end">残業時間</th>
+                  <th class="text-end">深夜</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @monthlies.each_with_index do |m, idx| %>
+                  <tr class="<%= 'table-danger' if m.overtime_critical? %><%= 'table-warning' if m.overtime_warning? && !m.overtime_critical? %>">
+                    <td class="text-muted"><%= idx + 1 %></td>
+                    <td><%= m.employee_code %></td>
+                    <td><%= m.employee_name %></td>
+                    <td><span class="badge bg-secondary"><%= m.department_name %></span></td>
+                    <td class="text-end"><%= m.working_days %></td>
+                    <td class="text-end"><%= m.paid_leave_days %></td>
+                    <td class="text-end"><%= m.total_hours %></td>
+                    <td class="text-end">
+                      <% if m.overtime_critical? %>
+                        <span class="badge bg-danger"><%= m.total_overtime.round(1) %></span>
+                      <% elsif m.overtime_warning? %>
+                        <span class="badge bg-warning text-dark"><%= m.total_overtime.round(1) %></span>
+                      <% else %>
+                        <%= m.total_overtime.round(1) %>
+                      <% end %>
+                    </td>
+                    <td class="text-end"><%= m.late_night_hours %></td>
+                    <td class="text-end">
+                      <%= link_to "詳細", admin_attendance_path(m.employee_code, year: @year, month: @month), class: "btn btn-outline-primary btn-sm" %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 部門別タブ -->
+    <% @departments.each_with_index do |dept, i| %>
+      <div class="tab-pane fade" id="dept-<%= i %>">
+        <div class="card card-lift">
+          <div class="card-body">
+            <%
+              dept_monthlies = @monthlies.select { |m| m.department_name == dept }
+              dept_stats = @department_stats[dept]
+            %>
+
+            <!-- 部門サマリー -->
+            <div class="row g-3 mb-4">
+              <div class="col-md-2">
+                <div class="bg-light rounded p-3 text-center">
+                  <div class="small text-muted">人数</div>
+                  <div class="h5 mb-0"><%= dept_stats[:count] %>名</div>
+                </div>
+              </div>
+              <div class="col-md-2">
+                <div class="bg-light rounded p-3 text-center">
+                  <div class="small text-muted">総残業</div>
+                  <div class="h5 mb-0"><%= dept_stats[:total_overtime].round(1) %>h</div>
+                </div>
+              </div>
+              <div class="col-md-2">
+                <div class="bg-light rounded p-3 text-center">
+                  <div class="small text-muted">平均残業</div>
+                  <div class="h5 mb-0"><%= dept_stats[:avg_overtime].round(1) %>h</div>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="bg-warning bg-opacity-25 rounded p-3 text-center">
+                  <div class="small text-muted">45h超過</div>
+                  <div class="h5 mb-0 text-warning"><%= dept_stats[:warnings] %>名</div>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="bg-danger bg-opacity-25 rounded p-3 text-center">
+                  <div class="small text-muted">60h超過</div>
+                  <div class="h5 mb-0 text-danger"><%= dept_stats[:criticals] %>名</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="table table-sm table-hover align-middle">
+                <thead class="table-light">
+                  <tr>
+                    <th style="width: 50px;">#</th>
+                    <th>従業員コード</th>
+                    <th>氏名</th>
+                    <th class="text-end">出勤日数</th>
+                    <th class="text-end">有休取得</th>
+                    <th class="text-end">拘束時間</th>
+                    <th class="text-end">残業時間</th>
+                    <th class="text-end">深夜</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <% dept_monthlies.each_with_index do |m, idx| %>
+                    <tr class="<%= 'table-danger' if m.overtime_critical? %><%= 'table-warning' if m.overtime_warning? && !m.overtime_critical? %>">
+                      <td class="text-muted"><%= idx + 1 %></td>
+                      <td><%= m.employee_code %></td>
+                      <td><%= m.employee_name %></td>
+                      <td class="text-end"><%= m.working_days %></td>
+                      <td class="text-end"><%= m.paid_leave_days %></td>
+                      <td class="text-end"><%= m.total_hours %></td>
+                      <td class="text-end">
+                        <% if m.overtime_critical? %>
+                          <span class="badge bg-danger"><%= m.total_overtime.round(1) %></span>
+                        <% elsif m.overtime_warning? %>
+                          <span class="badge bg-warning text-dark"><%= m.total_overtime.round(1) %></span>
+                        <% else %>
+                          <%= m.total_overtime.round(1) %>
+                        <% end %>
+                      </td>
+                      <td class="text-end"><%= m.late_night_hours %></td>
+                      <td class="text-end">
+                        <%= link_to "詳細", admin_attendance_path(m.employee_code, year: @year, month: @month), class: "btn btn-outline-primary btn-sm" %>
+                      </td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  </div>
+
+<% else %>
+  <div class="alert alert-info">
+    <h6 class="alert-heading mb-2">
+      <i class="bi bi-info-circle me-1"></i>勤怠データがありません
+    </h6>
+    <p class="mb-2">
+      King of Timeからエクスポートした月次集計CSV（custom_csv_YYYYMMDD_YYYYMMDD.csv形式）をインポートしてください。
+    </p>
+    <hr>
+    <p class="mb-0 small">
+      <strong>一括インポート</strong>ボタンを押すと、<code>data/kingoftime</code>フォルダ内の全ての月次CSVファイルを自動でインポートします。
+    </p>
+  </div>
+<% end %>

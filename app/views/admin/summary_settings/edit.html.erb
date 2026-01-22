@@ -1,0 +1,37 @@
+<% content_for :title, "サマリー設定" %>
+<% content_for :section_label, "管理" %>
+
+<div class="container py-4">
+  <h1 class="h5 mb-4">サマリー設定</h1>
+
+  <%= form_with model: @setting, url: admin_summary_setting_path, method: :put, local: true do |f| %>
+    <div class="mb-3">
+      <%= f.label :term_start_month, "期の開始月 (1-12)", class: "form-label" %>
+      <%= f.number_field :term_start_month, in: 1..12, step: 1, class: "form-control", value: @setting.term_start_month || SummarySetting::DEFAULT_TERM_START_MONTH %>
+      <div class="form-text">例: 9 を指定すると 9月〜翌8月で1期として扱います。</div>
+    </div>
+
+    <div class="mb-3">
+      <%= f.label :fiscal_year_origin, "第1期の開始年度", class: "form-label" %>
+      <%= f.number_field :fiscal_year_origin, in: 1900..2100, step: 1, class: "form-control", value: @setting.fiscal_year_origin || SummarySetting::DEFAULT_FISCAL_YEAR_ORIGIN %>
+      <div class="form-text">例: 1950 を指定すると、2024年度が第75期になります。(2024 - 1950 + 1 = 75)</div>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">集計する項目ラベルとエイリアス</label>
+      <div class="form-text">左が表示ラベル、右が同じ項目として扱うラベル（カンマ区切り）。空なら表示ラベルのみ。</div>
+      <% @setting.label_mappings.each do |label, aliases| %>
+        <div class="row g-2 mb-2">
+          <div class="col-sm-4">
+            <input type="text" name="summary_setting[label_mappings_keys][]" value="<%= label %>" class="form-control" readonly>
+          </div>
+          <div class="col-sm-8">
+            <input type="text" name="summary_setting[label_mappings_values][]" value="<%= Array(aliases).join(',') %>" class="form-control">
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <%= f.submit "保存", class: "btn btn-primary" %>
+  <% end %>
+</div>

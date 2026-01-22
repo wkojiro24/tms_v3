@@ -1,0 +1,52 @@
+<% content_for :title, @bookmark.title %>
+<% content_for :section_label, "管理者" %>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h4 class="mb-0">
+    <i class="bi <%= @bookmark.icon_class %> me-2"></i>
+    <%= @bookmark.title %>
+  </h4>
+  <div class="btn-group">
+    <%= link_to @bookmark.url, target: "_blank", class: "btn btn-primary" do %>
+      <i class="bi bi-box-arrow-up-right me-1"></i>開く
+    <% end %>
+    <%= link_to edit_admin_bookmark_path(@bookmark), class: "btn btn-outline-primary" do %>
+      <i class="bi bi-pencil me-1"></i>編集
+    <% end %>
+    <%= link_to admin_bookmarks_path, class: "btn btn-outline-secondary" do %>
+      <i class="bi bi-arrow-left me-1"></i>戻る
+    <% end %>
+  </div>
+</div>
+
+<div class="card card-lift shadow-sm">
+  <div class="card-body">
+    <dl class="row mb-0">
+      <dt class="col-sm-3">URL</dt>
+      <dd class="col-sm-9">
+        <%= link_to @bookmark.url, @bookmark.url, target: "_blank" %>
+      </dd>
+
+      <dt class="col-sm-3">カテゴリ</dt>
+      <dd class="col-sm-9"><%= @bookmark.category_label %></dd>
+
+      <dt class="col-sm-3">説明</dt>
+      <dd class="col-sm-9"><%= @bookmark.description.presence || "-" %></dd>
+
+      <dt class="col-sm-3">公開状態</dt>
+      <dd class="col-sm-9">
+        <% if @bookmark.shared? %>
+          <span class="badge bg-success">公開中</span>
+        <% else %>
+          <span class="badge bg-secondary">非公開</span>
+        <% end %>
+      </dd>
+
+      <dt class="col-sm-3">作成者</dt>
+      <dd class="col-sm-9"><%= @bookmark.creator&.name || "-" %></dd>
+
+      <dt class="col-sm-3">作成日</dt>
+      <dd class="col-sm-9"><%= @bookmark.created_at.strftime("%Y/%m/%d %H:%M") %></dd>
+    </dl>
+  </div>
+</div>

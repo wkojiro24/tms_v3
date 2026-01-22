@@ -1,0 +1,107 @@
+<% content_for :title, @vehicle.display_name.presence || "車両詳細" %>
+<% content_for :section_label, "車両" %>
+
+<div class="page-layout">
+  <div class="row g-3">
+    <div class="col-lg-8">
+      <section class="section mb-3">
+        <div class="section__header">
+          <span>車両写真ギャラリー</span>
+        </div>
+        <div class="section__body">
+          <%= render "gallery" %>
+        </div>
+      </section>
+
+      <section class="section" id="maintenance">
+        <div class="section__header">
+          <span>メンテナンス記録</span>
+          <button type="button"
+                  class="btn btn-sm btn-primary"
+                  data-bs-toggle="modal"
+                  data-bs-target="#maintenanceEventModal">
+            ＋ 記録を追加
+          </button>
+        </div>
+        <div class="section__body p-0">
+          <%= render "vehicles/maintenance_events/table",
+                     vehicle: @vehicle,
+                     maintenance_events: @maintenance_events,
+                     maintenance_faults: @vehicle.vehicle_faults.order(started_on: :desc) %>
+        </div>
+      </section>
+    </div>
+
+    <div class="col-lg-4">
+      <section class="section mb-3">
+        <div class="section__header">
+          <span>メニュー</span>
+        </div>
+        <div class="section__body d-flex flex-column gap-2">
+          <%= render "fault_status_toggle", vehicle: @vehicle %>
+          <p class="text-muted small mb-1">
+            「故障・修理」にすると、点検・整備スケジュール上でこの車両の行がグレー表示されます。
+          </p>
+          <% if @vehicle_financial_code.present? %>
+            <%= link_to "車両別収支", vehicle_financial_path(@vehicle_financial_code), class: "btn btn-outline-secondary w-100" %>
+          <% else %>
+            <button class="btn btn-outline-secondary w-100" disabled>推移表のリンクなし</button>
+          <% end %>
+        </div>
+      </section>
+
+      <section class="section mb-3">
+        <div class="section__header">
+          <span>基本情報</span>
+          <button class="btn btn-link btn-sm text-secondary text-decoration-none" data-bs-toggle="modal" data-bs-target="#vehicleDetailsModal">
+            <i class="bi bi-pencil-square me-1"></i>編集する
+          </button>
+        </div>
+        <div class="section__body">
+          <dl class="row mb-0">
+            <dt class="col-sm-4 text-muted small">初度登録</dt>
+            <dd class="col-sm-8"><%= l(@vehicle.first_registration_on, format: :long) if @vehicle.first_registration_on.present? %> <span class="text-muted small"><%= @vehicle.age_text %></span></dd>
+            <dt class="col-sm-4 text-muted small">型式 / 車名</dt>
+            <dd class="col-sm-8"><%= [@vehicle.model_code, @vehicle.manufacturer_name].compact.join(" / ") %></dd>
+            <dt class="col-sm-4 text-muted small">車台番号</dt>
+            <dd class="col-sm-8"><%= @vehicle.chassis_number %></dd>
+            <dt class="col-sm-4 text-muted small">種別</dt>
+            <dd class="col-sm-8"><%= @vehicle.vehicle_category %></dd>
+            <dt class="col-sm-4 text-muted small">最大積載量</dt>
+            <dd class="col-sm-8"><%= number_with_delimiter(@vehicle.max_load_kg) if @vehicle.max_load_kg.present? %> kg</dd>
+            <dt class="col-sm-4 text-muted small">車両総重量</dt>
+            <dd class="col-sm-8"><%= number_with_delimiter(@vehicle.gross_weight_kg) if @vehicle.gross_weight_kg.present? %> kg</dd>
+            <dt class="col-sm-4 text-muted small">シャーシ</dt>
+            <dd class="col-sm-8"><%= @vehicle.chassis_base %></dd>
+            <dt class="col-sm-4 text-muted small">荷主 / 輸送品</dt>
+            <dd class="col-sm-8"><%= [@vehicle.shipper_name, @vehicle.cargo_name].compact.join(" / ") %></dd>
+            <dt class="col-sm-4 text-muted small">タンク材質</dt>
+            <dd class="col-sm-8"><%= [@vehicle.tank_material, @vehicle.usage_category].compact.join(" / ") %></dd>
+            <dt class="col-sm-4 text-muted small">タンク製造年月</dt>
+            <dd class="col-sm-8"><%= l(@vehicle.tank_made_on, format: :long) if @vehicle.tank_made_on.present? %> <span class="text-muted small"><%= @vehicle.tank_age_text %></span></dd>
+            <dt class="col-sm-4 text-muted small">その他</dt>
+            <dd class="col-sm-8"><%= simple_format(@vehicle.notes) if @vehicle.notes.present? %></dd>
+          </dl>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <%= render "vehicle_details_modal" %>
+
+  <div class="modal fade" id="maintenanceEventModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">メンテナンス記録を追加</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <%= render "vehicles/maintenance_events/form",
+                     vehicle: @vehicle,
+                     maintenance_event: @vehicle.maintenance_events.build %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

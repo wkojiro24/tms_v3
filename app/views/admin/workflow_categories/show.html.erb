@@ -1,0 +1,114 @@
+<% content_for :title, @workflow_category.name %>
+<% content_for :section_label, "承認管理" %>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h2 class="h5 mb-0"><%= @workflow_category.name %></h2>
+    <div class="text-muted small"><%= @workflow_category.description.presence || '説明なし' %></div>
+  </div>
+  <div class="btn-group">
+    <%= link_to '編集', edit_admin_workflow_category_path(@workflow_category), class: 'btn btn-outline-secondary btn-sm' %>
+    <%= button_to '削除', admin_workflow_category_path(@workflow_category), method: :delete, data: { turbo_confirm: 'このカテゴリを削除しますか？既存の申請に影響します。' }, class: 'btn btn-outline-danger btn-sm' %>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-6">
+    <div class="card card-lift h-100">
+      <div class="card-header bg-white fw-semibold">承認ステップ</div>
+      <div class="card-body">
+        <% if @workflow_category.stage_templates.any? %>
+          <div class="list-group list-group-flush">
+            <% @workflow_category.stage_templates.each do |template| %>
+              <div class="list-group-item">
+                <div class="d-flex justify-content-between">
+                  <div>
+                    <div class="fw-semibold">
+                      <%= template.position %>. <%= template.name %>
+                    </div>
+                    <div class="text-muted small">
+                      担当: <%= template.responsible_user&.display_name || template.responsible_role&.humanize || '未設定' %>
+                    </div>
+                    <% if template.instructions.present? %>
+                      <div class="small text-muted mt-1">
+                        指示: <%= template.instructions %>
+                      </div>
+                    <% end %>
+                  </div>
+                  <div class="btn-group btn-group-sm">
+                    <%= link_to '編集', '#', class: 'btn btn-outline-secondary disabled' %>
+                    <%= button_to '削除', admin_workflow_category_workflow_stage_template_path(@workflow_category, template), method: :delete, class: 'btn btn-outline-danger', data: { turbo_confirm: 'ステップを削除しますか？' } %>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        <% else %>
+          <div class="text-muted">ステップが未設定です。</div>
+        <% end %>
+        <hr>
+        <%= form_with model: [@workflow_category, WorkflowStageTemplate.new], url: admin_workflow_category_workflow_stage_templates_path(@workflow_category), local: true do |f| %>
+          <div class="row g-2 align-items-end">
+            <div class="col-md-3">
+              <%= f.label :position, '順番', class: 'form-label small' %>
+              <%= f.number_field :position, class: 'form-control form-control-sm', min: 1, value: (@workflow_category.stage_templates.count + 1) %>
+            </div>
+            <div class="col-md-4">
+              <%= f.label :name, 'ステップ名', class: 'form-label small' %>
+              <%= f.text_field :name, class: 'form-control form-control-sm', required: true %>
+            </div>
+            <div class="col-md-5">
+              <%= f.label :responsible_role, '担当ロール/ユーザー', class: 'form-label small' %>
+              <div class="d-flex gap-1">
+                <%= f.text_field :responsible_role, class: 'form-control form-control-sm', placeholder: 'role (例: admin)' %>
+                <%= f.collection_select :responsible_user_id, User.order(:email), :id, :display_name, { include_blank: 'ユーザー' }, class: 'form-select form-select-sm' %>
+              </div>
+            </div>
+            <div class="col-12">
+              <%= f.label :instructions, '指示事項', class: 'form-label small' %>
+              <%= f.text_field :instructions, class: 'form-control form-control-sm' %>
+            </div>
+            <div class="col-12 text-end">
+              <%= f.submit 'ステップ追加', class: 'btn btn-primary btn-sm' %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card card-lift h-100">
+      <div class="card-header bg-white fw-semibold">通知設定</div>
+      <div class="card-body">
+        <% if @workflow_category.notifications.any? %>
+          <ul class="list-group list-group-flush mb-3">
+            <% @workflow_category.notifications.each do |notification| %>
+              <li class="list-group-item d-flex justify-content-between align-items-center">
+                <div>
+                  <div class="fw-semibold"><%= notification.role %></div>
+                  <div class="text-muted small"><%= notification.description.presence || 'コメントなし' %></div>
+                </div>
+                <%= button_to '削除', admin_workflow_category_workflow_category_notification_path(@workflow_category, notification), method: :delete, class: 'btn btn-sm btn-outline-danger' %>
+              </li>
+            <% end %>
+          </ul>
+        <% else %>
+          <div class="text-muted">通知先は設定されていません。</div>
+        <% end %>
+        <%= form_with model: [@workflow_category, WorkflowCategoryNotification.new], url: admin_workflow_category_workflow_category_notifications_path(@workflow_category), local: true, class: 'row g-2 align-items-end' do |f| %>
+          <div class="col-md-6">
+            <%= f.label :role, '通知ロール', class: 'form-label small' %>
+            <%= f.text_field :role, class: 'form-control form-control-sm', placeholder: '例: admin' %>
+          </div>
+          <div class="col-md-6">
+            <%= f.label :description, '備考', class: 'form-label small' %>
+            <%= f.text_field :description, class: 'form-control form-control-sm' %>
+          </div>
+          <div class="col-12 text-end">
+            <%= f.submit '通知先を追加', class: 'btn btn-primary btn-sm' %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

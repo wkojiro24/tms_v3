@@ -1,0 +1,261 @@
+# 運賃交渉資料のExcelエクスポート
+wb = xlsx_package.workbook
+
+# スタイル定義
+styles = wb.styles
+title_style = styles.add_style(
+  b: true,
+  sz: 14,
+  alignment: { horizontal: :center }
+)
+header_style = styles.add_style(
+  bg_color: "4472C4",
+  fg_color: "FFFFFF",
+  b: true,
+  sz: 10,
+  border: { style: :thin, color: "DDDDDD" },
+  alignment: { horizontal: :center, vertical: :center }
+)
+label_style = styles.add_style(
+  b: true,
+  sz: 10,
+  border: { style: :thin, color: "DDDDDD" },
+  alignment: { horizontal: :left }
+)
+number_style = styles.add_style(
+  sz: 10,
+  border: { style: :thin, color: "DDDDDD" },
+  alignment: { horizontal: :right },
+  format_code: "#,##0"
+)
+percent_style = styles.add_style(
+  sz: 10,
+  border: { style: :thin, color: "DDDDDD" },
+  alignment: { horizontal: :right },
+  format_code: "0.0%"
+)
+negative_style = styles.add_style(
+  sz: 10,
+  border: { style: :thin, color: "DDDDDD" },
+  alignment: { horizontal: :right },
+  format_code: "#,##0",
+  fg_color: "DC3545"
+)
+warning_header_style = styles.add_style(
+  bg_color: "FFC107",
+  b: true,
+  sz: 10,
+  border: { style: :thin, color: "DDDDDD" },
+  alignment: { horizontal: :center, vertical: :center }
+)
+info_header_style = styles.add_style(
+  bg_color: "17A2B8",
+  fg_color: "FFFFFF",
+  b: true,
+  sz: 10,
+  border: { style: :thin, color: "DDDDDD" },
+  alignment: { horizontal: :center, vertical: :center }
+)
+section_style = styles.add_style(
+  bg_color: "F8F9FA",
+  b: true,
+  sz: 11,
+  border: { style: :thin, color: "DDDDDD" }
+)
+
+# フィルター情報
+filter_info = []
+filter_info << "車両グループ: #{@vehicle_group&.name || '全車両'}"
+filter_info << "期間: #{@start_year}年 〜 #{@end_year}年"
+
+# === シート1: サマリー ===
+wb.add_worksheet(name: "運賃交渉資料") do |sheet|
+  sheet.add_row ["運賃交渉資料"], style: title_style
+  sheet.merge_cells "A1:F1"
+  sheet.add_row [filter_info.join(" / ")]
+  sheet.add_row []
+
+  # 外部環境の変化セクション
+  sheet.add_row ["外部環境の変化（#{@start_year}年 → #{@end_year}年）"], style: section_style
+  sheet.merge_cells "A4:C4"
+
+  sheet.add_row ["指標", "#{@start_year}年", "#{@end_year}年", "変化率"], style: warning_header_style
+
+  # 最低賃金
+  mw = @external_comparison[:minimum_wage]
+  sheet.add_row [
+    "最低賃金（円）",
+    mw[:base]&.to_i,
+    mw[:latest]&.to_i,
+    mw[:change_rate] ? "+#{mw[:change_rate]}%" : ""
+  ], style: [label_style, number_style, number_style, label_style]
+
+  # 軽油価格
+  dp = @external_comparison[:diesel_price]
+  sheet.add_row [
+    "軽油価格（円/L）",
+    dp[:base]&.to_i,
+    dp[:latest]&.to_i,
+    dp[:change_rate] ? "#{dp[:change_rate] > 0 ? '+' : ''}#{dp[:change_rate]}%" : ""
+  ], style: [label_style, number_style, number_style, label_style]
+
+  # 大型トラック価格
+  tp = @external_comparison[:truck_price]
+  sheet.add_row [
+    "大型トラック価格（指数）",
+    tp[:base]&.round(1),
+    tp[:latest]&.round(1),
+    tp[:change_rate] ? "+#{tp[:change_rate]}%" : ""
+  ], style: [label_style, number_style, number_style, label_style]
+
+  # 運転者賃金
+  dw = @external_comparison[:driver_wage]
+  sheet.add_row [
+    "運転者賃金（万円）",
+    dw[:base]&.to_i,
+    dw[:latest]&.to_i,
+    dw[:change_rate] ? "+#{dw[:change_rate]}%" : ""
+  ], style: [label_style, number_style, number_style, label_style]
+
+  sheet.add_row []
+
+  # 年度別実績セクション
+  sheet.add_row ["年度別実績"], style: section_style
+  sheet.merge_cells "A11:E11"
+
+  sheet.add_row ["年度", "売上（万円）", "コスト（万円）", "損益（万円）", "損益率"], style: header_style
+
+  @yearly_financials.each do |year, data|
+    profit_style = data[:profit] < 0 ? negative_style : number_style
+    sheet.add_row [
+      "#{year}期",
+      (data[:revenue] / 10000).round(0),
+      (data[:cost] / 10000).round(0),
+      (data[:profit] / 10000).round(0),
+      "#{data[:profit_rate]}%"
+    ], style: [label_style, number_style, number_style, profit_style, label_style]
+  end
+
+  sheet.add_row []
+
+  # シミュレーション結果（あれば）
+  if @simulation_result
+    sheet.add_row ["シミュレーション結果"], style: section_style
+    sheet.add_row ["ベース年度: #{@simulation_base[:year]}期"]
+    sheet.add_row ["人件費増加率: #{params[:labor_increase]}%、燃料費増加率: #{params[:fuel_increase]}%、運賃値上げ率: #{params[:fare_increase]}%"]
+    sheet.add_row []
+
+    sheet.add_row ["項目", "金額（円）"], style: info_header_style
+    sheet.add_row ["売上", @simulation_result[:revenue]], style: [label_style, number_style]
+    sheet.add_row ["人件費", @simulation_result[:labor_cost]], style: [label_style, number_style]
+    sheet.add_row ["燃料費", @simulation_result[:fuel_cost]], style: [label_style, number_style]
+    sheet.add_row ["その他コスト", @simulation_result[:other_cost]], style: [label_style, number_style]
+
+    profit_style = @simulation_result[:profit] < 0 ? negative_style : number_style
+    sheet.add_row ["損益", @simulation_result[:profit]], style: [label_style, profit_style]
+    sheet.add_row ["損益率", "#{@simulation_result[:profit_rate]}%"], style: [label_style, label_style]
+
+    change_style = @simulation_result[:profit_change] < 0 ? negative_style : number_style
+    sheet.add_row ["損益変化額", @simulation_result[:profit_change]], style: [label_style, change_style]
+  end
+
+  # 列幅調整
+  sheet.column_widths 25, 15, 15, 15, 12
+end
+
+# === シート2: 外部指標推移 ===
+wb.add_worksheet(name: "外部指標推移") do |sheet|
+  sheet.add_row ["外部経済指標の推移（#{@start_year}年=100）"], style: title_style
+  sheet.merge_cells "A1:F1"
+  sheet.add_row []
+
+  years = (@start_year..@end_year).to_a
+
+  # ヘッダー
+  header_row = ["年度", "最低賃金", "軽油価格", "トラック価格", "運転者賃金", "消費者物価"]
+  sheet.add_row header_row, style: header_style
+
+  # 基準値取得
+  base_values = {}
+  ExternalEconomicDatum::DATA_TYPES.keys.each do |type|
+    base_values[type] = ExternalEconomicDatum.by_type(type).yearly.find_by(year: @start_year)&.value || 100
+  end
+
+  # データ行
+  years.each do |year|
+    row = ["#{year}年"]
+    [:minimum_wage, :diesel_price, :truck_price, :driver_wage, :cpi].each do |type|
+      value = ExternalEconomicDatum.by_type(type).yearly.find_by(year: year)&.value
+      if value && base_values[type]
+        row << (value / base_values[type] * 100).round(1)
+      else
+        row << nil
+      end
+    end
+    sheet.add_row row, style: [label_style] + [number_style] * 5
+  end
+
+  sheet.add_row []
+
+  # 絶対値テーブル
+  sheet.add_row ["参考：絶対値"], style: section_style
+  sheet.add_row ["年度", "最低賃金(円)", "軽油価格(円/L)", "トラック価格(指数)", "運転者賃金(万円)", "消費者物価(指数)"], style: header_style
+
+  years.each do |year|
+    row = ["#{year}年"]
+    [:minimum_wage, :diesel_price, :truck_price, :driver_wage, :cpi].each do |type|
+      value = ExternalEconomicDatum.by_type(type).yearly.find_by(year: year)&.value
+      row << value&.round(1)
+    end
+    sheet.add_row row, style: [label_style] + [number_style] * 5
+  end
+
+  sheet.column_widths 12, 14, 14, 16, 16, 16
+end
+
+# === シート3: コスト比率推移 ===
+wb.add_worksheet(name: "コスト比率推移") do |sheet|
+  sheet.add_row ["コスト比率の推移"], style: title_style
+  sheet.merge_cells "A1:D1"
+  sheet.add_row [filter_info.join(" / ")]
+  sheet.add_row []
+
+  sheet.add_row ["年度", "人件費率", "燃料費率", "その他経費率"], style: header_style
+
+  @yearly_metrics.each do |year, data|
+    sheet.add_row [
+      "#{year}期",
+      "#{data[:labor_cost_rate]}%",
+      "#{data[:fuel_cost_rate]}%",
+      "#{data[:other_cost_rate]}%"
+    ], style: [label_style, label_style, label_style, label_style]
+  end
+
+  sheet.column_widths 12, 12, 12, 14
+end
+
+# === シート4: 詳細財務データ ===
+wb.add_worksheet(name: "詳細財務データ") do |sheet|
+  sheet.add_row ["年度別詳細財務データ"], style: title_style
+  sheet.merge_cells "A1:H1"
+  sheet.add_row [filter_info.join(" / ")]
+  sheet.add_row []
+
+  sheet.add_row ["年度", "売上", "人件費", "燃料費", "その他経費", "コスト計", "損益", "損益率"], style: header_style
+
+  @yearly_financials.each do |year, data|
+    profit_style = data[:profit] < 0 ? negative_style : number_style
+    sheet.add_row [
+      "#{year}期",
+      data[:revenue].round(0),
+      data[:labor_cost].round(0),
+      data[:fuel_cost].round(0),
+      data[:other_cost].round(0),
+      data[:cost].round(0),
+      data[:profit].round(0),
+      "#{data[:profit_rate]}%"
+    ], style: [label_style, number_style, number_style, number_style, number_style, number_style, profit_style, label_style]
+  end
+
+  sheet.column_widths 10, 14, 14, 14, 14, 14, 14, 10
+end

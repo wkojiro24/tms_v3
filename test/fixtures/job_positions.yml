@@ -1,0 +1,13 @@
+manager:
+  tenant: default
+  code: manager
+  name: 所長
+  grade: 3
+  active: true
+
+driver:
+  tenant: default
+  code: driver
+  name: ドライバー
+  grade: 1
+  active: true

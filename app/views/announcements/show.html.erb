@@ -1,0 +1,78 @@
+<% content_for :title, @announcement.title %>
+<% content_for :section_label, "お知らせ" %>
+
+<div class="row justify-content-center">
+  <div class="col-lg-8">
+    <div class="card card-lift shadow-sm">
+      <div class="card-header bg-transparent">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="d-flex align-items-center gap-2 mb-2">
+              <% if @announcement.pinned? %>
+                <span class="badge bg-danger"><i class="bi bi-pin-angle-fill me-1"></i>固定</span>
+              <% end %>
+              <span class="badge bg-<%= category_badge_color(@announcement.category) %>">
+                <%= @announcement.category_label %>
+              </span>
+            </div>
+            <h4 class="card-title mb-0"><%= @announcement.title %></h4>
+          </div>
+          <%= link_to announcements_path, class: "btn btn-outline-secondary btn-sm" do %>
+            <i class="bi bi-arrow-left me-1"></i>一覧へ
+          <% end %>
+        </div>
+      </div>
+
+      <% if @announcement.event? %>
+        <div class="card-body border-bottom bg-light">
+          <div class="row">
+            <div class="col-md-6">
+              <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-calendar-event text-primary fs-5"></i>
+                <div>
+                  <div class="small text-muted">日時</div>
+                  <div class="fw-semibold"><%= @announcement.event_period %></div>
+                </div>
+              </div>
+            </div>
+            <% if @announcement.event_location.present? %>
+              <div class="col-md-6">
+                <div class="d-flex align-items-center gap-2">
+                  <i class="bi bi-geo-alt text-danger fs-5"></i>
+                  <div>
+                    <div class="small text-muted">場所</div>
+                    <div class="fw-semibold"><%= @announcement.event_location %></div>
+                  </div>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+
+      <div class="card-body">
+        <% if @announcement.body.present? %>
+          <div class="announcement-body">
+            <%= simple_format(@announcement.body) %>
+          </div>
+        <% else %>
+          <p class="text-muted">本文はありません。</p>
+        <% end %>
+      </div>
+
+      <div class="card-footer bg-transparent text-muted small">
+        <div class="d-flex justify-content-between">
+          <div>
+            <% if @announcement.author.present? %>
+              <i class="bi bi-person me-1"></i>投稿者: <%= @announcement.author.email.split('@').first %>
+            <% end %>
+          </div>
+          <div>
+            <i class="bi bi-clock me-1"></i>
+            <%= @announcement.published_at&.strftime("%Y年%m月%d日 %H:%M") %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

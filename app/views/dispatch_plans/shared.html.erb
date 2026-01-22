@@ -1,0 +1,204 @@
+<% content_for :title, "#{@date.strftime('%Y年%m月%d日')}の配車計画" %>
+<% content_for :subtitle, "#{@date.strftime('%Y年%m月%d日 (%a)')}#{@depot.present? ? " - #{@depot}" : ''}" %>
+
+<% content_for :head do %>
+<style>
+.timeline-wrapper {
+  background: white;
+  border-radius: 0.5rem;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  overflow: hidden;
+}
+.timeline-label {
+  background: #f8f9fa;
+}
+.timeline-bar {
+  transition: transform 0.1s ease;
+}
+.timeline-bar:hover {
+  transform: scaleY(1.1);
+  z-index: 10 !important;
+}
+</style>
+<% end %>
+
+<div class="container-fluid p-4">
+  <div class="timeline-wrapper">
+    <!-- ヘッダー -->
+    <div class="d-flex align-items-center justify-content-between px-4 py-3 border-bottom bg-light">
+      <div class="d-flex align-items-center gap-3">
+        <h2 class="h5 mb-0">
+          <i class="bi bi-calendar3"></i>
+          <%= @date.strftime('%Y年%m月%d日 (%a)') %>
+        </h2>
+        <% if @depot.present? %>
+          <span class="badge bg-primary"><%= @depot %></span>
+        <% end %>
+        <span class="badge <%= @dispatch_plan.confirmed? ? 'bg-success' : 'bg-warning' %>">
+          <%= @dispatch_plan.confirmed? ? '確定' : '下書き' %>
+        </span>
+      </div>
+      <div class="text-muted small">
+        <i class="bi bi-truck"></i> <%= @vehicles.count %>台
+        <span class="mx-2">|</span>
+        <i class="bi bi-clipboard-check"></i> <%= @assignments.count %>件
+      </div>
+    </div>
+
+    <!-- タイムライン -->
+    <div class="d-flex" style="height: calc(100vh - 200px); min-height: 400px;">
+      <!-- 左側：車両ラベル -->
+      <div style="width: 180px; flex-shrink: 0; border-right: 1px solid #dee2e6; overflow: hidden;">
+        <div class="d-flex align-items-center justify-content-center bg-light border-bottom" style="height: 30px;">
+          <span class="small text-muted fw-semibold">車両</span>
+        </div>
+        <div id="labels-scroll" style="overflow-y: auto; height: calc(100% - 30px);">
+          <% @vehicles.each do |vehicle| %>
+            <% plate = vehicle_plate_parts(vehicle)
+               is_faulted = vehicle.maintenance_status == "faulted" || vehicle.maintenance_status == "suspended"
+               is_maintenance = vehicle.maintenance_status == "maintenance"
+               row_bg = is_faulted ? "#fff0f0" : (is_maintenance ? "#fff8e6" : "#f8f9fa")
+            %>
+            <div class="d-flex align-items-center px-3" style="height: 40px; border-bottom: 1px solid #eee; background: <%= row_bg %>;">
+              <% if is_faulted %>
+                <i class="bi bi-exclamation-triangle-fill text-danger me-2"></i>
+              <% elsif is_maintenance %>
+                <i class="bi bi-tools text-warning me-2"></i>
+              <% end %>
+              <span style="font-size: 0.75rem; color: #666; margin-right: 6px;">
+                <%= vehicle.body_type.presence || "4t" %>
+              </span>
+              <span style="background: <%= is_faulted ? '#dc3545' : (is_maintenance ? '#ffc107' : '#198754') %>; color: <%= is_maintenance ? '#333' : '#fff' %>; border-radius: 3px; padding: 3px 8px; font-size: 0.8rem; font-weight: bold; font-family: monospace;">
+                <%= plate[:number] || vehicle.registration_number&.gsub(/\D/, '')&.last(4) || "----" %>
+              </span>
+            </div>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- 中央：タイムライン -->
+      <div id="timeline-scroll" style="flex: 1; overflow: auto;">
+        <!-- 時間軸ヘッダー -->
+        <div class="d-flex" style="position: sticky; top: 0; background: white; z-index: 10; border-bottom: 1px solid #dee2e6;">
+          <% (0..23).each do |hour| %>
+            <div class="text-center text-muted" style="width: 50px; flex-shrink: 0; height: 30px; line-height: 30px; border-left: 1px solid #eee; font-size: 0.8rem;">
+              <%= sprintf("%02d", hour) %>
+            </div>
+          <% end %>
+        </div>
+
+        <!-- 車両行 -->
+        <% @vehicles.each do |vehicle| %>
+          <% is_faulted = vehicle.maintenance_status == "faulted" || vehicle.maintenance_status == "suspended"
+             is_maintenance = vehicle.maintenance_status == "maintenance"
+             row_bg = is_faulted ? "#fff0f0" : (is_maintenance ? "#fff8e6" : "#fafafa")
+          %>
+          <div class="position-relative" style="height: 40px; border-bottom: 1px solid #eee; background: repeating-linear-gradient(90deg, <%= row_bg %> 0px, <%= row_bg %> 49px, #eee 49px, #eee 50px);" data-vehicle-id="<%= vehicle.id %>">
+            <% if is_faulted %>
+              <div class="position-absolute d-flex align-items-center justify-content-center text-muted" style="left: 0; right: 0; top: 0; bottom: 0;">
+                <i class="bi bi-x-circle me-1"></i> 休車
+              </div>
+            <% elsif is_maintenance %>
+              <div class="position-absolute d-flex align-items-center justify-content-center text-warning" style="left: 0; right: 0; top: 0; bottom: 0;">
+                <i class="bi bi-tools me-1"></i> 整備中
+              </div>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- 凡例 -->
+  <div class="mt-3 text-center">
+    <span class="me-4"><span class="badge bg-warning text-dark">&nbsp;</span> 未出発</span>
+    <span class="me-4"><span class="badge bg-primary">&nbsp;</span> 配送中</span>
+    <span class="me-4"><span class="badge bg-success">&nbsp;</span> 完了</span>
+    <span><span class="badge bg-secondary">&nbsp;</span> 休車</span>
+  </div>
+</div>
+
+<script>
+// 配車データ
+const assignments = <%= raw @assignments.map { |a| {
+  id: a.id,
+  vehicle_id: a.vehicle_id,
+  employee_id: a.employee_id,
+  scheduled_departure: a.formatted_departure,
+  scheduled_arrival: a.formatted_arrival,
+  destination_location_id: a.destination_location_id,
+  product_name: a.product_name,
+  instruction: a.instruction,
+  status: a.status
+} }.to_json %>;
+
+const destinationMap = <%= raw @destinations.map { |d| [d.id, d.name || d.code] }.to_h.to_json %>;
+const employeeMap = <%= raw @employees.map { |e| [e.id, "#{e.last_name} #{e.first_name}"] }.to_h.to_json %>;
+
+// スクロール同期
+document.addEventListener('DOMContentLoaded', function() {
+  const labelsScroll = document.getElementById('labels-scroll');
+  const timelineScroll = document.getElementById('timeline-scroll');
+
+  if (labelsScroll && timelineScroll) {
+    timelineScroll.addEventListener('scroll', function() {
+      labelsScroll.scrollTop = timelineScroll.scrollTop;
+    });
+    labelsScroll.addEventListener('scroll', function() {
+      timelineScroll.scrollTop = labelsScroll.scrollTop;
+    });
+  }
+
+  // バー描画
+  renderBars();
+});
+
+function renderBars() {
+  assignments.forEach(a => {
+    if (!a.scheduled_departure || !a.vehicle_id) return;
+
+    const row = document.querySelector(`[data-vehicle-id="${a.vehicle_id}"]`);
+    if (!row) return;
+
+    const bar = document.createElement('div');
+    bar.className = 'timeline-bar position-absolute rounded';
+
+    const startPx = timeToPixels(a.scheduled_departure);
+    const endPx = a.scheduled_arrival ? timeToPixels(a.scheduled_arrival) : startPx + 100;
+    const width = Math.max(endPx - startPx, 30);
+
+    let bgClass = 'bg-warning';
+    if (a.status === 'completed') bgClass = 'bg-success';
+    else if (a.status === 'in_progress') bgClass = 'bg-primary';
+    else if (a.instruction === '休車') bgClass = 'bg-secondary';
+
+    bar.className += ` ${bgClass}`;
+    bar.style.cssText = `
+      left: ${startPx}px;
+      width: ${width}px;
+      top: 5px;
+      height: 30px;
+      opacity: 0.9;
+      z-index: 5;
+    `;
+
+    const dest = destinationMap[a.destination_location_id] || a.instruction || '---';
+    const emp = employeeMap[a.employee_id] || '';
+
+    bar.innerHTML = `
+      <div class="px-2 py-1 text-white small text-truncate" style="line-height: 1.2;">
+        <div class="fw-semibold" style="font-size: 0.75rem;">${dest}</div>
+        <div class="opacity-75" style="font-size: 0.65rem;">${emp}</div>
+      </div>
+    `;
+
+    row.appendChild(bar);
+  });
+}
+
+function timeToPixels(timeStr) {
+  if (!timeStr) return 0;
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  return (hours * 60 + (minutes || 0)) / 60 * 50; // 1時間 = 50px
+}
+</script>

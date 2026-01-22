@@ -1,0 +1,347 @@
+<% content_for :title, "運送明細入力" %>
+<% content_for :section_label, "売上管理" %>
+
+<% content_for :head do %>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.js"></script>
+  <style>
+    .transport-orders-container {
+      height: calc(100vh - 220px);
+      min-height: 400px;
+    }
+    .handsontable td.htInvalid {
+      background-color: #ffcccc !important;
+    }
+    .handsontable td.changed {
+      background-color: #fff3cd !important;
+    }
+    .handsontable td.saved {
+      background-color: #d4edda !important;
+    }
+    .month-selector {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .save-indicator {
+      font-size: 0.875rem;
+    }
+    .save-indicator.saving {
+      color: #ffc107;
+    }
+    .save-indicator.saved {
+      color: #28a745;
+    }
+    .save-indicator.error {
+      color: #dc3545;
+    }
+  </style>
+<% end %>
+
+<% content_for :header_actions do %>
+  <div class="month-selector">
+    <%= link_to transport_orders_path(date: (@date - 1.month).strftime('%Y-%m-01')), class: "btn btn-outline-secondary btn-sm" do %>
+      <i class="bi bi-chevron-left"></i>
+    <% end %>
+    <span class="fw-semibold"><%= @date.strftime('%Y年%m月') %></span>
+    <%= link_to transport_orders_path(date: (@date + 1.month).strftime('%Y-%m-01')), class: "btn btn-outline-secondary btn-sm" do %>
+      <i class="bi bi-chevron-right"></i>
+    <% end %>
+  </div>
+  <button type="button" class="btn btn-success btn-sm" id="saveBtn">
+    <i class="bi bi-save"></i> 保存
+  </button>
+  <button type="button" class="btn btn-primary btn-sm" id="addRowBtn">
+    <i class="bi bi-plus-lg"></i> 行追加
+  </button>
+<% end %>
+
+<div class="card shadow-sm">
+  <div class="card-body p-0">
+    <div class="transport-orders-container" id="transportOrdersGrid"></div>
+  </div>
+</div>
+
+<div class="mt-2 d-flex justify-content-between align-items-center">
+  <span class="save-indicator" id="saveIndicator"></span>
+  <span class="text-muted small">
+    ダブルクリックでセル編集 / Tab/Enterで移動 / Ctrl+Cでコピー / Ctrl+Vで貼り付け
+  </span>
+</div>
+
+<script>
+document.addEventListener('turbo:load', initTransportOrdersGrid);
+document.addEventListener('DOMContentLoaded', initTransportOrdersGrid);
+
+let hotInstance = null;
+
+function initTransportOrdersGrid() {
+  const container = document.getElementById('transportOrdersGrid');
+  if (!container || hotInstance) return;
+
+  const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+
+  // Master data
+  const vehicles = <%= raw @vehicles.map { |v| { id: v.id, text: v.registration_number } }.to_json %>;
+  const employees = <%= raw @employees.map { |e| { id: e.id, text: "#{e.last_name}#{e.first_name}" } }.to_json %>;
+  const shippers = <%= raw @shippers.map { |s| { id: s.id, text: "#{s.code}: #{s.name}" } }.to_json %>;
+  const destinations = <%= raw @destinations.map { |d| { id: d.id, text: "#{d.code}: #{d.name}" } }.to_json %>;
+
+  // Initial data
+  const initialData = <%= raw @transport_orders.map { |o|
+    {
+      id: o.id,
+      order_date: o.order_date&.strftime('%Y-%m-%d'),
+      vehicle_id: o.vehicle_id,
+      employee_id: o.employee_id,
+      shipper_id: o.shipper_id,
+      origin_location_id: o.origin_location_id,
+      destination_location_id: o.destination_location_id,
+      quantity: o.quantity&.to_f,
+      unit: o.unit,
+      billing_base_amount: o.billing_base_amount,
+      billing_toll: o.billing_toll,
+      billing_other: o.billing_other,
+      billing_tax: o.billing_tax,
+      billing_total: o.billing_total,
+      remarks: o.remarks
+    }
+  }.to_json %>;
+
+  // Add empty rows if no data
+  if (initialData.length === 0) {
+    for (let i = 0; i < 10; i++) {
+      initialData.push({
+        id: null,
+        order_date: '<%= @date.strftime('%Y-%m-%d') %>',
+        vehicle_id: null,
+        employee_id: null,
+        shipper_id: null,
+        origin_location_id: null,
+        destination_location_id: null,
+        quantity: null,
+        unit: null,
+        billing_base_amount: null,
+        billing_toll: null,
+        billing_other: null,
+        billing_tax: null,
+        billing_total: null,
+        remarks: null
+      });
+    }
+  }
+
+  const changedRows = new Set();
+
+  hotInstance = new Handsontable(container, {
+    data: initialData,
+    colHeaders: ['ID', '運送日', '車両', '乗務員', '荷主', '発地', '着地', '数量', '単位', '基本料', '通行料', 'その他', '消費税', '合計', '備考'],
+    columns: [
+      { data: 'id', readOnly: true, width: 50 },
+      { data: 'order_date', type: 'date', dateFormat: 'YYYY-MM-DD', correctFormat: true, width: 100 },
+      {
+        data: 'vehicle_id',
+        type: 'dropdown',
+        source: vehicles.map(v => v.text),
+        width: 100,
+        renderer: function(instance, td, row, col, prop, value, cellProperties) {
+          const vehicle = vehicles.find(v => v.id === value);
+          td.textContent = vehicle ? vehicle.text : '';
+          return td;
+        }
+      },
+      {
+        data: 'employee_id',
+        type: 'dropdown',
+        source: employees.map(e => e.text),
+        width: 100,
+        renderer: function(instance, td, row, col, prop, value, cellProperties) {
+          const employee = employees.find(e => e.id === value);
+          td.textContent = employee ? employee.text : '';
+          return td;
+        }
+      },
+      {
+        data: 'shipper_id',
+        type: 'dropdown',
+        source: shippers.map(s => s.text),
+        width: 150,
+        renderer: function(instance, td, row, col, prop, value, cellProperties) {
+          const shipper = shippers.find(s => s.id === value);
+          td.textContent = shipper ? shipper.text : '';
+          return td;
+        }
+      },
+      {
+        data: 'origin_location_id',
+        type: 'dropdown',
+        source: destinations.map(d => d.text),
+        width: 150,
+        renderer: function(instance, td, row, col, prop, value, cellProperties) {
+          const dest = destinations.find(d => d.id === value);
+          td.textContent = dest ? dest.text : '';
+          return td;
+        }
+      },
+      {
+        data: 'destination_location_id',
+        type: 'dropdown',
+        source: destinations.map(d => d.text),
+        width: 150,
+        renderer: function(instance, td, row, col, prop, value, cellProperties) {
+          const dest = destinations.find(d => d.id === value);
+          td.textContent = dest ? dest.text : '';
+          return td;
+        }
+      },
+      { data: 'quantity', type: 'numeric', numericFormat: { pattern: '0.00' }, width: 70 },
+      { data: 'unit', type: 'text', width: 50 },
+      { data: 'billing_base_amount', type: 'numeric', numericFormat: { pattern: '0,0' }, width: 80 },
+      { data: 'billing_toll', type: 'numeric', numericFormat: { pattern: '0,0' }, width: 70 },
+      { data: 'billing_other', type: 'numeric', numericFormat: { pattern: '0,0' }, width: 70 },
+      { data: 'billing_tax', type: 'numeric', numericFormat: { pattern: '0,0' }, width: 70 },
+      { data: 'billing_total', type: 'numeric', numericFormat: { pattern: '0,0' }, width: 80, readOnly: true },
+      { data: 'remarks', type: 'text', width: 200 }
+    ],
+    rowHeaders: true,
+    height: '100%',
+    licenseKey: 'non-commercial-and-evaluation',
+    stretchH: 'all',
+    autoWrapRow: true,
+    contextMenu: true,
+    manualColumnResize: true,
+    manualRowResize: true,
+    comments: true,
+    afterChange: function(changes, source) {
+      if (source === 'loadData') return;
+
+      changes?.forEach(([row, prop, oldValue, newValue]) => {
+        if (oldValue !== newValue) {
+          changedRows.add(row);
+          highlightRow(row, 'changed');
+
+          // Convert dropdown text to ID
+          if (prop === 'vehicle_id' && typeof newValue === 'string') {
+            const vehicle = vehicles.find(v => v.text === newValue);
+            if (vehicle) hotInstance.setDataAtRowProp(row, prop, vehicle.id, 'internal');
+          }
+          if (prop === 'employee_id' && typeof newValue === 'string') {
+            const employee = employees.find(e => e.text === newValue);
+            if (employee) hotInstance.setDataAtRowProp(row, prop, employee.id, 'internal');
+          }
+          if (prop === 'shipper_id' && typeof newValue === 'string') {
+            const shipper = shippers.find(s => s.text === newValue);
+            if (shipper) hotInstance.setDataAtRowProp(row, prop, shipper.id, 'internal');
+          }
+          if ((prop === 'origin_location_id' || prop === 'destination_location_id') && typeof newValue === 'string') {
+            const dest = destinations.find(d => d.text === newValue);
+            if (dest) hotInstance.setDataAtRowProp(row, prop, dest.id, 'internal');
+          }
+
+          // Auto-calculate total
+          if (['billing_base_amount', 'billing_toll', 'billing_other', 'billing_tax'].includes(prop)) {
+            calculateTotal(row);
+          }
+        }
+      });
+
+      updateSaveIndicator();
+    }
+  });
+
+  function highlightRow(row, className) {
+    const cols = hotInstance.countCols();
+    for (let col = 0; col < cols; col++) {
+      const td = hotInstance.getCell(row, col);
+      if (td) {
+        td.classList.remove('changed', 'saved');
+        if (className) td.classList.add(className);
+      }
+    }
+  }
+
+  function calculateTotal(row) {
+    const base = parseInt(hotInstance.getDataAtRowProp(row, 'billing_base_amount')) || 0;
+    const toll = parseInt(hotInstance.getDataAtRowProp(row, 'billing_toll')) || 0;
+    const other = parseInt(hotInstance.getDataAtRowProp(row, 'billing_other')) || 0;
+    const tax = parseInt(hotInstance.getDataAtRowProp(row, 'billing_tax')) || 0;
+    hotInstance.setDataAtRowProp(row, 'billing_total', base + toll + other + tax, 'internal');
+  }
+
+  function updateSaveIndicator() {
+    const indicator = document.getElementById('saveIndicator');
+    if (changedRows.size > 0) {
+      indicator.textContent = `${changedRows.size}行の未保存の変更があります`;
+      indicator.className = 'save-indicator';
+    } else {
+      indicator.textContent = '';
+    }
+  }
+
+  // Save button
+  document.getElementById('saveBtn')?.addEventListener('click', async () => {
+    if (changedRows.size === 0) {
+      alert('変更がありません');
+      return;
+    }
+
+    const indicator = document.getElementById('saveIndicator');
+    indicator.textContent = '保存中...';
+    indicator.className = 'save-indicator saving';
+
+    const updates = [];
+    changedRows.forEach(row => {
+      const rowData = hotInstance.getSourceDataAtRow(row);
+      if (rowData.order_date) {
+        updates.push({ ...rowData, row: row });
+      }
+    });
+
+    try {
+      const response = await fetch('<%= batch_update_transport_orders_path %>', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': csrfToken
+        },
+        body: JSON.stringify({ updates: updates })
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        changedRows.forEach(row => highlightRow(row, 'saved'));
+        changedRows.clear();
+        indicator.textContent = '保存しました';
+        indicator.className = 'save-indicator saved';
+        setTimeout(() => {
+          indicator.textContent = '';
+        }, 3000);
+        // Reload to get new IDs
+        window.location.reload();
+      } else {
+        indicator.textContent = 'エラー: ' + (result.errors?.[0]?.errors?.join(', ') || '保存に失敗しました');
+        indicator.className = 'save-indicator error';
+      }
+    } catch (error) {
+      indicator.textContent = 'エラー: ' + error.message;
+      indicator.className = 'save-indicator error';
+    }
+  });
+
+  // Add row button
+  document.getElementById('addRowBtn')?.addEventListener('click', () => {
+    hotInstance.alter('insert_row_below', hotInstance.countRows() - 1, 1);
+    const newRow = hotInstance.countRows() - 1;
+    hotInstance.setDataAtRowProp(newRow, 'order_date', '<%= @date.strftime('%Y-%m-%d') %>', 'internal');
+  });
+
+  // Cleanup on turbo navigation
+  document.addEventListener('turbo:before-render', () => {
+    if (hotInstance) {
+      hotInstance.destroy();
+      hotInstance = null;
+    }
+  }, { once: true });
+}
+</script>

@@ -1,0 +1,105 @@
+<% content_for :title, "共有リンク" %>
+<% content_for :section_label, "情報共有" %>
+<% content_for :header_actions do %>
+  <%= link_to new_bookmark_path, class: "btn btn-primary btn-sm" do %>
+    <i class="bi bi-plus-lg me-1"></i>マイブックマーク追加
+  <% end %>
+<% end %>
+
+<div class="row">
+  <!-- 共通リンク -->
+  <div class="col-lg-7 mb-4">
+    <div class="card shadow-sm h-100">
+      <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h6 class="mb-0"><i class="bi bi-people me-2"></i>共通リンク</h6>
+        <span class="badge bg-primary"><%= @shared_bookmarks.size %></span>
+      </div>
+      <div class="card-body p-0">
+        <% if @shared_bookmarks.any? %>
+          <% Bookmark::CATEGORIES.each do |key, label| %>
+            <% bookmarks_in_category = @shared_by_category[key] || [] %>
+            <% if bookmarks_in_category.any? %>
+              <div class="border-bottom">
+                <div class="px-3 py-2 bg-light small fw-semibold text-muted">
+                  <%= label %>
+                </div>
+                <% bookmarks_in_category.each do |bookmark| %>
+                  <%= link_to bookmark.url, class: "d-flex align-items-center gap-3 px-3 py-2 text-decoration-none text-dark border-bottom link-hover", target: "_blank" do %>
+                    <i class="bi <%= bookmark.icon_class %> text-primary"></i>
+                    <div class="flex-grow-1">
+                      <div class="fw-medium"><%= bookmark.title %></div>
+                      <% if bookmark.description.present? %>
+                        <small class="text-muted"><%= bookmark.description %></small>
+                      <% end %>
+                    </div>
+                    <i class="bi bi-box-arrow-up-right text-muted small"></i>
+                  <% end %>
+                <% end %>
+              </div>
+            <% end %>
+          <% end %>
+        <% else %>
+          <div class="text-center text-muted py-5">
+            <i class="bi bi-bookmark fs-2 d-block mb-2 opacity-50"></i>
+            <small>共通リンクがありません</small>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- マイブックマーク -->
+  <div class="col-lg-5 mb-4">
+    <div class="card shadow-sm h-100 border-info">
+      <div class="card-header bg-info bg-opacity-10 d-flex justify-content-between align-items-center">
+        <h6 class="mb-0"><i class="bi bi-person me-2"></i>マイブックマーク</h6>
+        <span class="badge bg-info"><%= @personal_bookmarks.size %></span>
+      </div>
+      <div class="card-body p-0">
+        <% if @personal_bookmarks.any? %>
+          <% Bookmark::CATEGORIES.each do |key, label| %>
+            <% bookmarks_in_category = @personal_by_category[key] || [] %>
+            <% if bookmarks_in_category.any? %>
+              <div class="border-bottom">
+                <div class="px-3 py-2 bg-light small fw-semibold text-muted">
+                  <%= label %>
+                </div>
+                <% bookmarks_in_category.each do |bookmark| %>
+                  <div class="d-flex align-items-center gap-2 px-3 py-2 border-bottom">
+                    <%= link_to bookmark.url, class: "d-flex align-items-center gap-2 flex-grow-1 text-decoration-none text-dark", target: "_blank" do %>
+                      <i class="bi <%= bookmark.icon_class %> text-info"></i>
+                      <span class="fw-medium"><%= bookmark.title %></span>
+                      <i class="bi bi-box-arrow-up-right text-muted small ms-auto"></i>
+                    <% end %>
+                    <div class="btn-group btn-group-sm">
+                      <%= link_to edit_bookmark_path(bookmark), class: "btn btn-outline-secondary btn-sm py-0 px-1" do %>
+                        <i class="bi bi-pencil small"></i>
+                      <% end %>
+                      <%= button_to bookmark_path(bookmark), method: :delete, class: "btn btn-outline-danger btn-sm py-0 px-1", data: { turbo_confirm: "削除しますか？" } do %>
+                        <i class="bi bi-trash small"></i>
+                      <% end %>
+                    </div>
+                  </div>
+                <% end %>
+              </div>
+            <% end %>
+          <% end %>
+        <% else %>
+          <div class="text-center text-muted py-5">
+            <i class="bi bi-bookmark-plus fs-2 d-block mb-2 opacity-50"></i>
+            <small>マイブックマークがありません</small>
+            <div class="mt-2">
+              <%= link_to "追加する", new_bookmark_path, class: "btn btn-outline-info btn-sm" %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .link-hover:hover {
+    background-color: rgba(0,0,0,0.02);
+  }
+</style>

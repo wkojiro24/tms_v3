@@ -1,0 +1,96 @@
+<%= form_with model: [:admin, @vehicle_group], local: true do |f| %>
+  <% if @vehicle_group.errors.any? %>
+    <div class="alert alert-danger">
+      <ul class="mb-0">
+        <% @vehicle_group.errors.full_messages.each do |message| %>
+          <li><%= message %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <div class="row">
+    <div class="col-md-6">
+      <div class="mb-3">
+        <%= f.label :name, "グループ名", class: "form-label" %>
+        <%= f.text_field :name, class: "form-control", placeholder: "例: メタノール車両", autofocus: true %>
+      </div>
+
+      <div class="mb-3">
+        <%= f.label :group_type, "タイプ", class: "form-label" %>
+        <%= f.select :group_type, VehicleGroup::GROUP_TYPES.map { |t| [VehicleGroup.new(group_type: t).group_type_label, t] }, {}, class: "form-select" %>
+      </div>
+
+      <div class="mb-3">
+        <%= f.label :position, "表示順", class: "form-label" %>
+        <%= f.number_field :position, class: "form-control", min: 0, style: "width: 100px;" %>
+      </div>
+    </div>
+
+    <div class="col-md-6">
+      <div class="mb-3">
+        <%= f.label :vehicle_codes, "車両コードを選択", class: "form-label" %>
+        <div class="card" style="max-height: 400px; overflow-y: auto;">
+          <div class="card-body p-2">
+            <div class="mb-2">
+              <input type="text" class="form-control form-control-sm" placeholder="検索..." id="vehicle-code-search" autocomplete="off">
+            </div>
+            <div class="vehicle-code-checkboxes">
+              <% @available_codes.each do |code| %>
+                <div class="form-check vehicle-code-item" data-code="<%= code.downcase %>">
+                  <input type="checkbox"
+                         name="vehicle_group[vehicle_codes][]"
+                         value="<%= code %>"
+                         id="code-<%= code.gsub(/[^a-zA-Z0-9]/, '_') %>"
+                         class="form-check-input"
+                         <%= "checked" if @vehicle_group.vehicle_codes&.include?(code) %>>
+                  <label class="form-check-label small" for="code-<%= code.gsub(/[^a-zA-Z0-9]/, '_') %>">
+                    <%= code %>
+                  </label>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        </div>
+        <small class="text-muted">
+          選択中: <span id="selected-count"><%= @vehicle_group.vehicle_codes&.size || 0 %></span>件
+        </small>
+      </div>
+    </div>
+  </div>
+
+  <div class="d-flex justify-content-between mt-4">
+    <%= link_to "キャンセル", admin_vehicle_groups_path, class: "btn btn-outline-secondary" %>
+    <%= f.submit @vehicle_group.persisted? ? "更新" : "作成", class: "btn btn-primary" %>
+  </div>
+<% end %>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('vehicle-code-search');
+    const items = document.querySelectorAll('.vehicle-code-item');
+    const countSpan = document.getElementById('selected-count');
+    const checkboxes = document.querySelectorAll('.vehicle-code-checkboxes input[type="checkbox"]');
+
+    // 検索フィルター
+    if (searchInput) {
+      searchInput.addEventListener('input', function() {
+        const query = this.value.toLowerCase();
+        items.forEach(function(item) {
+          const code = item.dataset.code;
+          item.style.display = code.includes(query) ? '' : 'none';
+        });
+      });
+    }
+
+    // 選択数カウント
+    function updateCount() {
+      const checked = document.querySelectorAll('.vehicle-code-checkboxes input[type="checkbox"]:checked');
+      if (countSpan) countSpan.textContent = checked.length;
+    }
+
+    checkboxes.forEach(function(cb) {
+      cb.addEventListener('change', updateCount);
+    });
+  });
+</script>
