@@ -55,6 +55,39 @@ module Admin
       @cell_map = @cells.each_with_object({}) do |cell, hash|
         hash[[cell.item_id, cell.employee_id]] = cell
       end
+
+      # グループ別に項目を整理
+      @grouped_items = build_grouped_items(@items)
+    end
+
+    def build_grouped_items(items)
+      grouped = items.group_by(&:payroll_group)
+
+      result = []
+      %w[base variable variable_basis commute welfare tax_insurance other].each do |group|
+        group_items = grouped[group] || []
+        next if group_items.empty?
+
+        result << {
+          group: group,
+          label: Item::PAYROLL_GROUPS[group],
+          items: group_items.sort_by { |i| [i.payroll_group_position || 999, i.name] },
+          show_subtotal: group == "base"
+        }
+      end
+
+      # 未設定の項目
+      ungrouped = grouped[nil] || []
+      if ungrouped.any?
+        result << {
+          group: nil,
+          label: "未設定",
+          items: ungrouped.sort_by(&:name),
+          show_subtotal: false
+        }
+      end
+
+      result
     end
 
     def destroy

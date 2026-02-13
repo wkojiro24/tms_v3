@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_01_16_034120) do
+ActiveRecord::Schema[7.2].define(version: 2026_02_13_225150) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -160,6 +160,24 @@ ActiveRecord::Schema[7.2].define(version: 2026_01_16_034120) do
     t.index ["tenant_id"], name: "index_classification_rules_on_tenant_id"
   end
 
+  create_table "client_driver_policies", force: :cascade do |t|
+    t.bigint "tenant_id", null: false
+    t.bigint "client_id", null: false
+    t.bigint "driver_id", null: false
+    t.integer "policy_type", default: 0
+    t.string "reason"
+    t.date "effective_from"
+    t.date "effective_until"
+    t.text "notes"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["client_id"], name: "index_client_driver_policies_on_client_id"
+    t.index ["driver_id"], name: "index_client_driver_policies_on_driver_id"
+    t.index ["tenant_id", "client_id", "driver_id"], name: "idx_client_driver_policy_unique", unique: true
+    t.index ["tenant_id", "driver_id"], name: "idx_client_driver_policy_driver"
+    t.index ["tenant_id"], name: "index_client_driver_policies_on_tenant_id"
+  end
+
   create_table "departments", force: :cascade do |t|
     t.bigint "tenant_id", null: false
     t.string "code", null: false
@@ -213,10 +231,12 @@ ActiveRecord::Schema[7.2].define(version: 2026_01_16_034120) do
     t.datetime "updated_at", null: false
     t.bigint "transport_order_id"
     t.boolean "alert_flag", default: false, null: false
+    t.bigint "order_id"
     t.index ["destination_location_id"], name: "index_dispatch_assignments_on_destination_location_id"
     t.index ["dispatch_plan_id", "vehicle_id", "sequence"], name: "idx_dispatch_assignments_plan_vehicle_seq"
     t.index ["dispatch_plan_id"], name: "index_dispatch_assignments_on_dispatch_plan_id"
     t.index ["employee_id"], name: "index_dispatch_assignments_on_employee_id"
+    t.index ["order_id"], name: "index_dispatch_assignments_on_order_id"
     t.index ["origin_location_id"], name: "index_dispatch_assignments_on_origin_location_id"
     t.index ["shipper_id"], name: "index_dispatch_assignments_on_shipper_id"
     t.index ["tenant_id"], name: "index_dispatch_assignments_on_tenant_id"
@@ -236,6 +256,28 @@ ActiveRecord::Schema[7.2].define(version: 2026_01_16_034120) do
     t.datetime "share_token_expires_at"
     t.index ["tenant_id", "date"], name: "index_dispatch_plans_on_tenant_id_and_date", unique: true
     t.index ["tenant_id"], name: "index_dispatch_plans_on_tenant_id"
+  end
+
+  create_table "driver_daily_statuses", force: :cascade do |t|
+    t.bigint "tenant_id", null: false
+    t.bigint "driver_id", null: false
+    t.bigint "plan_vehicle_id"
+    t.bigint "plan_client_id"
+    t.bigint "actual_vehicle_id"
+    t.date "date", null: false
+    t.integer "plan_status", default: 0
+    t.integer "actual_status"
+    t.string "reason"
+    t.text "notes"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["actual_vehicle_id"], name: "index_driver_daily_statuses_on_actual_vehicle_id"
+    t.index ["driver_id"], name: "index_driver_daily_statuses_on_driver_id"
+    t.index ["plan_client_id"], name: "index_driver_daily_statuses_on_plan_client_id"
+    t.index ["plan_vehicle_id"], name: "index_driver_daily_statuses_on_plan_vehicle_id"
+    t.index ["tenant_id", "date", "plan_status"], name: "idx_driver_daily_status_date"
+    t.index ["tenant_id", "driver_id", "date"], name: "idx_driver_daily_status_unique", unique: true
+    t.index ["tenant_id"], name: "index_driver_daily_statuses_on_tenant_id"
   end
 
   create_table "employee_assignments", force: :cascade do |t|
@@ -485,7 +527,10 @@ ActiveRecord::Schema[7.2].define(version: 2026_01_16_034120) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.bigint "tenant_id", null: false
+    t.string "payroll_group"
+    t.integer "payroll_group_position"
     t.index ["name"], name: "index_items_on_name"
+    t.index ["payroll_group"], name: "index_items_on_payroll_group"
     t.index ["tenant_id", "name", "above_basic"], name: "index_items_on_tenant_name_above_basic", unique: true
     t.index ["tenant_id"], name: "index_items_on_tenant_id"
   end
@@ -622,6 +667,41 @@ ActiveRecord::Schema[7.2].define(version: 2026_01_16_034120) do
     t.datetime "updated_at", null: false
     t.index ["metric_category_id", "position"], name: "index_metric_category_items_on_category_and_position"
     t.index ["metric_category_id"], name: "index_metric_category_items_on_metric_category_id"
+  end
+
+  create_table "orders", force: :cascade do |t|
+    t.bigint "tenant_id", null: false
+    t.bigint "client_id"
+    t.bigint "pickup_location_id"
+    t.bigint "delivery_location_id"
+    t.bigint "created_by_id"
+    t.date "order_date", null: false
+    t.date "delivery_date", null: false
+    t.string "delivery_time"
+    t.string "pickup_reservation_time"
+    t.string "cargo_type"
+    t.decimal "quantity", precision: 10, scale: 2
+    t.string "unit", default: "t"
+    t.string "concentration"
+    t.string "required_vehicle_type"
+    t.string "tank_designation"
+    t.string "client_order_no"
+    t.integer "source", default: 0
+    t.integer "status", default: 0
+    t.integer "estimated_duration_min"
+    t.decimal "estimated_distance_km", precision: 8, scale: 2
+    t.text "notes"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["client_id"], name: "index_orders_on_client_id"
+    t.index ["created_by_id"], name: "index_orders_on_created_by_id"
+    t.index ["delivery_location_id"], name: "index_orders_on_delivery_location_id"
+    t.index ["pickup_location_id"], name: "index_orders_on_pickup_location_id"
+    t.index ["tenant_id", "client_id"], name: "index_orders_on_tenant_id_and_client_id"
+    t.index ["tenant_id", "client_order_no"], name: "index_orders_on_tenant_id_and_client_order_no"
+    t.index ["tenant_id", "delivery_date"], name: "index_orders_on_tenant_id_and_delivery_date"
+    t.index ["tenant_id", "status"], name: "index_orders_on_tenant_id_and_status"
+    t.index ["tenant_id"], name: "index_orders_on_tenant_id"
   end
 
   create_table "payroll_batches", force: :cascade do |t|
@@ -1116,6 +1196,23 @@ ActiveRecord::Schema[7.2].define(version: 2026_01_16_034120) do
     t.index ["vehicle_id"], name: "index_vehicle_cargo_bindings_on_vehicle_id"
   end
 
+  create_table "vehicle_daily_statuses", force: :cascade do |t|
+    t.bigint "tenant_id", null: false
+    t.bigint "vehicle_id", null: false
+    t.bigint "plan_driver_id"
+    t.date "date", null: false
+    t.integer "status", default: 0
+    t.string "reason"
+    t.text "notes"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["plan_driver_id"], name: "index_vehicle_daily_statuses_on_plan_driver_id"
+    t.index ["tenant_id", "date", "status"], name: "idx_vehicle_daily_status_date"
+    t.index ["tenant_id", "vehicle_id", "date"], name: "idx_vehicle_daily_status_unique", unique: true
+    t.index ["tenant_id"], name: "index_vehicle_daily_statuses_on_tenant_id"
+    t.index ["vehicle_id"], name: "index_vehicle_daily_statuses_on_vehicle_id"
+  end
+
   create_table "vehicle_fault_logs", force: :cascade do |t|
     t.bigint "tenant_id", null: false
     t.bigint "vehicle_id", null: false
@@ -1377,6 +1474,9 @@ ActiveRecord::Schema[7.2].define(version: 2026_01_16_034120) do
   add_foreign_key "bookmarks", "tenants"
   add_foreign_key "bookmarks", "users", column: "creator_id"
   add_foreign_key "classification_rules", "tenants"
+  add_foreign_key "client_driver_policies", "employees", column: "driver_id"
+  add_foreign_key "client_driver_policies", "shippers", column: "client_id"
+  add_foreign_key "client_driver_policies", "tenants"
   add_foreign_key "departments", "tenants"
   add_foreign_key "destinations", "shippers"
   add_foreign_key "destinations", "tenants"
@@ -1384,11 +1484,17 @@ ActiveRecord::Schema[7.2].define(version: 2026_01_16_034120) do
   add_foreign_key "dispatch_assignments", "destinations", column: "origin_location_id"
   add_foreign_key "dispatch_assignments", "dispatch_plans"
   add_foreign_key "dispatch_assignments", "employees"
+  add_foreign_key "dispatch_assignments", "orders"
   add_foreign_key "dispatch_assignments", "shippers"
   add_foreign_key "dispatch_assignments", "tenants"
   add_foreign_key "dispatch_assignments", "transport_orders"
   add_foreign_key "dispatch_assignments", "vehicles"
   add_foreign_key "dispatch_plans", "tenants"
+  add_foreign_key "driver_daily_statuses", "employees", column: "driver_id"
+  add_foreign_key "driver_daily_statuses", "shippers", column: "plan_client_id"
+  add_foreign_key "driver_daily_statuses", "tenants"
+  add_foreign_key "driver_daily_statuses", "vehicles", column: "actual_vehicle_id"
+  add_foreign_key "driver_daily_statuses", "vehicles", column: "plan_vehicle_id"
   add_foreign_key "employee_assignments", "employees"
   add_foreign_key "employee_assignments", "tenants"
   add_foreign_key "employee_positions", "employees"
@@ -1426,6 +1532,11 @@ ActiveRecord::Schema[7.2].define(version: 2026_01_16_034120) do
   add_foreign_key "knowledge_articles", "tenants"
   add_foreign_key "knowledge_articles", "users", column: "author_id"
   add_foreign_key "metric_category_items", "metric_categories"
+  add_foreign_key "orders", "destinations", column: "delivery_location_id"
+  add_foreign_key "orders", "destinations", column: "pickup_location_id"
+  add_foreign_key "orders", "shippers", column: "client_id"
+  add_foreign_key "orders", "tenants"
+  add_foreign_key "orders", "users", column: "created_by_id"
   add_foreign_key "payroll_batches", "periods"
   add_foreign_key "payroll_batches", "tenants"
   add_foreign_key "payroll_batches", "users", column: "uploaded_by_id"
@@ -1475,6 +1586,9 @@ ActiveRecord::Schema[7.2].define(version: 2026_01_16_034120) do
   add_foreign_key "vehicle_cargo_bindings", "shippers"
   add_foreign_key "vehicle_cargo_bindings", "tenants"
   add_foreign_key "vehicle_cargo_bindings", "vehicles"
+  add_foreign_key "vehicle_daily_statuses", "employees", column: "plan_driver_id"
+  add_foreign_key "vehicle_daily_statuses", "tenants"
+  add_foreign_key "vehicle_daily_statuses", "vehicles"
   add_foreign_key "vehicle_fault_logs", "tenants"
   add_foreign_key "vehicle_fault_logs", "vehicles"
   add_foreign_key "vehicle_faults", "tenants"

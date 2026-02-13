@@ -41,6 +41,10 @@
     </div>
   <% end %>
   <div class="ms-auto d-flex align-items-end gap-2">
+    <%= link_to admin_payroll_items_path, class: "btn btn-outline-secondary btn-sm" do %>
+      <i class="bi bi-gear"></i>
+      グループ設定
+    <% end %>
     <% if @period.present? %>
       <%= button_to "データ削除", admin_payrolls_path(period_id: @period.id, location: @location),
                     method: :delete,
@@ -81,26 +85,112 @@
         </tr>
       </thead>
       <tbody>
-        <% last_section = nil %>
-        <% @items.each do |item| %>
-          <% current_section = item.above_basic? ? :monetary : :metric %>
-          <% row_classes = ["payroll-row", current_section == :monetary ? "payroll-row-money" : "payroll-row-metric"] %>
-          <% row_classes << "payroll-row-basic" if item.name.include?("基本給") %>
-          <% row_classes << "payroll-row-total" if item.name.include?("支給合計") || item.name.include?("差引支給合計") %>
-          <% row_classes << "payroll-row-divider" if last_section && current_section != last_section %>
-          <% last_section = current_section %>
-          <tr class="<%= row_classes.join(' ') %>">
-            <th class="text-start"><%= item.name %></th>
-            <% @employees.each do |employee| %>
-              <% cell = @cell_map[[item.id, employee.id]] %>
-              <td><%= payroll_value(cell) %></td>
+        <% if @grouped_items.present? %>
+          <% @grouped_items.each do |group_data| %>
+            <!-- グループヘッダー -->
+            <tr class="payroll-group-header payroll-group-<%= group_data[:group] || 'other' %>">
+              <th class="text-start" colspan="<%= @employees.size + 1 %>">
+                <strong><%= group_data[:label] %></strong>
+              </th>
+            </tr>
+            <!-- グループ内の項目 -->
+            <% group_subtotals = Hash.new(0) %>
+            <% group_data[:items].each do |item| %>
+              <% row_classes = ["payroll-row", "payroll-group-row-#{group_data[:group] || 'other'}"] %>
+              <% row_classes << "payroll-row-money" if item.above_basic? %>
+              <% row_classes << "payroll-row-total" if item.name.include?("支給合計") || item.name.include?("差引支給合計") %>
+              <tr class="<%= row_classes.join(' ') %>">
+                <th class="text-start ps-4"><%= item.name %></th>
+                <% @employees.each do |employee| %>
+                  <% cell = @cell_map[[item.id, employee.id]] %>
+                  <% cell_value = payroll_numeric_value(cell) %>
+                  <% group_subtotals[employee.id] += cell_value if group_data[:show_subtotal] && cell_value %>
+                  <td><%= payroll_value(cell) %></td>
+                <% end %>
+              </tr>
             <% end %>
-          </tr>
+            <!-- 小計行（基本給グループのみ） -->
+            <% if group_data[:show_subtotal] %>
+              <tr class="payroll-subtotal payroll-group-<%= group_data[:group] %>-subtotal">
+                <th class="text-start"><strong><%= group_data[:label] %>小計</strong></th>
+                <% @employees.each do |employee| %>
+                  <td><strong><%= number_with_delimiter(group_subtotals[employee.id].to_i) %></strong></td>
+                <% end %>
+              </tr>
+            <% end %>
+          <% end %>
+        <% else %>
+          <!-- フォールバック：グループ未設定時は従来表示 -->
+          <% @items.each do |item| %>
+            <% row_classes = ["payroll-row"] %>
+            <% row_classes << "payroll-row-money" if item.above_basic? %>
+            <% row_classes << "payroll-row-total" if item.name.include?("支給合計") || item.name.include?("差引支給合計") %>
+            <tr class="<%= row_classes.join(' ') %>">
+              <th class="text-start"><%= item.name %></th>
+              <% @employees.each do |employee| %>
+                <% cell = @cell_map[[item.id, employee.id]] %>
+                <td><%= payroll_value(cell) %></td>
+              <% end %>
+            </tr>
+          <% end %>
         <% end %>
       </tbody>
     </table>
   </div>
 <% end %>
+
+<style>
+  /* グループヘッダー */
+  .payroll-group-header {
+    background-color: #343a40 !important;
+    color: #fff;
+  }
+  .payroll-group-header th {
+    padding: 8px 12px !important;
+    font-size: 0.9rem;
+  }
+
+  /* 基本給グループ */
+  .payroll-group-base { background-color: #1b5e20 !important; }
+  .payroll-group-row-base { background-color: #e8f5e9 !important; }
+  .payroll-group-base-subtotal {
+    background-color: #c8e6c9 !important;
+    border-top: 2px solid #2e7d32 !important;
+  }
+
+  /* 変動給グループ */
+  .payroll-group-variable { background-color: #1565c0 !important; }
+  .payroll-group-row-variable { background-color: #e3f2fd !important; }
+
+  /* 変動給算出根拠グループ */
+  .payroll-group-variable_basis { background-color: #e65100 !important; }
+  .payroll-group-row-variable_basis { background-color: #fff3e0 !important; }
+
+  /* 通勤費等補助グループ */
+  .payroll-group-commute { background-color: #0891b2 !important; }
+  .payroll-group-row-commute { background-color: #ecfeff !important; }
+
+  /* 福利厚生グループ */
+  .payroll-group-welfare { background-color: #7c3aed !important; }
+  .payroll-group-row-welfare { background-color: #f5f3ff !important; }
+
+  /* 税金・社会保険グループ */
+  .payroll-group-tax_insurance { background-color: #dc2626 !important; }
+  .payroll-group-row-tax_insurance { background-color: #fef2f2 !important; }
+
+  /* その他グループ */
+  .payroll-group-other { background-color: #616161 !important; }
+  .payroll-group-row-other { background-color: #f5f5f5 !important; }
+
+  /* 未設定 */
+  .payroll-group-null { background-color: #6b7280 !important; }
+  .payroll-group-row-null { background-color: #f9fafb !important; }
+
+  /* 小計行 */
+  .payroll-subtotal td, .payroll-subtotal th {
+    font-weight: 600 !important;
+  }
+</style>
 
 <%= javascript_tag do %>
   document.addEventListener("turbo:load", function() {

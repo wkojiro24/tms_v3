@@ -61,7 +61,15 @@
                   current_user&.admin_role? ? { label: "カテゴリ", path: admin_workflow_categories_path, active: request.path.starts_with?("/admin/workflow_categories") } : nil
                 ].compact
               },
-              { label: "配車", path: dispatch_path, active: current_page?(dispatch_path) },
+              {
+                label: "配車",
+                active: request.path.starts_with?("/dispatch") || request.path.starts_with?("/orders") || request.path.starts_with?("/availability_calendar"),
+                children: [
+                  { label: "配車ボード", path: dispatch_path, active: current_page?(dispatch_path) || request.path.starts_with?("/dispatch_plans") },
+                  { label: "受注管理", path: orders_path, active: request.path.starts_with?("/orders") },
+                  { label: "稼働カレンダー", path: availability_calendar_path, active: request.path.starts_with?("/availability_calendar") }
+                ]
+              },
               { label: "運送明細", path: transport_orders_path, active: request.path.starts_with?("/transport_orders") },
               {
                 label: "車両",
@@ -76,9 +84,10 @@
               },
               {
                 label: "経営",
-                active: request.path.starts_with?("/journal_entries") || request.path.starts_with?("/fleet") || request.path.starts_with?("/profit_loss") || request.path.starts_with?("/fare_negotiations"),
+                active: request.path.starts_with?("/journal_entries") || request.path.starts_with?("/fleet") || request.path.starts_with?("/profit_loss") || request.path.starts_with?("/fare_negotiations") || request.path.starts_with?("/cost_analysis"),
                 children: [
                   { label: "P/Lダッシュボード", path: dashboard_profit_loss_index_path, active: request.path == "/profit_loss/dashboard" },
+                  { label: "コスト分析", path: cost_analysis_path, active: request.path.starts_with?("/cost_analysis") },
                   { label: "部門別分析", path: department_analysis_profit_loss_index_path, active: request.path == "/profit_loss/department_analysis" },
                   { label: "損益計算書", path: profit_loss_index_path, active: request.path == "/profit_loss" },
                   { label: "仕訳明細", path: journal_entries_path, active: request.path.starts_with?("/journal_entries") },
@@ -108,6 +117,7 @@
                   { label: "マスタ設定", path: admin_departments_path, active: request.path.starts_with?("/admin/departments") || request.path.starts_with?("/admin/job_") || request.path.starts_with?("/admin/grade_") || request.path.starts_with?("/admin/evaluation_") },
                   { label: "車両グループ", path: admin_vehicle_groups_path, active: request.path.starts_with?("/admin/vehicle_groups") },
                   { label: "原価表カテゴリ", path: admin_metric_categories_path, active: request.path.starts_with?("/admin/metric_") },
+                  { label: "給与項目設定", path: admin_payroll_items_path, active: request.path.starts_with?("/admin/payroll_items") },
                   { label: "集計設定", path: edit_admin_summary_setting_path, active: request.path.starts_with?("/admin/summary_setting") },
                   { label: "お知らせ管理", path: admin_announcements_path, active: request.path.starts_with?("/admin/announcements") },
                   { label: "ブックマーク管理", path: admin_bookmarks_path, active: request.path.starts_with?("/admin/bookmarks") },

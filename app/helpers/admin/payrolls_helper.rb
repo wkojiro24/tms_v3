@@ -31,6 +31,26 @@ module Admin
       name.presence || employee.employee_code
     end
 
+    # 小計計算用の数値取得
+    def payroll_numeric_value(cell)
+      return 0 unless cell
+
+      if cell.amount.present?
+        return cell.amount.to_f
+      end
+
+      raw_original = cell.raw.to_s
+      raw = normalize_raw_value(raw_original)
+      return 0 if raw.blank?
+
+      if monetary_cell?(cell)
+        numeric_text = raw.tr("０１２３４５６７８９", "0123456789").gsub(/[, ]/, "")
+        return Float(numeric_text) rescue 0
+      end
+
+      0
+    end
+
     private
 
     def normalize_raw_value(value)

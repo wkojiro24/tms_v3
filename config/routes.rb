@@ -54,11 +54,25 @@ Rails.application.routes.draw do
   get "maintenance_schedule", to: "vehicles#schedule"
   resources :maintenance_events, only: [:create, :update, :destroy]
   resources :maintenance_categories
+  resources :orders do
+    collection do
+      get :recent
+    end
+    member do
+      post :reorder
+    end
+  end
   resources :transport_orders do
     collection do
       post :batch_update
     end
   end
+  # 稼働カレンダー
+  get "availability_calendar", to: "availability_calendar#index"
+  post "availability_calendar/update_driver", to: "availability_calendar#update_driver"
+  post "availability_calendar/update_vehicle", to: "availability_calendar#update_vehicle"
+  post "availability_calendar/batch_update", to: "availability_calendar#batch_update"
+
   resources :dispatch_plans, only: [:index, :show, :update] do
     collection do
       post :batch_update
@@ -78,6 +92,7 @@ Rails.application.routes.draw do
       post :update_external_data
     end
   end
+  get "cost_analysis", to: "cost_analysis#index"
   namespace :admin do
     resource :summary_setting, only: [:edit, :update, :show]
   end
@@ -92,6 +107,12 @@ Rails.application.routes.draw do
     end
     resources :payrolls, only: [:index] do
       delete :destroy, on: :collection
+    end
+    resources :payroll_items, only: [:index, :update] do
+      collection do
+        post :update_groups
+        post :reorder
+      end
     end
     resources :employees do
       get :payroll, on: :member

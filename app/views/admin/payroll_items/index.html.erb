@@ -1,0 +1,298 @@
+<% content_for :title, "給与項目グループ設定" %>
+<% content_for :section_label, "管理者" %>
+
+<div class="mb-3">
+  <div class="d-flex justify-content-between align-items-center">
+    <div>
+      <h5 class="mb-1">給与項目グループ設定</h5>
+      <small class="text-muted">項目をドラッグ&ドロップでグループ間を移動・並べ替えできます。変更は自動保存されます。</small>
+    </div>
+    <div class="d-flex gap-2">
+      <button type="button" class="btn btn-outline-secondary btn-sm" id="auto-assign-btn">
+        <i class="bi bi-magic"></i> 自動分類
+      </button>
+      <%= link_to admin_payrolls_path, class: "btn btn-outline-primary btn-sm" do %>
+        <i class="bi bi-arrow-left"></i> 給与グリッドへ戻る
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<div class="row" id="payroll-groups-container">
+  <!-- 未設定 -->
+  <div class="col-12 col-md-6 col-xl-3 mb-3">
+    <div class="card h-100">
+      <div class="card-header bg-secondary text-white py-2">
+        <strong>未設定</strong>
+        <span class="badge bg-light text-dark ms-2" id="count-unassigned"><%= @grouped_items[nil]&.size || 0 %></span>
+      </div>
+      <div class="card-body p-2 payroll-group-list" data-group="" id="group-unassigned" style="min-height: 150px; max-height: 350px; overflow-y: auto;">
+        <% @grouped_items[nil]&.each do |item| %>
+          <div class="payroll-item" data-item-id="<%= item.id %>">
+            <i class="bi bi-grip-vertical text-muted me-2"></i>
+            <span class="item-name"><%= item.name %></span>
+            <% if item.above_basic? %><span class="badge bg-info ms-auto">金額</span><% end %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- 基本給 -->
+  <div class="col-12 col-md-6 col-xl-3 mb-3">
+    <div class="card h-100 border-success">
+      <div class="card-header bg-success text-white py-2">
+        <strong>基本給</strong>
+        <span class="badge bg-light text-dark ms-2" id="count-base"><%= @grouped_items["base"]&.size || 0 %></span>
+        <small class="ms-1 opacity-75">(小計あり)</small>
+      </div>
+      <div class="card-body p-2 payroll-group-list" data-group="base" id="group-base" style="min-height: 150px; max-height: 350px; overflow-y: auto;">
+        <% @grouped_items["base"]&.each do |item| %>
+          <div class="payroll-item payroll-item-base" data-item-id="<%= item.id %>">
+            <i class="bi bi-grip-vertical text-muted me-2"></i>
+            <span class="item-name"><%= item.name %></span>
+            <% if item.above_basic? %><span class="badge bg-info ms-auto">金額</span><% end %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- 変動給 -->
+  <div class="col-12 col-md-6 col-xl-3 mb-3">
+    <div class="card h-100 border-primary">
+      <div class="card-header bg-primary text-white py-2">
+        <strong>変動給</strong>
+        <span class="badge bg-light text-dark ms-2" id="count-variable"><%= @grouped_items["variable"]&.size || 0 %></span>
+      </div>
+      <div class="card-body p-2 payroll-group-list" data-group="variable" id="group-variable" style="min-height: 150px; max-height: 350px; overflow-y: auto;">
+        <% @grouped_items["variable"]&.each do |item| %>
+          <div class="payroll-item payroll-item-variable" data-item-id="<%= item.id %>">
+            <i class="bi bi-grip-vertical text-muted me-2"></i>
+            <span class="item-name"><%= item.name %></span>
+            <% if item.above_basic? %><span class="badge bg-info ms-auto">金額</span><% end %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- 変動給算出根拠 -->
+  <div class="col-12 col-md-6 col-xl-3 mb-3">
+    <div class="card h-100 border-warning">
+      <div class="card-header bg-warning text-dark py-2">
+        <strong>変動給算出根拠</strong>
+        <span class="badge bg-dark text-light ms-2" id="count-variable_basis"><%= @grouped_items["variable_basis"]&.size || 0 %></span>
+      </div>
+      <div class="card-body p-2 payroll-group-list" data-group="variable_basis" id="group-variable_basis" style="min-height: 150px; max-height: 350px; overflow-y: auto;">
+        <% @grouped_items["variable_basis"]&.each do |item| %>
+          <div class="payroll-item payroll-item-variable_basis" data-item-id="<%= item.id %>">
+            <i class="bi bi-grip-vertical text-muted me-2"></i>
+            <span class="item-name"><%= item.name %></span>
+            <% if item.above_basic? %><span class="badge bg-info ms-auto">金額</span><% end %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- 通勤費等補助 -->
+  <div class="col-12 col-md-6 col-xl-3 mb-3">
+    <div class="card h-100 border-info">
+      <div class="card-header bg-info text-white py-2">
+        <strong>通勤費等補助</strong>
+        <span class="badge bg-light text-dark ms-2" id="count-commute"><%= @grouped_items["commute"]&.size || 0 %></span>
+      </div>
+      <div class="card-body p-2 payroll-group-list" data-group="commute" id="group-commute" style="min-height: 150px; max-height: 350px; overflow-y: auto;">
+        <% @grouped_items["commute"]&.each do |item| %>
+          <div class="payroll-item payroll-item-commute" data-item-id="<%= item.id %>">
+            <i class="bi bi-grip-vertical text-muted me-2"></i>
+            <span class="item-name"><%= item.name %></span>
+            <% if item.above_basic? %><span class="badge bg-info ms-auto">金額</span><% end %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- 福利厚生 -->
+  <div class="col-12 col-md-6 col-xl-3 mb-3">
+    <div class="card h-100" style="border-color: #9c27b0;">
+      <div class="card-header text-white py-2" style="background-color: #9c27b0;">
+        <strong>福利厚生</strong>
+        <span class="badge bg-light text-dark ms-2" id="count-welfare"><%= @grouped_items["welfare"]&.size || 0 %></span>
+      </div>
+      <div class="card-body p-2 payroll-group-list" data-group="welfare" id="group-welfare" style="min-height: 150px; max-height: 350px; overflow-y: auto;">
+        <% @grouped_items["welfare"]&.each do |item| %>
+          <div class="payroll-item payroll-item-welfare" data-item-id="<%= item.id %>">
+            <i class="bi bi-grip-vertical text-muted me-2"></i>
+            <span class="item-name"><%= item.name %></span>
+            <% if item.above_basic? %><span class="badge bg-info ms-auto">金額</span><% end %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- 税金・社会保険 -->
+  <div class="col-12 col-md-6 col-xl-3 mb-3">
+    <div class="card h-100 border-danger">
+      <div class="card-header bg-danger text-white py-2">
+        <strong>税金・社会保険</strong>
+        <span class="badge bg-light text-dark ms-2" id="count-tax_insurance"><%= @grouped_items["tax_insurance"]&.size || 0 %></span>
+      </div>
+      <div class="card-body p-2 payroll-group-list" data-group="tax_insurance" id="group-tax_insurance" style="min-height: 150px; max-height: 350px; overflow-y: auto;">
+        <% @grouped_items["tax_insurance"]&.each do |item| %>
+          <div class="payroll-item payroll-item-tax_insurance" data-item-id="<%= item.id %>">
+            <i class="bi bi-grip-vertical text-muted me-2"></i>
+            <span class="item-name"><%= item.name %></span>
+            <% if item.above_basic? %><span class="badge bg-info ms-auto">金額</span><% end %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- その他 -->
+  <div class="col-12 col-md-6 col-xl-3 mb-3">
+    <div class="card h-100">
+      <div class="card-header bg-dark text-white py-2">
+        <strong>その他</strong>
+        <span class="badge bg-light text-dark ms-2" id="count-other"><%= @grouped_items["other"]&.size || 0 %></span>
+      </div>
+      <div class="card-body p-2 payroll-group-list" data-group="other" id="group-other" style="min-height: 150px; max-height: 350px; overflow-y: auto;">
+        <% @grouped_items["other"]&.each do |item| %>
+          <div class="payroll-item payroll-item-other" data-item-id="<%= item.id %>">
+            <i class="bi bi-grip-vertical text-muted me-2"></i>
+            <span class="item-name"><%= item.name %></span>
+            <% if item.above_basic? %><span class="badge bg-info ms-auto">金額</span><% end %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 保存状態インジケーター -->
+<div id="save-indicator" class="position-fixed bottom-0 end-0 m-3 d-none">
+  <div class="alert alert-success py-2 px-3 mb-0 d-flex align-items-center">
+    <i class="bi bi-check-circle me-2"></i>
+    <span>保存しました</span>
+  </div>
+</div>
+
+<style>
+.payroll-item {
+  display: flex;
+  align-items: center;
+  padding: 6px 8px;
+  margin-bottom: 3px;
+  background: #fff;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  cursor: grab;
+  font-size: 0.8rem;
+  transition: all 0.15s;
+}
+.payroll-item:hover { background: #f8f9fa; border-color: #adb5bd; }
+.payroll-item.sortable-ghost { opacity: 0.4; background: #e9ecef; }
+.payroll-item.sortable-chosen { box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+.payroll-item-base { border-left: 3px solid #198754; }
+.payroll-item-variable { border-left: 3px solid #0d6efd; }
+.payroll-item-variable_basis { border-left: 3px solid #ffc107; }
+.payroll-item-commute { border-left: 3px solid #0dcaf0; }
+.payroll-item-welfare { border-left: 3px solid #9c27b0; }
+.payroll-item-tax_insurance { border-left: 3px solid #dc3545; }
+.payroll-item-other { border-left: 3px solid #6c757d; }
+.payroll-group-list { background: #f8f9fa; border-radius: 4px; }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+  const saveIndicator = document.getElementById('save-indicator');
+  let saveTimeout;
+
+  function showSaveIndicator() {
+    saveIndicator.classList.remove('d-none');
+    clearTimeout(saveTimeout);
+    saveTimeout = setTimeout(() => saveIndicator.classList.add('d-none'), 2000);
+  }
+
+  function updateCounts() {
+    document.querySelectorAll('.payroll-group-list').forEach(list => {
+      const group = list.dataset.group || 'unassigned';
+      const count = list.querySelectorAll('.payroll-item').length;
+      const countEl = document.getElementById('count-' + group);
+      if (countEl) countEl.textContent = count;
+    });
+  }
+
+  function updateItemStyle(item, group) {
+    item.className = 'payroll-item';
+    if (group) item.classList.add('payroll-item-' + group);
+  }
+
+  function saveReorder(list) {
+    const group = list.dataset.group;
+    const items = Array.from(list.querySelectorAll('.payroll-item')).map(el => el.dataset.itemId);
+    fetch('<%= reorder_admin_payroll_items_path %>', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken },
+      body: JSON.stringify({ group: group, items: items })
+    })
+    .then(r => r.json())
+    .then(data => { if (data.success) { showSaveIndicator(); updateCounts(); } })
+    .catch(err => console.error('Save error:', err));
+  }
+
+  document.querySelectorAll('.payroll-group-list').forEach(list => {
+    new Sortable(list, {
+      group: 'payroll-items',
+      animation: 150,
+      ghostClass: 'sortable-ghost',
+      chosenClass: 'sortable-chosen',
+      onEnd: function(evt) {
+        updateItemStyle(evt.item, evt.to.dataset.group);
+        saveReorder(evt.to);
+        if (evt.from !== evt.to) updateCounts();
+      }
+    });
+  });
+
+  // 自動分類
+  document.getElementById('auto-assign-btn').addEventListener('click', function() {
+    const patterns = {
+      base: ['基本給', '調整加算', '調整給', '無事故', '職位', '職責', '大都市'],
+      variable: ['残業', '時間外', '休日', '深夜', '早朝', '割増'],
+      variable_basis: ['日数', '時間', '回数', '件数', '走行', 'km', 'キロ', '就労'],
+      commute: ['通勤', '交通費', '燃料', 'ガソリン'],
+      welfare: ['福利', '厚生', '食事', '住宅', '家賃'],
+      tax_insurance: ['所得税', '住民税', '健康保険', '厚生年金', '雇用保険', '介護保険', '社会保険', '税']
+    };
+
+    const unassignedList = document.getElementById('group-unassigned');
+    const itemsToMove = [];
+
+    unassignedList.querySelectorAll('.payroll-item').forEach(item => {
+      const name = item.querySelector('.item-name').textContent;
+      for (const [group, keywords] of Object.entries(patterns)) {
+        if (keywords.some(k => name.includes(k))) {
+          const targetList = document.getElementById('group-' + group);
+          if (targetList) itemsToMove.push({ item, targetList, group });
+          break;
+        }
+      }
+    });
+
+    itemsToMove.forEach(({ item, targetList, group }) => {
+      updateItemStyle(item, group);
+      targetList.appendChild(item);
+    });
+
+    document.querySelectorAll('.payroll-group-list').forEach(list => saveReorder(list));
+    updateCounts();
+  });
+});
+</script>
