@@ -70,6 +70,9 @@ module Admin
       @month_entries = build_payroll_month_entries(target_periods)
       @items = Array(determine_item_order(@month_entries))
       @period_options = Period.order(year: :desc, month: :desc).limit(60)
+
+      # グループ別に項目を整理（給与グリッドと同じ形式）
+      @grouped_items = build_grouped_items(@items)
     end
 
     def history
@@ -132,6 +135,43 @@ module Admin
       return [] if item_ids.blank?
 
       Item.where(id: item_ids).order(:above_basic, :name)
+    end
+
+    def build_grouped_items(items)
+      # 非表示項目を除外
+      visible_items = items.reject(&:hidden?)
+      grouped = visible_items.group_by(&:payroll_group)
+
+      # 給与明細の流れに沿った順序
+      group_order = %w[
+        base allowance variable_basis variable taxable_subtotal
+        commute gross_total welfare tax_insurance deduction_total
+        net_pay reference other
+      ]
+
+      result = []
+      group_order.each do |group|
+        group_items = grouped[group] || []
+        next if group_items.empty?
+
+        result << {
+          group: group,
+          label: Item::PAYROLL_GROUPS[group],
+          items: group_items.sort_by { |i| [i.payroll_group_position || 999, i.name] }
+        }
+      end
+
+      # 未設定の項目
+      ungrouped = grouped[nil] || []
+      if ungrouped.any?
+        result << {
+          group: nil,
+          label: "未設定",
+          items: ungrouped.sort_by(&:name)
+        }
+      end
+
+      result
     end
   end
 end
