@@ -49,5 +49,12 @@ module Admin
 
       redirect_to admin_payroll_items_path, notice: "給与項目グループを更新しました。"
     end
+
+    # Ajax: 非表示トグル
+    def toggle_hidden
+      item = Item.find(params[:id])
+      item.update!(hidden: !item.hidden?)
+      render json: { success: true, item_id: item.id, hidden: item.hidden? }
+    end
   end
 end

@@ -1,0 +1,122 @@
+<% content_for :title, "シナリオ編集" %>
+<% content_for :section_label, "給与シミュレーター" %>
+
+<div class="mb-4">
+  <%= link_to admin_salary_scenario_path(@scenario), class: "btn btn-outline-secondary btn-sm" do %>
+    <i class="bi bi-arrow-left"></i> 結果に戻る
+  <% end %>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h5 class="mb-0">シナリオ編集: <%= @scenario.name %></h5>
+  </div>
+  <div class="card-body">
+    <%= form_with model: [:admin, @scenario], local: true do |f| %>
+      <% if @scenario.errors.any? %>
+        <div class="alert alert-danger">
+          <ul class="mb-0">
+            <% @scenario.errors.full_messages.each do |msg| %>
+              <li><%= msg %></li>
+            <% end %>
+          </ul>
+        </div>
+      <% end %>
+
+      <!-- 基本情報 -->
+      <div class="mb-4">
+        <h6 class="border-bottom pb-2 mb-3">基本情報</h6>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <%= f.label :name, "シナリオ名", class: "form-label" %>
+            <%= f.text_field :name, class: "form-control" %>
+          </div>
+          <div class="col-md-6">
+            <%= f.label :description, "説明", class: "form-label" %>
+            <%= f.text_area :description, class: "form-control", rows: 2 %>
+          </div>
+        </div>
+      </div>
+
+      <!-- 計算パラメータ -->
+      <div class="mb-4">
+        <h6 class="border-bottom pb-2 mb-3">
+          <i class="bi bi-calculator me-1"></i>
+          計算パラメータ
+        </h6>
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label">月平均所定労働時間</label>
+            <div class="input-group">
+              <input type="number" name="parameters[monthly_hours]" class="form-control" value="<%= @scenario.monthly_hours %>" step="0.1">
+              <span class="input-group-text">時間</span>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">残業割増率（60時間以下）</label>
+            <div class="input-group">
+              <input type="number" name="parameters[overtime_rate]" class="form-control" value="<%= @scenario.overtime_rate %>" step="0.01">
+              <span class="input-group-text">倍</span>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">残業割増率（60時間超）</label>
+            <div class="input-group">
+              <input type="number" name="parameters[overtime_rate_over_60]" class="form-control" value="<%= @scenario.overtime_rate_over_60 %>" step="0.01">
+              <span class="input-group-text">倍</span>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">深夜割増率</label>
+            <div class="input-group">
+              <input type="number" name="parameters[late_night_rate]" class="form-control" value="<%= @scenario.late_night_rate %>" step="0.01">
+              <span class="input-group-text">倍</span>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">休日割増率</label>
+            <div class="input-group">
+              <input type="number" name="parameters[holiday_rate]" class="form-control" value="<%= @scenario.holiday_rate %>" step="0.01">
+              <span class="input-group-text">倍</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 基本給設定 -->
+      <div class="mb-4">
+        <h6 class="border-bottom pb-2 mb-3">
+          <i class="bi bi-cash-coin me-1"></i>
+          基本給の設定方法
+        </h6>
+        <div class="row g-3">
+          <div class="col-12">
+            <div class="form-check mb-2">
+              <input type="radio" name="parameters[base_salary_method]" value="grade_table" class="form-check-input" id="method_grade" <%= "checked" if @scenario.base_salary_method == "grade_table" %>>
+              <label class="form-check-label" for="method_grade">
+                <strong>現在の等級テーブルを使用</strong>
+              </label>
+            </div>
+            <div class="form-check mb-2">
+              <input type="radio" name="parameters[base_salary_method]" value="percentage" class="form-check-input" id="method_percentage" <%= "checked" if @scenario.base_salary_method == "percentage" %>>
+              <label class="form-check-label" for="method_percentage">
+                <strong>一律パーセント調整</strong>
+              </label>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">調整率</label>
+            <div class="input-group">
+              <input type="number" name="parameters[base_salary_adjustment]" class="form-control" value="<%= @scenario.base_salary_adjustment %>" step="0.1">
+              <span class="input-group-text">%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="text-end">
+        <%= f.submit "更新", class: "btn btn-primary" %>
+      </div>
+    <% end %>
+  </div>
+</div>

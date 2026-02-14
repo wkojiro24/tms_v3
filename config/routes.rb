@@ -109,9 +109,26 @@ Rails.application.routes.draw do
       delete :destroy, on: :collection
     end
     resources :payroll_items, only: [:index, :update] do
+      member do
+        post :toggle_hidden
+      end
       collection do
         post :update_groups
         post :reorder
+      end
+    end
+    resources :salary_scenarios do
+      member do
+        post :calculate
+      end
+      collection do
+        get :driver_comparison
+        post :driver_comparison_calculate
+        get :driver_comparison_detail
+        post :driver_comparison_detail_calculate
+        post :save_draft
+        delete :delete_draft
+        get :draft_overview
       end
     end
     resources :employees do

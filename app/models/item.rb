@@ -1,14 +1,20 @@
 class Item < ApplicationRecord
   include TenantScoped
 
-  # 給与グループ定数
+  # 給与グループ定数（給与明細の流れに沿った順序）
   PAYROLL_GROUPS = {
     "base" => "基本給",
+    "allowance" => "手当等",
+    "variable_basis" => "勤怠実績",
     "variable" => "変動給",
-    "variable_basis" => "変動給算出根拠",
-    "commute" => "通勤費等補助",
+    "taxable_subtotal" => "課税支給",
+    "commute" => "通勤費等（非課税）",
+    "gross_total" => "総支給",
     "welfare" => "福利厚生",
-    "tax_insurance" => "税金・社会保険",
+    "tax_insurance" => "社会保険・税金",
+    "deduction_total" => "控除計",
+    "net_pay" => "差引支給",
+    "reference" => "参考情報",
     "other" => "その他"
   }.freeze
 

@@ -1,0 +1,337 @@
+<% content_for :title, @scenario.name %>
+<% content_for :section_label, "給与シミュレーター" %>
+
+<div class="d-flex justify-content-between align-items-start mb-4">
+  <div>
+    <%= link_to admin_salary_scenarios_path, class: "btn btn-outline-secondary btn-sm mb-2" do %>
+      <i class="bi bi-arrow-left"></i> 一覧に戻る
+    <% end %>
+    <h4 class="mb-1"><%= @scenario.name %></h4>
+    <% if @scenario.description.present? %>
+      <p class="text-muted mb-0"><%= @scenario.description %></p>
+    <% end %>
+  </div>
+  <div class="d-flex gap-2">
+    <%= link_to edit_admin_salary_scenario_path(@scenario), class: "btn btn-outline-secondary" do %>
+      <i class="bi bi-pencil"></i> 編集
+    <% end %>
+    <%= button_to calculate_admin_salary_scenario_path(@scenario), method: :post, class: "btn btn-primary", form: { data: { turbo_confirm: "全従業員の試算を実行しますか？" } } do %>
+      <i class="bi bi-calculator"></i> 試算実行
+    <% end %>
+  </div>
+</div>
+
+<!-- パラメータ表示 -->
+<div class="card mb-4">
+  <div class="card-header py-2">
+    <strong>計算パラメータ</strong>
+  </div>
+  <div class="card-body py-2">
+    <div class="row small">
+      <div class="col-auto">
+        <span class="text-muted">月平均所定労働時間:</span>
+        <strong><%= @scenario.monthly_hours %>時間</strong>
+      </div>
+      <div class="col-auto">
+        <span class="text-muted">残業割増:</span>
+        <strong><%= @scenario.overtime_rate %>倍</strong>
+        <% if @scenario.overtime_rate_over_60 != @scenario.overtime_rate %>
+          / <strong><%= @scenario.overtime_rate_over_60 %>倍</strong>(60h超)
+        <% end %>
+      </div>
+      <div class="col-auto">
+        <span class="text-muted">深夜:</span>
+        <strong><%= @scenario.late_night_rate %>倍</strong>
+      </div>
+      <div class="col-auto">
+        <span class="text-muted">休日:</span>
+        <strong><%= @scenario.holiday_rate %>倍</strong>
+      </div>
+      <% if @scenario.base_salary_adjustment != 0 %>
+        <div class="col-auto">
+          <span class="text-muted">基本給調整:</span>
+          <strong class="<%= @scenario.base_salary_adjustment > 0 ? 'text-success' : 'text-danger' %>">
+            <%= @scenario.base_salary_adjustment > 0 ? '+' : '' %><%= @scenario.base_salary_adjustment %>%
+          </strong>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<% if @results.any? %>
+  <!-- サマリー -->
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <div class="card bg-light">
+        <div class="card-body text-center py-3">
+          <h3 class="mb-0"><%= @summary[:total_employees] %></h3>
+          <small class="text-muted">対象従業員</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card <%= @summary[:total_gross_diff] >= 0 ? 'bg-success-subtle' : 'bg-danger-subtle' %>">
+        <div class="card-body text-center py-3">
+          <h3 class="mb-0 <%= @summary[:total_gross_diff] >= 0 ? 'text-success' : 'text-danger' %>">
+            <%= @summary[:total_gross_diff] >= 0 ? '+' : '' %><%= number_with_delimiter(@summary[:total_gross_diff]) %>
+          </h3>
+          <small class="text-muted">総支給額差額合計</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card bg-success-subtle">
+        <div class="card-body text-center py-3">
+          <h3 class="mb-0 text-success"><%= @summary[:increased_count] %></h3>
+          <small class="text-muted">増加</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card bg-danger-subtle">
+        <div class="card-body text-center py-3">
+          <h3 class="mb-0 text-danger"><%= @summary[:decreased_count] %></h3>
+          <small class="text-muted">減少</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 結果一覧 -->
+  <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <strong>従業員別試算結果</strong>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>社員コード</th>
+              <th>氏名</th>
+              <th class="text-end">基本給</th>
+              <th class="text-end">残業代</th>
+              <th class="text-end">総支給額</th>
+              <th class="text-end">控除</th>
+              <th class="text-end">手取り</th>
+              <th class="text-end">差額</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @results.each do |result| %>
+              <tr>
+                <td><%= result.employee.employee_code %></td>
+                <td><%= result.employee.full_name %></td>
+                <td class="text-end"><%= number_with_delimiter(result.base_salary) %></td>
+                <td class="text-end"><%= number_with_delimiter(result.overtime_pay) %></td>
+                <td class="text-end fw-bold"><%= number_with_delimiter(result.gross_pay) %></td>
+                <td class="text-end text-danger">-<%= number_with_delimiter(result.deductions) %></td>
+                <td class="text-end fw-bold"><%= number_with_delimiter(result.net_pay) %></td>
+                <td class="text-end">
+                  <% if result.diff_gross != 0 %>
+                    <span class="<%= result.diff_gross > 0 ? 'text-success' : 'text-danger' %>">
+                      <%= result.diff_gross > 0 ? '+' : '' %><%= number_with_delimiter(result.diff_gross) %>
+                    </span>
+                  <% else %>
+                    <span class="text-muted">±0</span>
+                  <% end %>
+                </td>
+                <td class="text-end">
+                  <button type="button" class="btn btn-sm btn-outline-primary"
+                          data-bs-toggle="modal" data-bs-target="#detailModal<%= result.id %>">
+                    <i class="bi bi-search"></i> 詳細
+                  </button>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 詳細モーダル -->
+  <% @results.each do |result| %>
+    <div class="modal fade" id="detailModal<%= result.id %>" tabindex="-1">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">
+              <%= result.employee.full_name %> - 計算詳細
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <% details = result.details %>
+
+            <!-- 基本給計算 -->
+            <div class="mb-4">
+              <h6 class="border-bottom pb-2 text-primary">
+                <i class="bi bi-cash-coin me-1"></i>
+                基本給計算
+              </h6>
+              <table class="table table-sm">
+                <% if details[:base_wage_breakdown] %>
+                  <% breakdown = details[:base_wage_breakdown] %>
+                  <tr>
+                    <td>基本給</td>
+                    <td class="text-end"><%= number_with_delimiter(breakdown[:base_salary]) %></td>
+                  </tr>
+                  <% if breakdown[:safety_bonus_cumulative].to_i > 0 %>
+                    <tr>
+                      <td>+ 無事故継続加算</td>
+                      <td class="text-end"><%= number_with_delimiter(breakdown[:safety_bonus_cumulative]) %></td>
+                    </tr>
+                  <% end %>
+                  <% if breakdown[:position_allowance].to_i > 0 %>
+                    <tr>
+                      <td>+ 職位加算</td>
+                      <td class="text-end"><%= number_with_delimiter(breakdown[:position_allowance]) %></td>
+                    </tr>
+                  <% end %>
+                  <% if breakdown[:role_allowance].to_i > 0 %>
+                    <tr>
+                      <td>+ 職責加算</td>
+                      <td class="text-end"><%= number_with_delimiter(breakdown[:role_allowance]) %></td>
+                    </tr>
+                  <% end %>
+                  <% if breakdown[:housing_allowance].to_i > 0 %>
+                    <tr>
+                      <td>+ 大都市加算</td>
+                      <td class="text-end"><%= number_with_delimiter(breakdown[:housing_allowance]) %></td>
+                    </tr>
+                  <% end %>
+                <% end %>
+                <tr class="table-light">
+                  <td><strong>= 基準内賃金</strong></td>
+                  <td class="text-end"><strong><%= number_with_delimiter(details[:base_wage]) %></strong></td>
+                </tr>
+                <tr>
+                  <td>÷ <%= details[:monthly_hours] %> 時間</td>
+                  <td></td>
+                </tr>
+                <tr class="table-warning">
+                  <td><strong>= 時給</strong></td>
+                  <td class="text-end"><strong><%= number_with_delimiter(details[:hourly_rate]) %> 円/時</strong></td>
+                </tr>
+              </table>
+            </div>
+
+            <!-- 残業代計算 -->
+            <div class="mb-4">
+              <h6 class="border-bottom pb-2 text-primary">
+                <i class="bi bi-clock-history me-1"></i>
+                残業代計算
+              </h6>
+              <table class="table table-sm">
+                <% if details[:overtime] %>
+                  <% ot = details[:overtime] %>
+                  <tr>
+                    <td colspan="2" class="small text-muted">
+                      <%= ot[:formula] %>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>残業（60時間以下）: <%= ot[:hours_under_60] %>h × <%= @scenario.overtime_rate %>倍</td>
+                    <td class="text-end"><%= number_with_delimiter(ot[:pay_under_60]) %></td>
+                  </tr>
+                  <% if ot[:hours_over_60].to_f > 0 %>
+                    <tr>
+                      <td>残業（60時間超）: <%= ot[:hours_over_60] %>h × <%= @scenario.overtime_rate_over_60 %>倍</td>
+                      <td class="text-end"><%= number_with_delimiter(ot[:pay_over_60]) %></td>
+                    </tr>
+                  <% end %>
+                  <tr class="table-light">
+                    <td><strong>残業代合計</strong></td>
+                    <td class="text-end"><strong><%= number_with_delimiter(result.overtime_pay) %></strong></td>
+                  </tr>
+                <% end %>
+              </table>
+
+              <% if details[:late_night] && details[:late_night][:hours].to_f > 0 %>
+                <table class="table table-sm mt-2">
+                  <tr>
+                    <td>深夜: <%= details[:late_night][:hours] %>h × <%= @scenario.late_night_rate %>倍</td>
+                    <td class="text-end"><%= number_with_delimiter(details[:late_night][:pay]) %></td>
+                  </tr>
+                </table>
+              <% end %>
+
+              <% if details[:holiday] && details[:holiday][:hours].to_f > 0 %>
+                <table class="table table-sm mt-2">
+                  <tr>
+                    <td>休日: <%= details[:holiday][:hours] %>h × <%= @scenario.holiday_rate %>倍</td>
+                    <td class="text-end"><%= number_with_delimiter(details[:holiday][:pay]) %></td>
+                  </tr>
+                </table>
+              <% end %>
+            </div>
+
+            <!-- 控除 -->
+            <div class="mb-4">
+              <h6 class="border-bottom pb-2 text-danger">
+                <i class="bi bi-dash-circle me-1"></i>
+                控除
+              </h6>
+              <table class="table table-sm">
+                <% if details[:deductions] %>
+                  <% details[:deductions].each do |d| %>
+                    <tr>
+                      <td><%= d[:name] || d["name"] %></td>
+                      <td class="text-end text-danger">-<%= number_with_delimiter(d[:amount] || d["amount"]) %></td>
+                    </tr>
+                  <% end %>
+                <% end %>
+                <tr class="table-light">
+                  <td><strong>控除合計</strong></td>
+                  <td class="text-end text-danger"><strong>-<%= number_with_delimiter(result.deductions) %></strong></td>
+                </tr>
+              </table>
+            </div>
+
+            <!-- 合計 -->
+            <div class="card bg-light">
+              <div class="card-body">
+                <div class="row text-center">
+                  <div class="col-4">
+                    <h5 class="mb-0"><%= number_with_delimiter(result.gross_pay) %></h5>
+                    <small class="text-muted">総支給額</small>
+                  </div>
+                  <div class="col-4">
+                    <h5 class="mb-0 text-danger">-<%= number_with_delimiter(result.deductions) %></h5>
+                    <small class="text-muted">控除合計</small>
+                  </div>
+                  <div class="col-4">
+                    <h5 class="mb-0 text-primary"><%= number_with_delimiter(result.net_pay) %></h5>
+                    <small class="text-muted">手取り</small>
+                  </div>
+                </div>
+
+                <% if result.diff_gross != 0 %>
+                  <hr class="my-3">
+                  <div class="text-center">
+                    <span class="badge <%= result.diff_gross > 0 ? 'bg-success' : 'bg-danger' %> fs-6">
+                      現行との差額: <%= result.diff_gross > 0 ? '+' : '' %><%= number_with_delimiter(result.diff_gross) %>
+                    </span>
+                  </div>
+                <% end %>
+              </div>
+            </div>
+
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+<% else %>
+  <div class="alert alert-info">
+    <i class="bi bi-info-circle me-2"></i>
+    まだ試算が実行されていません。「試算実行」ボタンをクリックして全従業員の試算を行ってください。
+  </div>
+<% end %>

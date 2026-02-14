@@ -28,10 +28,13 @@
       </div>
       <div class="card-body p-2 payroll-group-list" data-group="" id="group-unassigned" style="min-height: 150px; max-height: 350px; overflow-y: auto;">
         <% @grouped_items[nil]&.each do |item| %>
-          <div class="payroll-item" data-item-id="<%= item.id %>">
+          <div class="payroll-item <%= 'payroll-item-hidden' if item.hidden? %>" data-item-id="<%= item.id %>" data-above-basic="<%= item.above_basic? %>">
             <i class="bi bi-grip-vertical text-muted me-2"></i>
             <span class="item-name"><%= item.name %></span>
-            <% if item.above_basic? %><span class="badge bg-info ms-auto">金額</span><% end %>
+            <% if item.above_basic? %><span class="badge bg-info ms-1">金額</span><% end %>
+            <button type="button" class="btn btn-sm p-0 ms-auto toggle-hidden-btn" data-item-id="<%= item.id %>" title="<%= item.hidden? ? '表示する' : '非表示にする' %>">
+              <i class="bi <%= item.hidden? ? 'bi-eye-slash text-danger' : 'bi-eye text-muted' %>"></i>
+            </button>
           </div>
         <% end %>
       </div>
@@ -48,10 +51,35 @@
       </div>
       <div class="card-body p-2 payroll-group-list" data-group="base" id="group-base" style="min-height: 150px; max-height: 350px; overflow-y: auto;">
         <% @grouped_items["base"]&.each do |item| %>
-          <div class="payroll-item payroll-item-base" data-item-id="<%= item.id %>">
+          <div class="payroll-item payroll-item-base <%= 'payroll-item-hidden' if item.hidden? %>" data-item-id="<%= item.id %>" data-above-basic="<%= item.above_basic? %>">
             <i class="bi bi-grip-vertical text-muted me-2"></i>
             <span class="item-name"><%= item.name %></span>
-            <% if item.above_basic? %><span class="badge bg-info ms-auto">金額</span><% end %>
+            <% if item.above_basic? %><span class="badge bg-info ms-1">金額</span><% end %>
+            <button type="button" class="btn btn-sm p-0 ms-auto toggle-hidden-btn" data-item-id="<%= item.id %>" title="<%= item.hidden? ? '表示する' : '非表示にする' %>">
+              <i class="bi <%= item.hidden? ? 'bi-eye-slash text-danger' : 'bi-eye text-muted' %>"></i>
+            </button>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <!-- 手当等 -->
+  <div class="col-12 col-md-6 col-xl-3 mb-3">
+    <div class="card h-100" style="border-color: #10b981;">
+      <div class="card-header text-white py-2" style="background-color: #10b981;">
+        <strong>手当等</strong>
+        <span class="badge bg-light text-dark ms-2" id="count-allowance"><%= @grouped_items["allowance"]&.size || 0 %></span>
+      </div>
+      <div class="card-body p-2 payroll-group-list" data-group="allowance" id="group-allowance" style="min-height: 150px; max-height: 350px; overflow-y: auto;">
+        <% @grouped_items["allowance"]&.each do |item| %>
+          <div class="payroll-item payroll-item-allowance <%= 'payroll-item-hidden' if item.hidden? %>" data-item-id="<%= item.id %>" data-above-basic="<%= item.above_basic? %>">
+            <i class="bi bi-grip-vertical text-muted me-2"></i>
+            <span class="item-name"><%= item.name %></span>
+            <% if item.above_basic? %><span class="badge bg-info ms-1">金額</span><% end %>
+            <button type="button" class="btn btn-sm p-0 ms-auto toggle-hidden-btn" data-item-id="<%= item.id %>" title="<%= item.hidden? ? '表示する' : '非表示にする' %>">
+              <i class="bi <%= item.hidden? ? 'bi-eye-slash text-danger' : 'bi-eye text-muted' %>"></i>
+            </button>
           </div>
         <% end %>
       </div>
@@ -67,10 +95,13 @@
       </div>
       <div class="card-body p-2 payroll-group-list" data-group="variable" id="group-variable" style="min-height: 150px; max-height: 350px; overflow-y: auto;">
         <% @grouped_items["variable"]&.each do |item| %>
-          <div class="payroll-item payroll-item-variable" data-item-id="<%= item.id %>">
+          <div class="payroll-item payroll-item-variable <%= 'payroll-item-hidden' if item.hidden? %>" data-item-id="<%= item.id %>" data-above-basic="<%= item.above_basic? %>">
             <i class="bi bi-grip-vertical text-muted me-2"></i>
             <span class="item-name"><%= item.name %></span>
-            <% if item.above_basic? %><span class="badge bg-info ms-auto">金額</span><% end %>
+            <% if item.above_basic? %><span class="badge bg-info ms-1">金額</span><% end %>
+            <button type="button" class="btn btn-sm p-0 ms-auto toggle-hidden-btn" data-item-id="<%= item.id %>" title="<%= item.hidden? ? '表示する' : '非表示にする' %>">
+              <i class="bi <%= item.hidden? ? 'bi-eye-slash text-danger' : 'bi-eye text-muted' %>"></i>
+            </button>
           </div>
         <% end %>
       </div>
@@ -86,10 +117,13 @@
       </div>
       <div class="card-body p-2 payroll-group-list" data-group="variable_basis" id="group-variable_basis" style="min-height: 150px; max-height: 350px; overflow-y: auto;">
         <% @grouped_items["variable_basis"]&.each do |item| %>
-          <div class="payroll-item payroll-item-variable_basis" data-item-id="<%= item.id %>">
+          <div class="payroll-item payroll-item-variable_basis <%= 'payroll-item-hidden' if item.hidden? %>" data-item-id="<%= item.id %>" data-above-basic="<%= item.above_basic? %>">
             <i class="bi bi-grip-vertical text-muted me-2"></i>
             <span class="item-name"><%= item.name %></span>
-            <% if item.above_basic? %><span class="badge bg-info ms-auto">金額</span><% end %>
+            <% if item.above_basic? %><span class="badge bg-info ms-1">金額</span><% end %>
+            <button type="button" class="btn btn-sm p-0 ms-auto toggle-hidden-btn" data-item-id="<%= item.id %>" title="<%= item.hidden? ? '表示する' : '非表示にする' %>">
+              <i class="bi <%= item.hidden? ? 'bi-eye-slash text-danger' : 'bi-eye text-muted' %>"></i>
+            </button>
           </div>
         <% end %>
       </div>
@@ -105,10 +139,13 @@
       </div>
       <div class="card-body p-2 payroll-group-list" data-group="commute" id="group-commute" style="min-height: 150px; max-height: 350px; overflow-y: auto;">
         <% @grouped_items["commute"]&.each do |item| %>
-          <div class="payroll-item payroll-item-commute" data-item-id="<%= item.id %>">
+          <div class="payroll-item payroll-item-commute <%= 'payroll-item-hidden' if item.hidden? %>" data-item-id="<%= item.id %>" data-above-basic="<%= item.above_basic? %>">
             <i class="bi bi-grip-vertical text-muted me-2"></i>
             <span class="item-name"><%= item.name %></span>
-            <% if item.above_basic? %><span class="badge bg-info ms-auto">金額</span><% end %>
+            <% if item.above_basic? %><span class="badge bg-info ms-1">金額</span><% end %>
+            <button type="button" class="btn btn-sm p-0 ms-auto toggle-hidden-btn" data-item-id="<%= item.id %>" title="<%= item.hidden? ? '表示する' : '非表示にする' %>">
+              <i class="bi <%= item.hidden? ? 'bi-eye-slash text-danger' : 'bi-eye text-muted' %>"></i>
+            </button>
           </div>
         <% end %>
       </div>
@@ -124,10 +161,13 @@
       </div>
       <div class="card-body p-2 payroll-group-list" data-group="welfare" id="group-welfare" style="min-height: 150px; max-height: 350px; overflow-y: auto;">
         <% @grouped_items["welfare"]&.each do |item| %>
-          <div class="payroll-item payroll-item-welfare" data-item-id="<%= item.id %>">
+          <div class="payroll-item payroll-item-welfare <%= 'payroll-item-hidden' if item.hidden? %>" data-item-id="<%= item.id %>" data-above-basic="<%= item.above_basic? %>">
             <i class="bi bi-grip-vertical text-muted me-2"></i>
             <span class="item-name"><%= item.name %></span>
-            <% if item.above_basic? %><span class="badge bg-info ms-auto">金額</span><% end %>
+            <% if item.above_basic? %><span class="badge bg-info ms-1">金額</span><% end %>
+            <button type="button" class="btn btn-sm p-0 ms-auto toggle-hidden-btn" data-item-id="<%= item.id %>" title="<%= item.hidden? ? '表示する' : '非表示にする' %>">
+              <i class="bi <%= item.hidden? ? 'bi-eye-slash text-danger' : 'bi-eye text-muted' %>"></i>
+            </button>
           </div>
         <% end %>
       </div>
@@ -143,10 +183,13 @@
       </div>
       <div class="card-body p-2 payroll-group-list" data-group="tax_insurance" id="group-tax_insurance" style="min-height: 150px; max-height: 350px; overflow-y: auto;">
         <% @grouped_items["tax_insurance"]&.each do |item| %>
-          <div class="payroll-item payroll-item-tax_insurance" data-item-id="<%= item.id %>">
+          <div class="payroll-item payroll-item-tax_insurance <%= 'payroll-item-hidden' if item.hidden? %>" data-item-id="<%= item.id %>" data-above-basic="<%= item.above_basic? %>">
             <i class="bi bi-grip-vertical text-muted me-2"></i>
             <span class="item-name"><%= item.name %></span>
-            <% if item.above_basic? %><span class="badge bg-info ms-auto">金額</span><% end %>
+            <% if item.above_basic? %><span class="badge bg-info ms-1">金額</span><% end %>
+            <button type="button" class="btn btn-sm p-0 ms-auto toggle-hidden-btn" data-item-id="<%= item.id %>" title="<%= item.hidden? ? '表示する' : '非表示にする' %>">
+              <i class="bi <%= item.hidden? ? 'bi-eye-slash text-danger' : 'bi-eye text-muted' %>"></i>
+            </button>
           </div>
         <% end %>
       </div>
@@ -162,10 +205,13 @@
       </div>
       <div class="card-body p-2 payroll-group-list" data-group="other" id="group-other" style="min-height: 150px; max-height: 350px; overflow-y: auto;">
         <% @grouped_items["other"]&.each do |item| %>
-          <div class="payroll-item payroll-item-other" data-item-id="<%= item.id %>">
+          <div class="payroll-item payroll-item-other <%= 'payroll-item-hidden' if item.hidden? %>" data-item-id="<%= item.id %>" data-above-basic="<%= item.above_basic? %>">
             <i class="bi bi-grip-vertical text-muted me-2"></i>
             <span class="item-name"><%= item.name %></span>
-            <% if item.above_basic? %><span class="badge bg-info ms-auto">金額</span><% end %>
+            <% if item.above_basic? %><span class="badge bg-info ms-1">金額</span><% end %>
+            <button type="button" class="btn btn-sm p-0 ms-auto toggle-hidden-btn" data-item-id="<%= item.id %>" title="<%= item.hidden? ? '表示する' : '非表示にする' %>">
+              <i class="bi <%= item.hidden? ? 'bi-eye-slash text-danger' : 'bi-eye text-muted' %>"></i>
+            </button>
           </div>
         <% end %>
       </div>
@@ -198,6 +244,7 @@
 .payroll-item.sortable-ghost { opacity: 0.4; background: #e9ecef; }
 .payroll-item.sortable-chosen { box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
 .payroll-item-base { border-left: 3px solid #198754; }
+.payroll-item-allowance { border-left: 3px solid #10b981; }
 .payroll-item-variable { border-left: 3px solid #0d6efd; }
 .payroll-item-variable_basis { border-left: 3px solid #ffc107; }
 .payroll-item-commute { border-left: 3px solid #0dcaf0; }
@@ -205,6 +252,10 @@
 .payroll-item-tax_insurance { border-left: 3px solid #dc3545; }
 .payroll-item-other { border-left: 3px solid #6c757d; }
 .payroll-group-list { background: #f8f9fa; border-radius: 4px; }
+.payroll-item-hidden { opacity: 0.5; background: #f0f0f0; }
+.payroll-item-hidden .item-name { text-decoration: line-through; }
+.toggle-hidden-btn { background: none; border: none; cursor: pointer; }
+.toggle-hidden-btn:hover { opacity: 0.7; }
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
@@ -261,28 +312,81 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
-  // 自動分類
+  // 非表示トグル
+  document.addEventListener('click', function(e) {
+    const btn = e.target.closest('.toggle-hidden-btn');
+    if (!btn) return;
+    e.preventDefault();
+    const itemId = btn.dataset.itemId;
+    const item = btn.closest('.payroll-item');
+
+    fetch('/admin/payroll_items/' + itemId + '/toggle_hidden', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken }
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        const icon = btn.querySelector('i');
+        if (data.hidden) {
+          item.classList.add('payroll-item-hidden');
+          icon.className = 'bi bi-eye-slash text-danger';
+          btn.title = '表示する';
+        } else {
+          item.classList.remove('payroll-item-hidden');
+          icon.className = 'bi bi-eye text-muted';
+          btn.title = '非表示にする';
+        }
+        showSaveIndicator();
+      }
+    })
+    .catch(err => console.error('Toggle error:', err));
+  });
+
+  // 自動分類（ユーザー指定のリストに基づく）
   document.getElementById('auto-assign-btn').addEventListener('click', function() {
-    const patterns = {
-      base: ['基本給', '調整加算', '調整給', '無事故', '職位', '職責', '大都市'],
-      variable: ['残業', '時間外', '休日', '深夜', '早朝', '割増'],
-      variable_basis: ['日数', '時間', '回数', '件数', '走行', 'km', 'キロ', '就労'],
-      commute: ['通勤', '交通費', '燃料', 'ガソリン'],
-      welfare: ['福利', '厚生', '食事', '住宅', '家賃'],
-      tax_insurance: ['所得税', '住民税', '健康保険', '厚生年金', '雇用保険', '介護保険', '社会保険', '税']
-    };
+    // 算定根拠（above_basic=false のみ）
+    const variableBasisItems = [
+      '平日出勤日数', '法定休日', '法定外休日', '代休日数', '有休日数', '欠勤日数',
+      '就労時間', '平日残業', '法定休日時間', '法定外休時間', '法定代休時間',
+      '法定外代時間', '割増残業', '有給休暇時間', '深夜残業', '有休残日数', '税額表', '扶養人数'
+    ];
+
+    // 基本給
+    const baseItems = [
+      '基本給', '職位加算', '職責加算', '調整給', '呼出手当', '基本給2',
+      '無事故報奨金', '無事故加算', '有給休暇', '調整加算', '欠勤控除', '大都市加算'
+    ];
+
+    // 変動費（above_basic=true のみ）
+    const variableItems = [
+      '平日残業', '法定休日残業', '法定外休日残', '法定代休残業', '法定外代休残', '割増残業', '深夜残業'
+    ];
 
     const unassignedList = document.getElementById('group-unassigned');
     const itemsToMove = [];
 
     unassignedList.querySelectorAll('.payroll-item').forEach(item => {
-      const name = item.querySelector('.item-name').textContent;
-      for (const [group, keywords] of Object.entries(patterns)) {
-        if (keywords.some(k => name.includes(k))) {
-          const targetList = document.getElementById('group-' + group);
-          if (targetList) itemsToMove.push({ item, targetList, group });
-          break;
-        }
+      const name = item.querySelector('.item-name').textContent.trim();
+      const isAboveBasic = item.dataset.aboveBasic === 'true';
+      let targetGroup = null;
+
+      // 基本給（リスト完全一致）
+      if (baseItems.includes(name)) {
+        targetGroup = 'base';
+      }
+      // 変動費（above_basic=true かつリストに含まれる）
+      else if (isAboveBasic && variableItems.includes(name)) {
+        targetGroup = 'variable';
+      }
+      // 算定根拠（above_basic=false かつリストに含まれる）
+      else if (!isAboveBasic && variableBasisItems.includes(name)) {
+        targetGroup = 'variable_basis';
+      }
+
+      if (targetGroup) {
+        const targetList = document.getElementById('group-' + targetGroup);
+        if (targetList) itemsToMove.push({ item, targetList, group: targetGroup });
       }
     });
 

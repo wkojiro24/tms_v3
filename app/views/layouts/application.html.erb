@@ -102,6 +102,7 @@
                   { label: "社員情報", path: hr_path, active: request.path.starts_with?("/hr") },
                   current_user&.admin_role? ? { label: "勤怠管理", path: admin_attendances_path, active: request.path.starts_with?("/admin/attendances") } : nil,
                   current_user&.admin_role? ? { label: "給与シミュレーション", path: admin_payroll_simulations_path, active: request.path.starts_with?("/admin/payroll_simulations") } : nil,
+                  current_user&.admin_role? ? { label: "給与シミュレーター", path: admin_salary_scenarios_path, active: request.path.starts_with?("/admin/salary_scenarios") } : nil,
                   current_user&.admin_role? ? { label: "給与グリッド", path: admin_payrolls_path, active: request.path == "/admin/payrolls" } : nil
                 ].compact
               },

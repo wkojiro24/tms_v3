@@ -411,9 +411,13 @@ module Imports
       numeric = value.to_f
       return "" if numeric.zero?
 
-      if numeric.positive? && numeric < 1
+      # Excelの時間形式: 日数の小数（1.0 = 24時間、0.5 = 12時間）
+      # 24時間以上（1日以上）の場合も対応
+      if numeric.positive? && numeric < 100  # 100日未満は時間として扱う
         total_minutes = (numeric * 24 * 60).round
-        return time_string_from_minutes(total_minutes)
+        if total_minutes > 0 && total_minutes < 100 * 24 * 60  # 妥当な範囲内
+          return time_string_from_minutes(total_minutes)
+        end
       end
 
       seconds = numeric.round
@@ -465,8 +469,21 @@ module Imports
           return [str == "0" ? "" : str, nil]
         end
       when Time, DateTime
-        formatted = value.strftime("%H:%M")
-        return [formatted == "00:00" ? "" : formatted, nil]
+        # Excelの時間はTime型として読み込まれる場合がある
+        # 1899-12-30 または 1899-12-31 を基準とした時間
+        if value.year <= 1900
+          # 時間データとして扱う（日付部分は無視）
+          # 日数も考慮: 1899-12-31 08:00 = 32時間 (1日 + 8時間)
+          base_date = Date.new(1899, 12, 30)
+          days_diff = (value.to_date - base_date).to_i
+          total_hours = days_diff * 24 + value.hour
+          total_minutes = total_hours * 60 + value.min
+          formatted = time_string_from_minutes(total_minutes)
+          return [formatted == "0:00" ? "" : formatted, nil]
+        else
+          formatted = value.strftime("%H:%M")
+          return [formatted == "00:00" ? "" : formatted, nil]
+        end
       when Date
         formatted = value.strftime("%Y-%m-%d")
         return [formatted, nil]
@@ -530,8 +547,11 @@ module Imports
     def extname(io)
       if io.respond_to?(:original_filename)
         File.extname(io.original_filename).delete(".")
+      elsif io.respond_to?(:path)
+        File.extname(io.path).delete(".")
       else
-        File.extname(io.to_s).delete(".")
+        ext = File.extname(io.to_s).delete(".")
+        ext.presence || "xlsx"  # デフォルトはxlsx
       end
     end
 

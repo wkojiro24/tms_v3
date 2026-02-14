@@ -1,85 +1,37 @@
-<% if @period.present? %>
-  <% content_for :title, "#{@period.label} #{@location} 給与一覧" %>
-<% else %>
-  <% content_for :title, "給与一覧" %>
-<% end %>
-<% content_for :section_label, "給与グリッド" %>
+<% content_for :title, "給与グリッド" %>
 
-<div class="d-flex flex-wrap gap-3 align-items-end mb-4 payroll-controls">
-  <div>
-    <h2 class="h5 mb-1">表示条件</h2>
-    <div class="text-muted small">Excel のレイアウトをそのまま再現します。</div>
-  </div>
-
-  <%= form_with url: admin_payrolls_path, method: :get, local: true, class: "d-flex flex-wrap gap-2 align-items-end" do |f| %>
-    <div>
-      <%= f.label :period_id, "対象月", class: "form-label small mb-1" %>
-      <%= f.select :period_id, options_from_collection_for_select(@periods, :id, :label, @period&.id), { include_blank: "最新月" }, class: "form-select form-select-sm" %>
-    </div>
-    <div>
-      <%= f.label :location, "拠点", class: "form-label small mb-1" %>
-      <%= f.select :location, options_for_select(@locations.presence || [[@location, @location]], @location), { include_blank: false }, class: "form-select form-select-sm" %>
-    </div>
-    <div>
-      <%= f.label :visible_count, "表示人数", class: "form-label small mb-1" %>
-      <%= f.select :visible_count,
-                   options_for_select(@visible_count_options.map { |count| ["#{count}人", count] }, @visible_count),
-                   {},
-                   class: "form-select form-select-sm" %>
-    </div>
-    <% if @window_options.size > 1 %>
-      <div>
-        <%= f.label :start, "表示区間", class: "form-label small mb-1" %>
-        <%= f.select :start,
-                     options_for_select(@window_options, @start_index),
-                     {},
-                     class: "form-select form-select-sm" %>
-      </div>
-    <% end %>
-    <div>
-      <%= f.submit "適用", class: "btn btn-primary btn-sm" %>
-    </div>
+<div class="d-flex align-items-center gap-2 mb-1 payroll-controls">
+  <%= form_with url: admin_payrolls_path, method: :get, local: true, class: "d-flex align-items-center gap-2" do |f| %>
+    <%= f.select :period_id, options_from_collection_for_select(@periods, :id, :label, @period&.id), { include_blank: "最新月" }, class: "form-select form-select-sm py-0", style: "font-size: 12px; height: 24px;" %>
+    <%= f.select :location, options_for_select(@locations.presence || [[@location, @location]], @location), { include_blank: false }, class: "form-select form-select-sm py-0", style: "font-size: 12px; height: 24px;" %>
+    <%= f.submit "表示", class: "btn btn-primary btn-sm py-0", style: "font-size: 11px; height: 24px;" %>
   <% end %>
-  <div class="ms-auto d-flex align-items-end gap-2">
-    <%= link_to admin_payroll_items_path, class: "btn btn-outline-secondary btn-sm" do %>
+  <span class="text-muted" style="font-size: 11px;"><%= @total_employees %>人</span>
+  <div class="ms-auto d-flex align-items-center gap-1">
+    <%= link_to admin_payroll_items_path, class: "btn btn-outline-secondary btn-sm py-0", style: "font-size: 10px; height: 24px;" do %>
       <i class="bi bi-gear"></i>
-      グループ設定
     <% end %>
-    <% if @period.present? %>
-      <%= button_to "データ削除", admin_payrolls_path(period_id: @period.id, location: @location),
-                    method: :delete,
-                    class: "btn btn-outline-danger btn-sm",
-                    form: { data: { turbo_confirm: "#{@period.label} #{@location} のデータを削除します。よろしいですか？" } } %>
-    <% end %>
-    <button type="button" class="btn btn-outline-secondary btn-sm" id="payroll-fullscreen-toggle">
+    <button type="button" class="btn btn-outline-secondary btn-sm py-0" style="font-size: 10px; height: 24px;" id="payroll-fullscreen-toggle">
       <i class="bi bi-arrows-fullscreen"></i>
-      フルスクリーン
     </button>
   </div>
 </div>
 
-<% if @total_employees.positive? %>
-  <div class="text-muted small mb-3">
-    表示範囲: <%= @total_employees.zero? ? "0" : "#{@start_index + 1}〜#{[@start_index + @visible_count, @total_employees].min}" %> / <%= @total_employees %> 人
-  </div>
-<% end %>
-
 <% if @period.nil? %>
   <div class="alert alert-info">まだ給与データが取り込まれていません。</div>
 <% else %>
-  <div class="table-responsive payroll-grid">
-    <table class="table table-bordered table-sm align-middle text-end">
-      <thead class="table-light">
+  <div class="payroll-grid-wrapper">
+    <div class="payroll-grid">
+      <table class="table table-bordered table-sm align-middle text-end">
+      <thead>
         <tr>
-          <th class="text-start">項目名</th>
+          <th class="text-start" style="min-width: 100px;">項目</th>
           <% @employees.each do |employee| %>
             <th class="text-center payroll-header">
-              <div class="payroll-header-code">
-                <%= link_to employee.employee_code, admin_employee_path(employee), class: "text-decoration-none" %>
-              </div>
-              <div class="payroll-header-name">
-                <%= link_to employee_header_name(employee), admin_employee_path(employee), class: "text-decoration-none" %>
-              </div>
+              <%= link_to admin_employee_path(employee), class: "text-decoration-none text-dark" do %>
+                <div class="payroll-header-code"><%= employee.employee_code %></div>
+                <div class="payroll-header-name"><%= employee_header_name(employee) %></div>
+              <% end %>
             </th>
           <% end %>
         </tr>
@@ -99,13 +51,33 @@
               <% row_classes = ["payroll-row", "payroll-group-row-#{group_data[:group] || 'other'}"] %>
               <% row_classes << "payroll-row-money" if item.above_basic? %>
               <% row_classes << "payroll-row-total" if item.name.include?("支給合計") || item.name.include?("差引支給合計") %>
+              <% basis_item_id = @variable_basis_map[item.id] if group_data[:group] == "variable" %>
               <tr class="<%= row_classes.join(' ') %>">
-                <th class="text-start ps-4"><%= item.name %></th>
+                <th class="text-start" style="padding-left: 12px !important;"><%= item.name %></th>
                 <% @employees.each do |employee| %>
                   <% cell = @cell_map[[item.id, employee.id]] %>
                   <% cell_value = payroll_numeric_value(cell) %>
                   <% group_subtotals[employee.id] += cell_value if group_data[:show_subtotal] && cell_value %>
-                  <td><%= payroll_value(cell) %></td>
+                  <td>
+                    <%= payroll_value(cell) %>
+                    <% if basis_item_id && cell_value.to_f > 0 %>
+                      <% basis_cell = @cell_map[[basis_item_id, employee.id]] %>
+                      <% hourly_rate = @hourly_rates[employee.id] %>
+                      <% hours = payroll_hours_value(basis_cell) %>
+                      <% standard_rate = Admin::PayrollsController.overtime_rates[item.name] %>
+                      <% if hourly_rate.to_i > 0 && hours > 0 && standard_rate %>
+                        <% expected = (hourly_rate * hours * standard_rate).round %>
+                        <div class="payroll-formula text-muted">
+                          <%= hourly_rate %>×<%= hours.round(1) %>h×<%= standard_rate %>
+                        </div>
+                        <% if (cell_value.to_i - expected).abs > 100 %>
+                          <div class="payroll-formula-detail text-danger">
+                            (期待値:<%= number_with_delimiter(expected) %>)
+                          </div>
+                        <% end %>
+                      <% end %>
+                    <% end %>
+                  </td>
                 <% end %>
               </tr>
             <% end %>
@@ -115,6 +87,35 @@
                 <th class="text-start"><strong><%= group_data[:label] %>小計</strong></th>
                 <% @employees.each do |employee| %>
                   <td><strong><%= number_with_delimiter(group_subtotals[employee.id].to_i) %></strong></td>
+                <% end %>
+              </tr>
+              <!-- 時給計算行 -->
+              <tr class="payroll-hourly-rate">
+                <th class="text-start">
+                  時給 (基準内÷167h)
+                </th>
+                <% @employees.each do |employee| %>
+                  <td>
+                    <strong class="text-primary"><%= number_with_delimiter(@hourly_rates[employee.id]) %></strong>円
+                  </td>
+                <% end %>
+              </tr>
+              <!-- 基準内賃金の内訳行 -->
+              <tr class="payroll-base-breakdown">
+                <th class="text-start text-muted" style="padding-left: 12px !important;">
+                  └ 内訳
+                </th>
+                <% @employees.each do |employee| %>
+                  <% details = @base_salary_details[employee.id] || {} %>
+                  <% base_total = details.values.sum %>
+                  <td class="text-muted">
+                    <% if details.any? %>
+                      <% details.each do |name, value| %>
+                        <span><%= name.gsub("加算","") %>:<%= number_with_delimiter(value) %></span><br>
+                      <% end %>
+                      <span class="text-primary">計<%= number_with_delimiter(base_total) %>÷167=<strong><%= @hourly_rates[employee.id] %></strong></span>
+                    <% end %>
+                  </td>
                 <% end %>
               </tr>
             <% end %>
@@ -136,59 +137,245 @@
         <% end %>
       </tbody>
     </table>
+    </div>
   </div>
 <% end %>
 
 <style>
+  /* 横スクロール用ラッパー */
+  .payroll-grid-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Excel風グローバルスタイル */
+  .payroll-grid {
+    font-size: 13px;
+    line-height: 1.3;
+    display: inline-block;
+    min-width: 100%;
+  }
+  .payroll-grid .table {
+    margin-bottom: 0;
+    border-collapse: collapse;
+    white-space: nowrap;
+  }
+  .payroll-grid .table th,
+  .payroll-grid .table td {
+    padding: 4px 8px !important;
+    vertical-align: middle;
+    border: 1px solid #d0d0d0 !important;
+    white-space: nowrap;
+  }
+  .payroll-grid .table thead th {
+    background-color: #f0f0f0 !important;
+    font-weight: 600;
+    font-size: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  /* 項目名列を横スクロール時に固定 */
+  .payroll-grid .table th:first-child,
+  .payroll-grid .table td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 5;
+    background-color: inherit;
+  }
+  .payroll-grid .table thead th:first-child {
+    z-index: 15;
+    background-color: #f0f0f0 !important;
+  }
+
+  /* ヘッダーセル（従業員名） */
+  .payroll-header {
+    min-width: 80px;
+    max-width: 100px;
+  }
+  .payroll-header-code {
+    font-size: 11px;
+    color: #666;
+  }
+  .payroll-header-name {
+    font-size: 12px;
+    font-weight: 600;
+  }
+
   /* グループヘッダー */
   .payroll-group-header {
-    background-color: #343a40 !important;
+    background-color: #4a4a4a !important;
     color: #fff;
   }
   .payroll-group-header th {
-    padding: 8px 12px !important;
-    font-size: 0.9rem;
+    padding: 5px 8px !important;
+    font-size: 12px;
+    font-weight: 600;
   }
 
   /* 基本給グループ */
-  .payroll-group-base { background-color: #1b5e20 !important; }
-  .payroll-group-row-base { background-color: #e8f5e9 !important; }
+  .payroll-group-base { background-color: #2e7d32 !important; }
+  .payroll-group-row-base { background-color: #f1f8e9 !important; }
   .payroll-group-base-subtotal {
-    background-color: #c8e6c9 !important;
-    border-top: 2px solid #2e7d32 !important;
+    background-color: #dcedc8 !important;
+    border-top: 1px solid #558b2f !important;
   }
+
+  /* 手当等グループ */
+  .payroll-group-allowance { background-color: #00796b !important; }
+  .payroll-group-row-allowance { background-color: #e0f2f1 !important; }
 
   /* 変動給グループ */
   .payroll-group-variable { background-color: #1565c0 !important; }
   .payroll-group-row-variable { background-color: #e3f2fd !important; }
 
   /* 変動給算出根拠グループ */
-  .payroll-group-variable_basis { background-color: #e65100 !important; }
+  .payroll-group-variable_basis { background-color: #ef6c00 !important; }
   .payroll-group-row-variable_basis { background-color: #fff3e0 !important; }
 
   /* 通勤費等補助グループ */
-  .payroll-group-commute { background-color: #0891b2 !important; }
-  .payroll-group-row-commute { background-color: #ecfeff !important; }
+  .payroll-group-commute { background-color: #00838f !important; }
+  .payroll-group-row-commute { background-color: #e0f7fa !important; }
 
   /* 福利厚生グループ */
-  .payroll-group-welfare { background-color: #7c3aed !important; }
-  .payroll-group-row-welfare { background-color: #f5f3ff !important; }
+  .payroll-group-welfare { background-color: #6a1b9a !important; }
+  .payroll-group-row-welfare { background-color: #f3e5f5 !important; }
 
   /* 税金・社会保険グループ */
-  .payroll-group-tax_insurance { background-color: #dc2626 !important; }
-  .payroll-group-row-tax_insurance { background-color: #fef2f2 !important; }
+  .payroll-group-tax_insurance { background-color: #c62828 !important; }
+  .payroll-group-row-tax_insurance { background-color: #ffebee !important; }
+
+  /* 課税支給グループ */
+  .payroll-group-taxable_subtotal { background-color: #388e3c !important; }
+  .payroll-group-row-taxable_subtotal { background-color: #c8e6c9 !important; }
+  .payroll-group-row-taxable_subtotal td, .payroll-group-row-taxable_subtotal th {
+    font-weight: 600 !important;
+  }
+
+  /* 総支給グループ */
+  .payroll-group-gross_total { background-color: #2e7d32 !important; }
+  .payroll-group-row-gross_total { background-color: #a5d6a7 !important; }
+  .payroll-group-row-gross_total td, .payroll-group-row-gross_total th {
+    font-weight: 700 !important;
+    font-size: 13px !important;
+  }
+
+  /* 控除小計グループ */
+  .payroll-group-deduction_total { background-color: #c62828 !important; }
+  .payroll-group-row-deduction_total { background-color: #ffcdd2 !important; }
+  .payroll-group-row-deduction_total td, .payroll-group-row-deduction_total th {
+    font-weight: 600 !important;
+  }
+
+  /* 差引支給グループ */
+  .payroll-group-net_pay { background-color: #1565c0 !important; }
+  .payroll-group-row-net_pay { background-color: #bbdefb !important; }
+  .payroll-group-row-net_pay td, .payroll-group-row-net_pay th {
+    font-weight: 700 !important;
+    font-size: 13px !important;
+  }
+
+  /* 参考情報グループ */
+  .payroll-group-reference { background-color: #757575 !important; }
+  .payroll-group-row-reference { background-color: #f5f5f5 !important; }
+  .payroll-group-row-reference td, .payroll-group-row-reference th {
+    color: #666 !important;
+    font-size: 11px !important;
+  }
 
   /* その他グループ */
-  .payroll-group-other { background-color: #616161 !important; }
-  .payroll-group-row-other { background-color: #f5f5f5 !important; }
+  .payroll-group-other { background-color: #546e7a !important; }
+  .payroll-group-row-other { background-color: #eceff1 !important; }
 
   /* 未設定 */
-  .payroll-group-null { background-color: #6b7280 !important; }
-  .payroll-group-row-null { background-color: #f9fafb !important; }
+  .payroll-group-null { background-color: #78909c !important; }
+  .payroll-group-row-null { background-color: #fafafa !important; }
+
+  /* 項目名セル */
+  .payroll-grid tbody th {
+    font-weight: normal;
+    font-size: 12px;
+    min-width: 120px;
+    background-color: inherit;
+  }
 
   /* 小計行 */
   .payroll-subtotal td, .payroll-subtotal th {
     font-weight: 600 !important;
+    font-size: 12px;
+  }
+
+  /* 計算式表示 */
+  .payroll-formula {
+    font-size: 10px;
+    line-height: 1.2;
+    white-space: nowrap;
+    color: #888;
+  }
+  .payroll-formula-detail {
+    font-size: 9px;
+    line-height: 1.1;
+    white-space: nowrap;
+  }
+
+  /* 時給行 */
+  .payroll-hourly-rate {
+    background-color: #fffde7 !important;
+    border-top: 1px dashed #fbc02d !important;
+  }
+  .payroll-hourly-rate th, .payroll-hourly-rate td {
+    font-size: 12px;
+  }
+
+  /* 基準内賃金内訳行 */
+  .payroll-base-breakdown {
+    background-color: #fffef0 !important;
+  }
+  .payroll-base-breakdown th {
+    font-size: 11px !important;
+  }
+  .payroll-base-breakdown td {
+    vertical-align: top;
+    font-size: 10px !important;
+    line-height: 1.3;
+    white-space: normal;
+    padding: 4px 8px !important;
+  }
+
+  /* 合計行のハイライト */
+  .payroll-row-total td, .payroll-row-total th {
+    font-weight: 700 !important;
+    background-color: #fff9c4 !important;
+  }
+
+  /* フルスクリーンモード */
+  body.payroll-fullscreen {
+    overflow: hidden;
+  }
+  body.payroll-fullscreen .payroll-grid {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 9999;
+    background: #fff;
+    overflow: auto;
+    padding: 10px;
+  }
+  body.payroll-fullscreen .payroll-controls,
+  body.payroll-fullscreen .navbar,
+  body.payroll-fullscreen .sidebar {
+    display: none !important;
+  }
+
+  /* コントロールバー - コンパクト */
+  .payroll-controls {
+    font-size: 12px;
+    padding: 4px 0;
   }
 </style>
 

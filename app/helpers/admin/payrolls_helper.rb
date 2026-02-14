@@ -44,11 +44,56 @@ module Admin
       return 0 if raw.blank?
 
       if monetary_cell?(cell)
+        # 時間形式（例: "53:20"）を秒数に変換
+        if raw.include?(":")
+          amount = coerce_time_to_amount_numeric(raw_original)
+          return amount if amount && amount > 0
+        end
+
         numeric_text = raw.tr("０１２３４５６７８９", "0123456789").gsub(/[, ]/, "")
         return Float(numeric_text) rescue 0
       end
 
       0
+    end
+
+    # 時間値を取得（変動給の根拠表示用）
+    def payroll_hours_value(cell)
+      return 0 unless cell
+
+      raw = cell.raw.to_s
+      return 0 if raw.blank?
+
+      if raw.include?(":")
+        parts = raw.split(":")
+        return parts[0].to_f + parts[1].to_f / 60.0
+      end
+
+      raw.to_f
+    end
+
+    # 時間形式を数値（秒数）に変換（小計計算用）
+    def coerce_time_to_amount_numeric(original)
+      text = original.to_s
+      return nil unless text.include?(":")
+
+      parts = text.split(":")
+      return nil unless parts.length >= 2
+
+      left = parts.first
+      return nil unless left.match?(/\A\d+\z/)
+
+      middle = parts[1]
+      return nil if middle.match?(/19\d{2}|20\d{2}/)
+
+      hours = parts[0].to_i
+      minutes = parts[1].to_i
+      seconds = parts.length > 2 ? parts[2].to_i : 0
+
+      total_seconds = hours * 3600 + minutes * 60 + seconds
+      return nil if total_seconds.zero?
+
+      total_seconds
     end
 
     private
@@ -92,6 +137,7 @@ module Admin
       return false unless item
 
       return true if item.monetary_section?
+      return true if item.base_salary?  # 基本給グループの項目も小計に含める
 
       name = item.name.to_s
       name.include?("基本給")

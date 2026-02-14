@@ -1,0 +1,71 @@
+<% content_for :title, "給与シミュレーター" %>
+<% content_for :section_label, "給与シミュレーター" %>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h5 class="mb-1">給与シミュレーター</h5>
+    <small class="text-muted">基本給や手当を変更した場合の影響をシミュレーションできます</small>
+  </div>
+  <div class="d-flex gap-2">
+    <%= link_to driver_comparison_admin_salary_scenarios_path, class: "btn btn-outline-success" do %>
+      <i class="bi bi-truck"></i> ドライバー給与比較
+    <% end %>
+    <%= link_to new_admin_salary_scenario_path, class: "btn btn-primary" do %>
+      <i class="bi bi-plus-lg"></i> 新規シナリオ作成
+    <% end %>
+  </div>
+</div>
+
+<% if @scenarios.any? %>
+  <div class="table-responsive">
+    <table class="table table-hover">
+      <thead class="table-light">
+        <tr>
+          <th>シナリオ名</th>
+          <th>説明</th>
+          <th class="text-center">試算結果</th>
+          <th class="text-center">作成日</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @scenarios.each do |scenario| %>
+          <tr>
+            <td>
+              <%= link_to scenario.name, admin_salary_scenario_path(scenario), class: "text-decoration-none fw-bold" %>
+              <% if scenario.is_baseline? %>
+                <span class="badge bg-success ms-1">現行</span>
+              <% end %>
+            </td>
+            <td class="text-muted"><%= truncate(scenario.description, length: 50) %></td>
+            <td class="text-center">
+              <% count = scenario.salary_scenario_results.count %>
+              <% if count > 0 %>
+                <span class="badge bg-primary"><%= count %>名</span>
+              <% else %>
+                <span class="text-muted">未実行</span>
+              <% end %>
+            </td>
+            <td class="text-center text-muted"><%= l(scenario.created_at, format: :short) %></td>
+            <td class="text-end">
+              <%= link_to admin_salary_scenario_path(scenario), class: "btn btn-sm btn-outline-primary" do %>
+                <i class="bi bi-eye"></i>
+              <% end %>
+              <%= link_to edit_admin_salary_scenario_path(scenario), class: "btn btn-sm btn-outline-secondary" do %>
+                <i class="bi bi-pencil"></i>
+              <% end %>
+              <%= button_to admin_salary_scenario_path(scenario), method: :delete, class: "btn btn-sm btn-outline-danger", form: { data: { turbo_confirm: "このシナリオを削除しますか？" } } do %>
+                <i class="bi bi-trash"></i>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+<% else %>
+  <div class="alert alert-info">
+    <i class="bi bi-info-circle me-2"></i>
+    シナリオがありません。「新規シナリオ作成」から始めてください。
+  </div>
+<% end %>

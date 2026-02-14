@@ -1,0 +1,275 @@
+<% content_for :title, "仮決め一覧" %>
+<% content_for :section_label, "給与シミュレーター" %>
+
+<div class="d-flex justify-content-between align-items-start mb-3">
+  <div>
+    <%= link_to driver_comparison_admin_salary_scenarios_path, class: "btn btn-outline-secondary btn-sm mb-2" do %>
+      <i class="bi bi-arrow-left"></i> 比較一覧に戻る
+    <% end %>
+    <h5 class="mb-0">仮決め一覧・進捗確認</h5>
+    <small class="text-muted">新給与体系の仮決め結果を確認できます</small>
+  </div>
+</div>
+
+<!-- 進捗サマリー -->
+<div class="row mb-3">
+  <div class="col-auto">
+    <div class="card bg-light">
+      <div class="card-body py-2 px-3 text-center">
+        <div class="fs-5 fw-bold"><%= @summary[:total_employees] %></div>
+        <small class="text-muted">対象者</small>
+      </div>
+    </div>
+  </div>
+  <div class="col-auto">
+    <div class="card bg-success-subtle">
+      <div class="card-body py-2 px-3 text-center">
+        <div class="fs-5 fw-bold text-success"><%= @summary[:drafted_count] %></div>
+        <small class="text-muted">仮決め済</small>
+      </div>
+    </div>
+  </div>
+  <div class="col-auto">
+    <div class="card bg-warning-subtle">
+      <div class="card-body py-2 px-3 text-center">
+        <div class="fs-5 fw-bold text-warning"><%= @summary[:not_drafted_count] %></div>
+        <small class="text-muted">未決定</small>
+      </div>
+    </div>
+  </div>
+  <% if @summary[:drafted_count] > 0 %>
+    <div class="col-auto">
+      <div class="card <%= @summary[:total_net_diff] >= 0 ? 'bg-success-subtle' : 'bg-danger-subtle' %>">
+        <div class="card-body py-2 px-3 text-center">
+          <div class="fs-5 fw-bold <%= @summary[:total_net_diff] >= 0 ? 'text-success' : 'text-danger' %>">
+            <%= @summary[:total_net_diff] >= 0 ? '+' : '' %><%= number_with_delimiter(@summary[:total_net_diff]) %>
+          </div>
+          <small class="text-muted">手取り差額計/月</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-auto">
+      <div class="card border-info">
+        <div class="card-body py-2 px-3 text-center">
+          <div class="fs-5 fw-bold text-info">
+            <%= number_with_delimiter(@summary[:current_company_cost_total]) %>
+          </div>
+          <small class="text-muted">現行人件費/月</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-auto">
+      <div class="card <%= @summary[:total_company_cost_diff] >= 0 ? 'border-danger' : 'border-success' %>">
+        <div class="card-body py-2 px-3 text-center">
+          <div class="fs-5 fw-bold <%= @summary[:total_company_cost_diff] >= 0 ? 'text-danger' : 'text-success' %>">
+            <%= @summary[:total_company_cost_diff] >= 0 ? '+' : '' %><%= number_with_delimiter(@summary[:total_company_cost_diff]) %>
+          </div>
+          <small class="text-muted">会社負担増減/月</small>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>
+
+<% if @summary[:drafted_count] > 0 %>
+  <!-- 年間サマリー（仮決め済みのみ） -->
+  <div class="card mb-3 border-primary">
+    <div class="card-header py-2 bg-primary text-white">
+      <strong><i class="bi bi-calculator me-1"></i> 年間影響試算（仮決め済み <%= @summary[:drafted_count] %>名 × 12ヶ月）</strong>
+    </div>
+    <div class="card-body">
+      <div class="row text-center">
+        <div class="col-md-4">
+          <div class="fs-6 text-muted">現行人件費（年間）</div>
+          <div class="fs-4 fw-bold">
+            <%= number_with_delimiter(@summary[:current_company_cost_total] * 12) %> 円
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="fs-6 text-muted">新人件費（年間）</div>
+          <div class="fs-4 fw-bold">
+            <%= number_with_delimiter(@summary[:proposed_company_cost_total] * 12) %> 円
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="fs-6 text-muted">年間差額</div>
+          <div class="fs-4 fw-bold <%= @summary[:total_company_cost_diff] >= 0 ? 'text-danger' : 'text-success' %>">
+            <%= @summary[:total_company_cost_diff] >= 0 ? '+' : '' %><%= number_with_delimiter(@summary[:total_company_cost_diff] * 12) %> 円
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+<% end %>
+
+<!-- 拠点別一覧（全員表示） -->
+<% @comparisons.group_by { |c| c[:location] }.each do |location, comps| %>
+  <%
+    drafted_in_loc = comps.count { |c| c[:drafted] }
+    not_drafted_in_loc = comps.count { |c| !c[:drafted] }
+    loc_cost_diff = comps.select { |c| c[:drafted] }.sum { |c| c[:diff_company_cost] }
+  %>
+  <div class="card mb-3">
+    <div class="card-header py-2 bg-light d-flex justify-content-between align-items-center">
+      <div>
+        <strong><%= location %></strong>
+        <span class="text-muted ms-2">(<%= comps.size %>名)</span>
+        <% if not_drafted_in_loc > 0 %>
+          <span class="badge bg-warning text-dark ms-2">未決定 <%= not_drafted_in_loc %>名</span>
+        <% else %>
+          <span class="badge bg-success ms-2">全員決定済</span>
+        <% end %>
+      </div>
+      <% if drafted_in_loc > 0 %>
+        <span class="<%= loc_cost_diff >= 0 ? 'text-danger' : 'text-success' %>">
+          会社負担: <%= loc_cost_diff >= 0 ? '+' : '' %><%= number_with_delimiter(loc_cost_diff) %>円/月
+        </span>
+      <% end %>
+    </div>
+    <div class="card-body p-0">
+      <table class="table table-sm table-hover mb-0" style="font-size: 12px;">
+        <thead class="table-light">
+          <tr>
+            <th style="width: 30px;"></th>
+            <th style="width: 60px;">コード</th>
+            <th style="width: 100px;">氏名</th>
+            <th class="text-center">等級</th>
+            <th class="text-center">無事故</th>
+            <th class="text-center">難易度</th>
+            <th class="text-end">現行固定給</th>
+            <th class="text-center" style="width: 30px;"></th>
+            <th class="text-end">新固定給</th>
+            <th class="text-end">差額</th>
+            <th class="text-end">会社負担差</th>
+            <th style="width: 80px;"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% comps.sort_by { |c| [c[:drafted] ? 0 : 1, c[:diff_net]] }.each do |comp| %>
+            <% emp = comp[:employee] %>
+            <tr class="<%= comp[:drafted] ? '' : 'table-warning' %>">
+              <td class="text-center">
+                <% if comp[:drafted] %>
+                  <i class="bi bi-check-circle-fill text-success"></i>
+                <% else %>
+                  <i class="bi bi-circle text-warning"></i>
+                <% end %>
+              </td>
+              <td><%= emp.employee_code %></td>
+              <td><%= emp.full_name %></td>
+              <td class="text-center">
+                <% if comp[:drafted] %>
+                  <%= comp[:selected_grade] %>級
+                <% else %>
+                  <span class="text-muted">-</span>
+                <% end %>
+              </td>
+              <td class="text-center">
+                <% if comp[:drafted] && comp[:draft] %>
+                  <%= comp[:draft].safety_label %>
+                <% else %>
+                  <span class="text-muted">-</span>
+                <% end %>
+              </td>
+              <td class="text-center">
+                <% if comp[:drafted] && comp[:draft] %>
+                  <%= comp[:draft].difficulty_label %>
+                <% else %>
+                  <span class="text-muted">-</span>
+                <% end %>
+              </td>
+              <td class="text-end"><%= number_with_delimiter(comp[:current_fixed]) %></td>
+              <td class="text-center text-muted">→</td>
+              <td class="text-end">
+                <% if comp[:drafted] %>
+                  <%= number_with_delimiter(comp[:proposed_fixed]) %>
+                <% else %>
+                  <span class="text-muted"><%= number_with_delimiter(comp[:proposed_fixed]) %></span>
+                <% end %>
+              </td>
+              <td class="text-end">
+                <% if comp[:drafted] %>
+                  <% if comp[:diff_net] > 0 %>
+                    <span class="text-success fw-bold">+<%= number_with_delimiter(comp[:diff_net]) %></span>
+                  <% elsif comp[:diff_net] < 0 %>
+                    <span class="text-danger fw-bold"><%= number_with_delimiter(comp[:diff_net]) %></span>
+                  <% else %>
+                    <span class="text-muted">±0</span>
+                  <% end %>
+                <% else %>
+                  <span class="text-muted">
+                    <% if comp[:diff_fixed] > 0 %>+<% end %><%= number_with_delimiter(comp[:diff_fixed]) %>
+                  </span>
+                <% end %>
+              </td>
+              <td class="text-end">
+                <% if comp[:drafted] %>
+                  <% if comp[:diff_company_cost] > 0 %>
+                    <span class="text-danger">+<%= number_with_delimiter(comp[:diff_company_cost]) %></span>
+                  <% elsif comp[:diff_company_cost] < 0 %>
+                    <span class="text-success"><%= number_with_delimiter(comp[:diff_company_cost]) %></span>
+                  <% else %>
+                    <span class="text-muted">±0</span>
+                  <% end %>
+                <% else %>
+                  <span class="text-muted">-</span>
+                <% end %>
+              </td>
+              <td class="text-end">
+                <%= link_to driver_comparison_detail_admin_salary_scenarios_path(
+                  employee_id: emp.id,
+                  period_id: @period.id,
+                  selected_grade: comp[:selected_grade],
+                  selected_safety: comp[:selected_safety],
+                  selected_difficulty: comp[:selected_difficulty],
+                  position_allowance: comp[:draft]&.position_allowance,
+                  role_allowance: comp[:draft]&.role_allowance,
+                  overtime_hours: comp[:draft]&.overtime_hours,
+                  late_night_hours: comp[:draft]&.late_night_hours,
+                  holiday_hours: comp[:draft]&.holiday_hours
+                ), class: "btn btn-outline-primary btn-sm me-1", title: comp[:drafted] ? "詳細確認" : "仮決めする" do %>
+                  <% if comp[:drafted] %>
+                    <i class="bi bi-eye"></i>
+                  <% else %>
+                    <i class="bi bi-pencil"></i>
+                  <% end %>
+                <% end %>
+                <% if comp[:drafted] %>
+                  <%= button_to delete_draft_admin_salary_scenarios_path(id: comp[:draft].id),
+                      method: :delete,
+                      class: "btn btn-outline-danger btn-sm",
+                      data: { confirm: "#{emp.full_name}の仮決めを削除しますか？" } do %>
+                    <i class="bi bi-trash"></i>
+                  <% end %>
+                <% end %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+<% end %>
+
+<!-- 注意事項 -->
+<div class="alert alert-warning mt-3 small">
+  <i class="bi bi-exclamation-triangle me-1"></i>
+  <strong>注意事項（会社負担について）:</strong>
+  <ul class="mb-0 mt-1">
+    <li>上記の「人件費」には<strong>退職金の積立</strong>（中退共等）は含まれていません</li>
+    <li><strong>賞与</strong>に対する社会保険料も別途発生します</li>
+    <li>実際の人件費は、上記に加えて退職金積立・賞与の社会保険料等が加算されます</li>
+    <li>未決定の行（黄色背景）は自動計算による参考値です。正確な数値は個人ページで仮決めしてください</li>
+  </ul>
+</div>
+
+<!-- 凡例 -->
+<div class="card mt-3">
+  <div class="card-body py-2">
+    <small class="text-muted">
+      <i class="bi bi-check-circle-fill text-success me-1"></i> 仮決め済み
+      <span class="ms-3"><i class="bi bi-circle text-warning me-1"></i> 未決定（要仮決め）</span>
+      <span class="ms-3 bg-warning px-2">黄色背景</span> = 未決定
+    </small>
+  </div>
+</div>

@@ -1,0 +1,277 @@
+<% content_for :title, "ドライバー給与比較" %>
+<% content_for :section_label, "給与シミュレーター" %>
+
+<div class="d-flex justify-content-between align-items-start mb-3">
+  <div>
+    <%= link_to admin_salary_scenarios_path, class: "btn btn-outline-secondary btn-sm mb-2" do %>
+      <i class="bi bi-arrow-left"></i> 戻る
+    <% end %>
+    <h5 class="mb-0">ドライバー給与比較（固定給）</h5>
+    <small class="text-muted">残業が同じ場合、固定給部分でいくら変わるか。クリックで個人詳細表示</small>
+  </div>
+</div>
+
+<!-- パラメータ調整パネル -->
+<div class="card mb-3">
+  <div class="card-header py-2 d-flex justify-content-between align-items-center" data-bs-toggle="collapse" data-bs-target="#paramPanel" style="cursor: pointer;">
+    <strong><i class="bi bi-sliders me-1"></i> パラメータ調整</strong>
+    <i class="bi bi-chevron-down"></i>
+  </div>
+  <div class="collapse show" id="paramPanel">
+    <div class="card-body py-3">
+      <%= form_tag driver_comparison_calculate_admin_salary_scenarios_path, method: :post, class: "row g-3" do %>
+        <!-- 基本給 -->
+        <div class="col-12">
+          <label class="form-label fw-bold small mb-1">基本給（5段階）</label>
+          <div class="row g-2">
+            <% (1..5).each do |i| %>
+              <div class="col">
+                <div class="input-group input-group-sm">
+                  <span class="input-group-text"><%= i %>級</span>
+                  <%= number_field_tag "base_salary_#{i}", @params[:"base_salary_#{i}"], class: "form-control form-control-sm text-end", step: 1000 %>
+                </div>
+              </div>
+            <% end %>
+          </div>
+        </div>
+
+        <!-- 無事故手当 -->
+        <div class="col-md-4">
+          <label class="form-label fw-bold small mb-1">無事故手当</label>
+          <div class="row g-2">
+            <div class="col-6">
+              <div class="input-group input-group-sm">
+                <span class="input-group-text">半年</span>
+                <%= number_field_tag :safety_half_year, @params[:safety_half_year], class: "form-control form-control-sm text-end", step: 1000 %>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="input-group input-group-sm">
+                <span class="input-group-text">1年</span>
+                <%= number_field_tag :safety_one_year, @params[:safety_one_year], class: "form-control form-control-sm text-end", step: 1000 %>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- エリア加算 -->
+        <div class="col-md-4">
+          <label class="form-label fw-bold small mb-1">エリア加算</label>
+          <div class="row g-2">
+            <div class="col-6">
+              <div class="input-group input-group-sm">
+                <span class="input-group-text">東京川崎</span>
+                <%= number_field_tag :area_tokyo, @params[:area_tokyo], class: "form-control form-control-sm text-end", step: 1000 %>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="input-group input-group-sm">
+                <span class="input-group-text">仙台小名浜</span>
+                <%= number_field_tag :area_sendai, @params[:area_sendai], class: "form-control form-control-sm text-end", step: 1000 %>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 難易度給（参考表示） -->
+        <div class="col-md-4">
+          <label class="form-label fw-bold small mb-1">難易度給（個人別設定必要）</label>
+          <div class="row g-2">
+            <div class="col-4">
+              <div class="input-group input-group-sm">
+                <span class="input-group-text">高</span>
+                <%= number_field_tag :difficulty_high, @params[:difficulty_high], class: "form-control form-control-sm text-end", step: 1000 %>
+              </div>
+            </div>
+            <div class="col-4">
+              <div class="input-group input-group-sm">
+                <span class="input-group-text">中</span>
+                <%= number_field_tag :difficulty_mid, @params[:difficulty_mid], class: "form-control form-control-sm text-end", step: 1000 %>
+              </div>
+            </div>
+            <div class="col-4">
+              <div class="input-group input-group-sm">
+                <span class="input-group-text">低</span>
+                <%= number_field_tag :difficulty_low, @params[:difficulty_low], class: "form-control form-control-sm text-end", step: 1000 %>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <%= hidden_field_tag :period_id, @period&.id %>
+
+        <div class="col-12">
+          <button type="submit" class="btn btn-primary btn-sm">
+            <i class="bi bi-calculator me-1"></i> 再計算
+          </button>
+          <span class="text-muted small ms-2">※難易度給は個人別データがないため現時点では0円で計算</span>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>
+
+<% if @comparisons.present? %>
+  <!-- サマリー -->
+  <div class="row mb-3">
+    <div class="col-auto">
+      <div class="card bg-light">
+        <div class="card-body py-2 px-3 text-center">
+          <div class="fs-5 fw-bold"><%= @summary[:total] %></div>
+          <small class="text-muted">対象</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-auto">
+      <div class="card bg-success-subtle">
+        <div class="card-body py-2 px-3 text-center">
+          <div class="fs-5 fw-bold text-success"><%= @summary[:increased] %></div>
+          <small class="text-muted">増加</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-auto">
+      <div class="card bg-danger-subtle">
+        <div class="card-body py-2 px-3 text-center">
+          <div class="fs-5 fw-bold text-danger"><%= @summary[:decreased] %></div>
+          <small class="text-muted">減少</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-auto">
+      <div class="card <%= @summary[:total_diff] >= 0 ? 'bg-success-subtle' : 'bg-danger-subtle' %>">
+        <div class="card-body py-2 px-3 text-center">
+          <div class="fs-5 fw-bold <%= @summary[:total_diff] >= 0 ? 'text-success' : 'text-danger' %>">
+            <%= @summary[:total_diff] >= 0 ? '+' : '' %><%= number_with_delimiter(@summary[:total_diff]) %>
+          </div>
+          <small class="text-muted">月間差額計</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-auto">
+      <div class="card border-info">
+        <div class="card-body py-2 px-3 text-center">
+          <div class="fs-5 fw-bold text-info">
+            <%= number_with_delimiter(@summary[:current_company_cost_total]) %>
+          </div>
+          <small class="text-muted">現行人件費/月</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-auto">
+      <div class="card <%= @summary[:company_cost_diff] >= 0 ? 'border-danger' : 'border-success' %>">
+        <div class="card-body py-2 px-3 text-center">
+          <div class="fs-5 fw-bold <%= @summary[:company_cost_diff] >= 0 ? 'text-danger' : 'text-success' %>">
+            <%= @summary[:company_cost_diff] >= 0 ? '+' : '' %><%= number_with_delimiter(@summary[:company_cost_diff]) %>
+          </div>
+          <small class="text-muted">会社負担増減/月</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 拠点ごとに表示 -->
+  <% @comparisons.group_by { |c| c[:location] }.each do |location, comps| %>
+    <div class="card mb-3">
+      <div class="card-header py-2 bg-light">
+        <strong><%= location %></strong>
+        <span class="text-muted ms-2">(<%= comps.size %>名)</span>
+        <% loc_diff = comps.sum { |c| c[:diff] } %>
+        <span class="float-end <%= loc_diff >= 0 ? 'text-success' : 'text-danger' %>">
+          計: <%= loc_diff >= 0 ? '+' : '' %><%= number_with_delimiter(loc_diff) %>円/月
+        </span>
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-sm table-hover mb-0" style="font-size: 12px;">
+          <thead class="table-light">
+            <tr>
+              <th style="width: 60px;">コード</th>
+              <th style="width: 100px;">氏名</th>
+              <th class="text-end">現行固定給</th>
+              <th class="text-center" style="width: 30px;"></th>
+              <th class="text-end">新固定給</th>
+              <th class="text-end" style="width: 100px;">差額</th>
+              <th style="width: 200px;">内訳変化</th>
+              <th style="width: 40px;"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% comps.sort_by { |c| c[:diff] }.each do |comp| %>
+              <% emp = comp[:employee] %>
+              <% cur = comp[:current] %>
+              <% prop = comp[:proposed] %>
+              <% diff = comp[:diff] %>
+              <%
+                detail_url = driver_comparison_detail_admin_salary_scenarios_path(
+                  employee_id: emp.id,
+                  period_id: @period.id,
+                  base_salary_1: @params[:base_salary_1],
+                  base_salary_2: @params[:base_salary_2],
+                  base_salary_3: @params[:base_salary_3],
+                  base_salary_4: @params[:base_salary_4],
+                  base_salary_5: @params[:base_salary_5],
+                  safety_half_year: @params[:safety_half_year],
+                  safety_one_year: @params[:safety_one_year],
+                  difficulty_high: @params[:difficulty_high],
+                  difficulty_mid: @params[:difficulty_mid],
+                  difficulty_low: @params[:difficulty_low],
+                  area_tokyo: @params[:area_tokyo],
+                  area_sendai: @params[:area_sendai]
+                )
+              %>
+              <tr style="cursor: pointer;" onclick="window.location='<%= detail_url %>'" class="hover-highlight">
+                <td><%= emp.employee_code %></td>
+                <td><%= emp.full_name %></td>
+                <td class="text-end"><%= number_with_delimiter(cur[:total]) %></td>
+                <td class="text-center text-muted">→</td>
+                <td class="text-end"><%= number_with_delimiter(prop[:total]) %></td>
+                <td class="text-end">
+                  <% if diff > 0 %>
+                    <span class="text-success fw-bold">+<%= number_with_delimiter(diff) %></span>
+                  <% elsif diff < 0 %>
+                    <span class="text-danger fw-bold"><%= number_with_delimiter(diff) %></span>
+                  <% else %>
+                    <span class="text-muted">±0</span>
+                  <% end %>
+                </td>
+                <td class="small text-muted">
+                  <% changes = [] %>
+                  <% if prop[:base_salary] != cur[:base_salary] %>
+                    <% changes << "基本給#{cur[:base_salary]/1000}k→#{prop[:base_salary]/1000}k" %>
+                  <% end %>
+                  <% if prop[:safety_bonus] != cur[:safety_bonus] %>
+                    <% changes << "無事故#{cur[:safety_bonus]/1000}k→#{prop[:safety_bonus]/1000}k" %>
+                  <% end %>
+                  <% area_cur = cur[:city] || 0 %>
+                  <% area_prop = prop[:area] || 0 %>
+                  <% if area_prop != area_cur %>
+                    <% changes << "エリア#{area_cur/1000}k→#{area_prop/1000}k" %>
+                  <% end %>
+                  <% adj_total = cur[:adjustment].to_i + cur[:adjustment_allowance].to_i %>
+                  <% if adj_total > 0 %>
+                    <% changes << "調整-#{adj_total/1000}k廃止" %>
+                  <% end %>
+                  <%= changes.join(", ") %>
+                </td>
+                <td class="text-center text-primary">
+                  <i class="bi bi-box-arrow-up-right"></i>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  <% end %>
+
+<% else %>
+  <div class="alert alert-info">
+    データがありません。
+  </div>
+<% end %>
+
+<style>
+  tr.hover-highlight:hover {
+    background-color: #e7f1ff !important;
+  }
+</style>

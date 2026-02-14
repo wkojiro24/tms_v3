@@ -1,0 +1,127 @@
+<% content_for :title, "新規シナリオ作成" %>
+<% content_for :section_label, "給与シミュレーター" %>
+
+<div class="mb-4">
+  <%= link_to admin_salary_scenarios_path, class: "btn btn-outline-secondary btn-sm" do %>
+    <i class="bi bi-arrow-left"></i> 一覧に戻る
+  <% end %>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h5 class="mb-0">新規シナリオ作成</h5>
+  </div>
+  <div class="card-body">
+    <%= form_with model: [:admin, @scenario], local: true do |f| %>
+      <% if @scenario.errors.any? %>
+        <div class="alert alert-danger">
+          <ul class="mb-0">
+            <% @scenario.errors.full_messages.each do |msg| %>
+              <li><%= msg %></li>
+            <% end %>
+          </ul>
+        </div>
+      <% end %>
+
+      <!-- 基本情報 -->
+      <div class="mb-4">
+        <h6 class="border-bottom pb-2 mb-3">基本情報</h6>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <%= f.label :name, "シナリオ名", class: "form-label" %>
+            <%= f.text_field :name, class: "form-control", placeholder: "例: 案A - 基本給10%アップ" %>
+          </div>
+          <div class="col-md-6">
+            <%= f.label :description, "説明", class: "form-label" %>
+            <%= f.text_area :description, class: "form-control", rows: 2, placeholder: "このシナリオの概要" %>
+          </div>
+        </div>
+      </div>
+
+      <!-- 計算パラメータ -->
+      <div class="mb-4">
+        <h6 class="border-bottom pb-2 mb-3">
+          <i class="bi bi-calculator me-1"></i>
+          計算パラメータ（就業規則に基づく）
+        </h6>
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label">月平均所定労働時間</label>
+            <div class="input-group">
+              <input type="number" name="parameters[monthly_hours]" class="form-control" value="163.8" step="0.1">
+              <span class="input-group-text">時間</span>
+            </div>
+            <small class="text-muted">時給計算の基準になります</small>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">残業割増率（60時間以下）</label>
+            <div class="input-group">
+              <input type="number" name="parameters[overtime_rate]" class="form-control" value="1.25" step="0.01">
+              <span class="input-group-text">倍</span>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">残業割増率（60時間超）</label>
+            <div class="input-group">
+              <input type="number" name="parameters[overtime_rate_over_60]" class="form-control" value="1.50" step="0.01">
+              <span class="input-group-text">倍</span>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">深夜割増率</label>
+            <div class="input-group">
+              <input type="number" name="parameters[late_night_rate]" class="form-control" value="0.25" step="0.01">
+              <span class="input-group-text">倍</span>
+            </div>
+            <small class="text-muted">22:00〜5:00の加算</small>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">休日割増率</label>
+            <div class="input-group">
+              <input type="number" name="parameters[holiday_rate]" class="form-control" value="1.35" step="0.01">
+              <span class="input-group-text">倍</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 基本給設定 -->
+      <div class="mb-4">
+        <h6 class="border-bottom pb-2 mb-3">
+          <i class="bi bi-cash-coin me-1"></i>
+          基本給の設定方法
+        </h6>
+        <div class="row g-3">
+          <div class="col-12">
+            <div class="form-check mb-2">
+              <input type="radio" name="parameters[base_salary_method]" value="grade_table" class="form-check-input" id="method_grade" checked>
+              <label class="form-check-label" for="method_grade">
+                <strong>現在の等級テーブルを使用</strong>
+                <small class="text-muted d-block">各従業員の登録された基本給をそのまま使用</small>
+              </label>
+            </div>
+            <div class="form-check mb-2">
+              <input type="radio" name="parameters[base_salary_method]" value="percentage" class="form-check-input" id="method_percentage">
+              <label class="form-check-label" for="method_percentage">
+                <strong>一律パーセント調整</strong>
+                <small class="text-muted d-block">全従業員の基本給を一定割合で増減</small>
+              </label>
+            </div>
+          </div>
+          <div class="col-md-4" id="adjustment-input">
+            <label class="form-label">調整率</label>
+            <div class="input-group">
+              <input type="number" name="parameters[base_salary_adjustment]" class="form-control" value="0" step="0.1">
+              <span class="input-group-text">%</span>
+            </div>
+            <small class="text-muted">例: 10 → 基本給が10%アップ</small>
+          </div>
+        </div>
+      </div>
+
+      <div class="text-end">
+        <%= f.submit "シナリオを作成", class: "btn btn-primary btn-lg" %>
+      </div>
+    <% end %>
+  </div>
+</div>

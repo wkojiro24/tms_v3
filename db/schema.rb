@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_02_13_225150) do
+ActiveRecord::Schema[7.2].define(version: 2026_02_14_053933) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -529,6 +529,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_13_225150) do
     t.bigint "tenant_id", null: false
     t.string "payroll_group"
     t.integer "payroll_group_position"
+    t.boolean "hidden", default: false, null: false
     t.index ["name"], name: "index_items_on_name"
     t.index ["payroll_group"], name: "index_items_on_payroll_group"
     t.index ["tenant_id", "name", "above_basic"], name: "index_items_on_tenant_name_above_basic", unique: true
@@ -818,6 +819,38 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_13_225150) do
     t.index ["tenant_id"], name: "index_route_distances_on_tenant_id"
   end
 
+  create_table "salary_draft_decisions", force: :cascade do |t|
+    t.bigint "employee_id", null: false
+    t.bigint "period_id", null: false
+    t.integer "selected_grade"
+    t.string "selected_safety"
+    t.string "selected_difficulty"
+    t.integer "position_allowance", default: 0
+    t.integer "role_allowance", default: 0
+    t.decimal "overtime_hours", precision: 5, scale: 1, default: "0.0"
+    t.decimal "late_night_hours", precision: 5, scale: 1, default: "0.0"
+    t.decimal "holiday_hours", precision: 5, scale: 1, default: "0.0"
+    t.integer "current_fixed_total", default: 0
+    t.integer "current_gross_total", default: 0
+    t.integer "current_net_total", default: 0
+    t.integer "current_company_cost", default: 0
+    t.integer "proposed_fixed_total", default: 0
+    t.integer "proposed_gross_total", default: 0
+    t.integer "proposed_net_total", default: 0
+    t.integer "proposed_company_cost", default: 0
+    t.integer "diff_fixed", default: 0
+    t.integer "diff_gross", default: 0
+    t.integer "diff_net", default: 0
+    t.integer "diff_company_cost", default: 0
+    t.string "location"
+    t.text "notes"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["employee_id", "period_id"], name: "index_salary_draft_decisions_on_employee_id_and_period_id", unique: true
+    t.index ["employee_id"], name: "index_salary_draft_decisions_on_employee_id"
+    t.index ["period_id"], name: "index_salary_draft_decisions_on_period_id"
+  end
+
   create_table "salary_monthlies", force: :cascade do |t|
     t.bigint "tenant_id", null: false
     t.bigint "employee_id"
@@ -882,6 +915,51 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_13_225150) do
     t.index ["tenant_id", "location"], name: "index_salary_monthlies_on_tenant_id_and_location"
     t.index ["tenant_id", "year", "month"], name: "index_salary_monthlies_on_tenant_id_and_year_and_month"
     t.index ["tenant_id"], name: "index_salary_monthlies_on_tenant_id"
+  end
+
+  create_table "salary_scenario_items", force: :cascade do |t|
+    t.bigint "salary_scenario_id", null: false
+    t.string "name", null: false
+    t.string "category"
+    t.string "calculation_type", default: "fixed"
+    t.integer "default_amount", default: 0
+    t.string "formula"
+    t.integer "position", default: 0
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["salary_scenario_id"], name: "index_salary_scenario_items_on_salary_scenario_id"
+  end
+
+  create_table "salary_scenario_results", force: :cascade do |t|
+    t.bigint "salary_scenario_id", null: false
+    t.bigint "employee_id", null: false
+    t.bigint "period_id"
+    t.integer "base_salary", default: 0
+    t.integer "total_allowances", default: 0
+    t.integer "overtime_pay", default: 0
+    t.integer "late_night_pay", default: 0
+    t.integer "holiday_pay", default: 0
+    t.integer "gross_pay", default: 0
+    t.integer "deductions", default: 0
+    t.integer "net_pay", default: 0
+    t.jsonb "calculation_details", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["employee_id"], name: "index_salary_scenario_results_on_employee_id"
+    t.index ["period_id"], name: "index_salary_scenario_results_on_period_id"
+    t.index ["salary_scenario_id", "employee_id"], name: "idx_scenario_employee", unique: true
+    t.index ["salary_scenario_id"], name: "index_salary_scenario_results_on_salary_scenario_id"
+  end
+
+  create_table "salary_scenarios", force: :cascade do |t|
+    t.bigint "tenant_id"
+    t.string "name", null: false
+    t.text "description"
+    t.jsonb "parameters", default: {}
+    t.boolean "is_baseline", default: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tenant_id"], name: "index_salary_scenarios_on_tenant_id"
   end
 
   create_table "salary_settings", force: :cascade do |t|
@@ -1554,8 +1632,15 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_13_225150) do
   add_foreign_key "pl_tree_nodes", "pl_tree_nodes", column: "parent_id"
   add_foreign_key "pl_tree_nodes", "tenants"
   add_foreign_key "route_distances", "tenants"
+  add_foreign_key "salary_draft_decisions", "employees"
+  add_foreign_key "salary_draft_decisions", "periods"
   add_foreign_key "salary_monthlies", "employees"
   add_foreign_key "salary_monthlies", "tenants"
+  add_foreign_key "salary_scenario_items", "salary_scenarios"
+  add_foreign_key "salary_scenario_results", "employees"
+  add_foreign_key "salary_scenario_results", "periods"
+  add_foreign_key "salary_scenario_results", "salary_scenarios"
+  add_foreign_key "salary_scenarios", "tenants"
   add_foreign_key "salary_settings", "employees"
   add_foreign_key "salary_settings", "grade_salary_tables"
   add_foreign_key "salary_settings", "tenants"
